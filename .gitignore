@@ -1,7 +1,8 @@
-results/
-saved_model/
+results/*.txt
+saved_model/*.pt
 .idea/
 data/redial/
+*.pt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
