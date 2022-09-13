@@ -29,6 +29,14 @@ def parse_args():
 
     args = parser.parse_args()
 
+    from platform import system as sysChecker
+    if sysChecker() == 'Linux':
+        pass # train_loader = DataLoader(redial_train, batch_size=256, shuffle=True)  # HJ KT-server
+    elif sysChecker() == "Windows":
+        pass # train_loader = DataLoader(redial_train, batch_size=4, shuffle=True)  # HJ local
+    else:
+        print("Check Your Platform and use right DataLoader")
+        exit()
     logging.info(args)
     return args
 
