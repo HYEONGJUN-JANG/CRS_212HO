@@ -1,7 +1,7 @@
 results/*.txt
 saved_model/*.pt
 .idea/
-data/redial/
+data/redial/*.json
 *.pt
 # Byte-compiled / optimized / DLL files
 __pycache__/
