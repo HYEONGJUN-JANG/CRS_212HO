@@ -12,5 +12,6 @@ wget --no-check-certificate "https://hyu-my.sharepoint.com/:u:/g/personal/hiroom
 wget --no-check-certificate "https://hyu-my.sharepoint.com/:u:/g/personal/hirooms2_hanyang_ac_kr/EbZEu44RZOVLvmv_5OY__N0B2FFhLa29yZoEeZiH1M1tWg?e=3EySVT&download=1" -O valid_data.json
 
 
+
 cd ../../saved_model
 wget --no-check-certificate "https://hyu-my.sharepoint.com/:u:/g/personal/hirooms2_hanyang_ac_kr/Eawf83T57AlNh9ISAMA73PsB4MDJu6yb_nXNFMfHe8wfrw?e=E6ix9Y&download=1" -O model.pt
