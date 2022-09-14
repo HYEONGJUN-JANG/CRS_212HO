@@ -1,7 +1,7 @@
 #!/bin/bash
 cd data/redial
 #wget -O foo.html google.com
-#mkdir redial
+echo "CRS 공용 OneDrive 를 통해 필요 데이터를 다운로드합니다"
 wget --no-check-certificate "https://hyu-my.sharepoint.com/:u:/g/personal/hirooms2_hanyang_ac_kr/ETObngmhWGVGjzGdfScOSO8BqTt61E0kP_G-XD7mBpdBTg?e=MAvXT4&download=1" -O content_data.json
 wget --no-check-certificate "https://hyu-my.sharepoint.com/:u:/g/personal/hirooms2_hanyang_ac_kr/EZsp_ysU1MVCn-K0JKKWEhkBh6oA1tdY9KLwd_WBX3f2Tw?e=TqhYRu&download=1" -O dbpedia_subkg.json
 wget --no-check-certificate "https://hyu-my.sharepoint.com/:u:/g/personal/hirooms2_hanyang_ac_kr/EYqp3KZYdJlAmfJsUZqBBt0BnWTfIIUm_u6y09NqtV0I0w?e=Hkw3Ro&download=1" -O entity2id.json
