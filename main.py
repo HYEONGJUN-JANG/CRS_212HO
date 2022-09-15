@@ -24,7 +24,7 @@ from pretrain import pretrain
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel
 
-
+## HJ Branch Test
 def get_time_kst(): return datetime.now(timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
 
 
