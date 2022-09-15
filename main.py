@@ -72,21 +72,21 @@ if __name__ == '__main__':
     movie2ids = crs_dataset.movie2id
     num_movie = len(movie2ids)
 
+    content_data_path = 'data/redial/content_data.json'
+    content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
+
     # todo: language generation part
     model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
 
-    # For pre-training
-    # if not args.pretrained:
-    #     # todo: data_path: 'data/redial/' 로 통일 (안에서 os.join으로 관리하기)
-    #     content_data_path = 'data/redial/content_data.json'
-    #     # todo: movie_id crs ver., dbpedia ver.
-    #     movie2id_redial = json.load('data/redial/movie2id.json', 'r', encoding='utf-8')  # {entity: entity_id}
-    #     content_dataset = ContentInformation(args, content_data_path, tokenizer, movie2id_redial, args.device_id)
-    #     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
-    #     pretrain(args, model, pretrain_dataloader, pretrained_path)
-    # else:
-    #     model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장
+    ## For pre-training
+    if not args.pretrained:
+        # todo: data_path: 'data/redial/' 로 통일 (안에서 os.join으로 관리하기)
+        # todo: movie_id crs ver., dbpedia ver.
+        pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
+        pretrain(args, model, pretrain_dataloader, pretrained_path)
+    else:
+        model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장
 
     train_dataloader = ReDialDataLoader(train_data, word_truncate=args.max_dialog_len)
     test_dataloader = ReDialDataLoader(test_data, word_truncate=args.max_dialog_len)

@@ -24,19 +24,11 @@ def parse_args():
     parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small', 'prajjwal1/bert-mini'])
 
-    parser.add_argument('--pretrained', action='store_false')
+    parser.add_argument('--pretrained', action='store_true')
     parser.add_argument('--test', action='store_false')
 
     args = parser.parse_args()
 
-    from platform import system as sysChecker
-    if sysChecker() == 'Linux':
-        pass # train_loader = DataLoader(redial_train, batch_size=256, shuffle=True)  # HJ KT-server
-    elif sysChecker() == "Windows":
-        pass # train_loader = DataLoader(redial_train, batch_size=4, shuffle=True)  # HJ local
-    else:
-        print("Check Your Platform and use right DataLoader")
-        exit()
     logging.info(args)
     return args
 

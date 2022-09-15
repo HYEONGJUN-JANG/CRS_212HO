@@ -15,6 +15,8 @@ def pretrain(args, model, pretrain_dataloader, path):
         for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
                 pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             scores = model.pretrain(plot_token, plot_mask, review_token, review_mask)
+            scores = scores[:, torch.LongTensor(model.movie2ids)]
+
             loss = model.criterion(scores, movie_id)
             total_loss += loss.data.float()
             optimizer.zero_grad()
