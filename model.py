@@ -13,16 +13,9 @@ class MovieExpertCRS(nn.Module):
 
         # Setting
         self.args = args
-        self.movie2ids = movie2ids # 필요없음
-        self.num_movies = len(movie2ids)  # crs_id to dbpedia matching 되면 필요없어짐
+        self.movie2ids = movie2ids
         self.name = name  # argument 를 통한 abaltion을 위해 필요
         self.device_id = args.device_id
-
-        # Dialog
-        self.token_emb_dim = token_emb_dim
-        self.word_encoder = bert_model
-        self.token_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim)
-        self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
 
         # R-GCN
         # todo: pre-trainig (R-GCN 자체 or content 내 meta data 를 활용하여?) (후자가 날 듯)
@@ -35,13 +28,19 @@ class MovieExpertCRS(nn.Module):
         self.edge_idx = self.edge_idx.to(self.device_id)
         self.edge_type = self.edge_type.to(self.device_id)
         self.pad_entity_idx = 0
+
         self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
+        # Dialog
+        self.token_emb_dim = token_emb_dim
+        self.word_encoder = bert_model
+        self.token_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim)
+        self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
 
         # Gating
         self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
 
         # Prediction
-        self.linear_output = nn.Linear(self.token_emb_dim, self.num_movies)
+        # self.linear_output = nn.Linear(self.token_emb_dim, self.num_movies)
 
         # Loss
         self.criterion = nn.CrossEntropyLoss()
@@ -51,7 +50,7 @@ class MovieExpertCRS(nn.Module):
 
     # todo: initialize 해줘야 할 parameter check
     def initialize(self):
-        nn.init.xavier_uniform_(self.linear_output.weight)
+        # nn.init.xavier_uniform_(self.linear_output.weight)
         nn.init.xavier_uniform_(self.linear_transformation.weight)
         nn.init.xavier_uniform_(self.gating.weight)
 
@@ -79,9 +78,13 @@ class MovieExpertCRS(nn.Module):
 
         text_emb = self.word_encoder(input_ids=text, attention_mask=mask).last_hidden_state  # [B, L, d]
         content_emb = self.token_attention(text_emb, mask)  # [B, d]
+        content_emb = self.linear_transformation(content_emb)
 
         # todo: MLP layer 로 할 지 dot-prodcut 으로 할 지? (실험)
-        scores = self.linear_output(content_emb)  # [B, V]
+        # scores = self.linear_output(content_emb)  # [B, V]
+        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
+        scores = F.linear(content_emb, kg_embedding)
+
         # if compute_loss:
         #     return self.criterion(score, label)
         return scores

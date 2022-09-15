@@ -13,14 +13,15 @@ import numpy as np
 
 
 class ContentInformation(Dataset):
-    def __init__(self, args, data_path, tokenizer, movie2id, device):
+    def __init__(self, args, data_path, tokenizer, device):
         super(Dataset, self).__init__()
         self.args = args
         self.data_path = data_path
         self.tokenizer = tokenizer
         self.data_samples = []
         self.device = device
-        self.movie2id = movie2id
+        self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
+        self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
@@ -39,7 +40,10 @@ class ContentInformation(Dataset):
             # title = sample['title']
             # _title = title.replace(' ', '_')
 
-            if crs_id not in self.movie2id:
+            if crs_id not in self.movie2name:
+                continue
+
+            if self.movie2name[crs_id][0] == -1:
                 continue
             # self.movie2idx[crs_id] = len(self.movie2idx)
 
@@ -59,8 +63,9 @@ class ContentInformation(Dataset):
                                              truncation=True,
                                              add_special_tokens=False)
 
+            # Only reviews
             for i in range(len(reviews)):
-                for j in range(len(plots)):
+                for j in range(1):
                     review = tokenzied_reviews.input_ids[i]
                     review_mask = tokenzied_reviews.attention_mask[i]
                     plot = tokenzied_plots.input_ids[j]
@@ -68,12 +73,22 @@ class ContentInformation(Dataset):
 
                     self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
 
+            # for i in range(len(reviews)):
+            #     for j in range(len(plots)):
+            #         review = tokenzied_reviews.input_ids[i]
+            #         review_mask = tokenzied_reviews.attention_mask[i]
+            #         plot = tokenzied_plots.input_ids[j]
+            #         plot_mask = tokenzied_plots.attention_mask[j]
+            #
+            #         self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
+
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, item):
         idx, plot, plot_mask, review, review_mask = self.data_samples[item]
 
-        idx = self.movie2id[idx][0]
+        idx = self.movie2name[idx][0]
+        idx = self.movie2id.index(idx)
         """
         Todo: convert crs_id to dbpedia_id. 
         Then, predict original movie id by leveraging its sample of content information. 
@@ -124,7 +139,7 @@ class ReDialDataset:
         self.entity_kg = json.load(open(os.path.join(self.data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
         # todo: key가 실제 dialog 상 id임. entity_id와 match 필요
         self.movie2name = json.load(
-            open(os.path.join(self.data_path, 'movie2name.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
+            open(os.path.join(self.data_path, 'movie2name2.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
 
         self.movie2id = json.load(
             open(os.path.join(self.data_path, 'movie_ids.json'), 'r', encoding='utf-8'))  # {entity: entity_id}

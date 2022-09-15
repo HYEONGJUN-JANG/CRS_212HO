@@ -2,6 +2,7 @@ import torch.nn.functional as F
 from torch import nn, optim
 import torch
 
+
 # Fuck
 class AdditiveAttention(nn.Module):
     def __init__(self, feature_dim: int, attention_dim: int):
