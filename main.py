@@ -6,7 +6,7 @@ from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 import torch
-
+from os.path import dirname, realpath
 from torch import nn, optim
 import torch.nn.functional as F
 import numpy as np
@@ -44,35 +44,42 @@ def createResultFile(args):
         for i, v in vars(args).items():
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
+    return results_file_path
 
 
 pretrained_path = './saved_model/pretrained_model.pt'
 trained_path = './saved_model/trained_model.pt'
 
 if __name__ == '__main__':
-#
+
     args = parse_args()
     if torch.cuda.device_count() > 1:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(device)
 
     # create result file
-    createResultFile(args)
+    results_file_path = createResultFile(args)
+
+    # Dataset path
+    ROOT_PATH = dirname(realpath(__file__))
+    DATA_PATH = os.path.join(ROOT_PATH, 'data')
+    REDIAL_DATASET_PATH = os.path.join(DATA_PATH, 'redial')
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
     bert_config = AutoConfig.from_pretrained(args.bert_name)
     bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
 
-    crs_dataset = ReDialDataset(args, 'data/redial/', tokenizer)
+    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, tokenizer)
     train_data = crs_dataset.train_data
     test_data = crs_dataset.test_data
 
-    # todo: {crs_id: [entitiy_id, movie_title]} [movie2info.json 으로 한번에 관리하면 편할 듯]
+    # todo: {crs_id: [entitiy_id, movie_title]} [movie2info.json 으로 한번에 관리하면 편할 듯] --> 완
     movie2ids = crs_dataset.movie2id
     num_movie = len(movie2ids)
 
-    content_data_path = 'data/redial/content_data.json'
+
+    content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
     content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
 
     # todo: language generation part
@@ -80,18 +87,19 @@ if __name__ == '__main__':
                            crs_dataset.n_entity, args.name).to(args.device_id)
 
     ## For pre-training
-    if not args.pretrained:
-        # todo: data_path: 'data/redial/' 로 통일 (안에서 os.join으로 관리하기)
-        # todo: movie_id crs ver., dbpedia ver.
-        pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
-        pretrain(args, model, pretrain_dataloader, pretrained_path)
-    else:
-        model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장
+    if args.name != "none": # todo: contentinformation() 여기 아래로
+        if not args.pretrained:
+            # todo: data_path: 'data/redial/' 로 통일 (안에서 os.join으로 관리하기) ---> 완
+            # todo: movie_id crs ver., dbpedia ver. --> 완
+            pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
+            pretrain(args, model, pretrain_dataloader, pretrained_path)
+        else:
+            model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
     train_dataloader = ReDialDataLoader(train_data, word_truncate=args.max_dialog_len)
     test_dataloader = ReDialDataLoader(test_data, word_truncate=args.max_dialog_len)
 
-    train_recommender(args, model, train_dataloader, test_dataloader, trained_path)
+    train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path)
 
-    # todo: result 기록하는 부분
+    # todo: result 기록하는 부분 --> train_recommender 안에 구현 완료
     # todo: ???

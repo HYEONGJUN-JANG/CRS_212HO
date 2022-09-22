@@ -60,16 +60,21 @@ class MovieExpertCRS(nn.Module):
     # Input # todo: meta information (entitiy)도 같이 입력
     # plot_token    :   [batch_size, max_plot_len]
     # plot_mask    :   [batch_size, max_plot_len]
-    def pretrain(self, plot_token, plot_mask, review_token, review_mask):
+    def pre_forward(self, plot_token, plot_mask, review_token, review_mask):
         # text = torch.cat([meta_token, plot_token], dim=1)
         # mask = torch.cat([meta_mask, plot_mask], dim=1)
         if 'plot' in self.name and 'review' in self.name:
-            text = torch.cat([plot_token, review_token], dim=1)
-            mask = torch.cat([plot_mask, review_mask], dim=1)
-        elif 'plot' in self.name:
+            if 'serial' in self.name: # Cand.3: Review | Plot
+                p_mask = torch.sum(plot_mask, dim=1, keepdim=True) > 0
+                text = p_mask * plot_token + (~p_mask) * review_token
+                mask = p_mask * plot_mask + (~p_mask) * review_mask
+            else: # Cand.4: Review & Plot
+                text = torch.cat([plot_token, review_token], dim=1)
+                mask = torch.cat([plot_mask, review_mask], dim=1)
+        elif 'plot' in self.name: # cand.1: Plot
             text = plot_token
             mask = plot_mask
-        elif 'review' in self.name:
+        elif 'review' in self.name: # Cand.2: Review
             text = review_token
             mask = review_mask
 
@@ -91,16 +96,16 @@ class MovieExpertCRS(nn.Module):
 
     def forward(self, context_entities, context_tokens):
 
-        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
-        entity_representations = kg_embedding[context_entities]  # [B, N, d]
-        entity_padding_mask = context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)
+        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type) # (n_entity, entity_dim)
+        entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+        entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask) # (bs, entity_dim)
 
-        token_padding_mask = context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
+        token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                             attention_mask=token_padding_mask.to(
-                                                self.device_id)).last_hidden_state  # [B, L, d]
-        token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [B, d]
+                                                self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
+        token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
 
         # todo: Linear transformation을 꼭 해줘야 하는지? 해준다면 word 단에서 할 지 sentence 단에서 할 지
         token_attn_rep = self.linear_transformation(token_attn_rep)

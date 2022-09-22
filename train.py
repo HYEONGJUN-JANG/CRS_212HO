@@ -4,8 +4,8 @@ from loguru import logger
 from torch import nn, optim
 
 
-def train_recommender(args, model, train_dataloader, test_dataloader, path):
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path):
+    optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
 
     for epoch in range(args.epoch):
         model.train()
@@ -42,13 +42,17 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path):
                 sub_scores = sub_scores.cpu().numpy()
 
                 for (label, score) in zip(target_item, sub_scores):
-                    target_idx = model.movie2ids.index(target_item[0])
+                    target_idx = model.movie2ids.index(label)
                     hit[k].append(np.isin(target_idx, score))
 
         print('Epoch %d : test done' % (epoch + 1))
         for k in range(len(topk)):
             hit_score = np.mean(hit[k])
             print('hit@%d:\t%.4f' % (topk[k], hit_score))
+
+        with open(results_file_path, 'a', encoding='utf-8') as result_f:
+            result_f.write('Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\n' % (
+                total_loss, np.mean(hit[0]), np.mean(hit[1]), np.mean(hit[2]), np.mean(hit[3])))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
