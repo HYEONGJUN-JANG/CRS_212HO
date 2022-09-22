@@ -79,18 +79,18 @@ if __name__ == '__main__':
     num_movie = len(movie2ids)
 
 
-    content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
-    content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
+
 
     # todo: language generation part
     model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
 
     ## For pre-training
-    if args.name != "none": # todo: contentinformation() 여기 아래로
+    if args.name != "none":
         if not args.pretrained:
-            # todo: data_path: 'data/redial/' 로 통일 (안에서 os.join으로 관리하기) ---> 완
-            # todo: movie_id crs ver., dbpedia ver. --> 완
+            content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
+            content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
+
             pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
             pretrain(args, model, pretrain_dataloader, pretrained_path)
         else:
