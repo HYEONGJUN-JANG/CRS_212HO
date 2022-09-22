@@ -78,9 +78,6 @@ if __name__ == '__main__':
     movie2ids = crs_dataset.movie2id
     num_movie = len(movie2ids)
 
-
-
-
     # todo: language generation part
     model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
