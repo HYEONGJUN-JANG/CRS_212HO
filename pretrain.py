@@ -24,28 +24,28 @@ def pretrain(args, model, pretrain_dataloader, path):
             optimizer.step()
         print('Loss:\t%.4f' % total_loss)
 
-        model.eval()
-        topk = [1, 5, 10, 20]
-        hit = [[], [], [], []]
+    model.eval()
+    topk = [1, 5, 10, 20]
+    hit = [[], [], [], []]
 
-        for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
-                pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            scores = model.pre_forward(plot_token, plot_mask, review_token, review_mask)
-            scores = scores[:, torch.LongTensor(model.movie2ids)]
+    for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
+            pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        scores = model.pre_forward(plot_token, plot_mask, review_token, review_mask)
+        scores = scores[:, torch.LongTensor(model.movie2ids)]
 
-            # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
-            movie_id = movie_id.cpu().numpy()
+        # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
+        movie_id = movie_id.cpu().numpy()
 
-            for k in range(len(topk)):
-                sub_scores = scores.topk(topk[k])[1]
-                sub_scores = sub_scores.cpu().numpy()
-
-                for (label, score) in zip(movie_id, sub_scores):
-                    hit[k].append(np.isin(label, score))
-
-        print('Epoch %d : pre-train test done' % (epoch + 1))
         for k in range(len(topk)):
-            hit_score = np.mean(hit[k])
-            print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
+            sub_scores = scores.topk(topk[k])[1]
+            sub_scores = sub_scores.cpu().numpy()
+
+            for (label, score) in zip(movie_id, sub_scores):
+                hit[k].append(np.isin(label, score))
+
+    print('Epoch %d : pre-train test done')
+    for k in range(len(topk)):
+        hit_score = np.mean(hit[k])
+        print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
