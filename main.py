@@ -47,12 +47,15 @@ def createResultFile(args):
     return results_file_path
 
 
-pretrained_path = './saved_model/pretrained_model.pt'
-trained_path = './saved_model/trained_model.pt'
+
 
 if __name__ == '__main__':
 
     args = parse_args()
+
+    pretrained_path = './saved_model/pretrained_model_' + {args.name} + '.pt'
+    trained_path = './saved_model/trained_model+'  + {args.name} + '.pt'
+
     if torch.cuda.device_count() > 1:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(device)
