@@ -24,6 +24,7 @@ from pretrain import pretrain
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel
 
+
 ## HJ Branch Test
 def get_time_kst(): return datetime.now(timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
 
@@ -47,6 +48,16 @@ def createResultFile(args):
     return results_file_path
 
 
+def randomize_model(model):
+    for module_ in model.named_modules():
+        if isinstance(module_[1], (torch.nn.Linear, torch.nn.Embedding)):
+            module_[1].weight.data.normal_(mean=0.0, std=model.config.initializer_range)
+        elif isinstance(module_[1], torch.nn.LayerNorm):
+            module_[1].bias.data.zero_()
+            module_[1].weight.data.fill_(1.0)
+        if isinstance(module_[1], torch.nn.Linear) and module_[1].bias is not None:
+            module_[1].bias.data.zero_()
+    return model
 
 
 if __name__ == '__main__':
@@ -71,7 +82,9 @@ if __name__ == '__main__':
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
     bert_config = AutoConfig.from_pretrained(args.bert_name)
+    bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
+    bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
 
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, tokenizer)
     train_data = crs_dataset.train_data
