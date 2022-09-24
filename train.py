@@ -46,6 +46,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
                     hit[k].append(np.isin(target_idx, score))
 
         print('Epoch %d : test done' % (epoch + 1))
+
         for k in range(len(topk)):
             hit_score = np.mean(hit[k])
             print('hit@%d:\t%.4f' % (topk[k], hit_score))
