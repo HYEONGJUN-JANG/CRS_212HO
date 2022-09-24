@@ -110,8 +110,9 @@ class MovieExpertCRS(nn.Module):
         # todo: Linear transformation을 꼭 해줘야 하는지? 해준다면 word 단에서 할 지 sentence 단에서 할 지
         token_attn_rep = self.linear_transformation(token_attn_rep)
 
-        gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
-        user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
-
+        # 22.09.24 Gating mechanism 없이 word 로만 training
+        # gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+        # user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
+        user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
         return scores
