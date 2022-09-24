@@ -51,8 +51,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
             print('hit@%d:\t%.4f' % (topk[k], hit_score))
 
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
-            result_f.write('Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\n' % (
-                total_loss, np.mean(hit[0]), np.mean(hit[1]), np.mean(hit[2]), np.mean(hit[3])))
+            result_f.write('Epoch:\t%d\t Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\n' % (
+                epoch + 1, total_loss, np.mean(hit[0]), np.mean(hit[1]), np.mean(hit[2]), np.mean(hit[3])))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 

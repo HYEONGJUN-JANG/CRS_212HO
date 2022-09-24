@@ -53,8 +53,8 @@ if __name__ == '__main__':
 
     args = parse_args()
 
-    pretrained_path = './saved_model/pretrained_model_' + {args.name} + '.pt'
-    trained_path = './saved_model/trained_model+'  + {args.name} + '.pt'
+    pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
+    trained_path = f'./saved_model/trained_model_{args.name}.pt'
 
     if torch.cuda.device_count() > 1:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
