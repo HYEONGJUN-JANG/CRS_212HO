@@ -26,8 +26,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         print('Loss:\t%.4f' % total_loss)
 
         model.eval()
-        topk = [1, 5, 10, 20]
-        hit = [[], [], [], []]
+        topk = [1, 5, 10, 20, 50]
+        hit = [[], [], [], [], []]
 
         for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
             context_entities, context_tokens, target_item = batch
@@ -46,13 +46,14 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
                     hit[k].append(np.isin(target_idx, score))
 
         print('Epoch %d : test done' % (epoch + 1))
+
         for k in range(len(topk)):
             hit_score = np.mean(hit[k])
             print('hit@%d:\t%.4f' % (topk[k], hit_score))
 
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
-            result_f.write('Epoch:\t%d\t Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\n' % (
-                epoch + 1, total_loss, np.mean(hit[0]), np.mean(hit[1]), np.mean(hit[2]), np.mean(hit[3])))
+            result_f.write('Epoch:\t%d\t Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
+                epoch + 1, total_loss, np.mean(hit[0]), np.mean(hit[1]), np.mean(hit[2]), np.mean(hit[3]), np.mean(hit[4])))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
