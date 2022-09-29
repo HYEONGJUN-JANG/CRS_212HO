@@ -5,9 +5,9 @@ import logging
 def parse_args():
     parser = argparse.ArgumentParser()
     # 프로그램 실행 시 필수로 넘겨줘야하는 인자들
-    parser.add_argument('--name', type=str, default='plot-serial')  # plot-serial or review-serial or plot-review or plot-review-serial or none
-    parser.add_argument('--n_sample', type=int, default=3)  # 1 or 2 or 3 or 20
-    # parser.add_argument('--n_num', type=int, default=3) # 1 or 2 or 3 or 20
+    parser.add_argument('--name', type=str, default='plot-review-serial')  # plot-serial or review-serial or plot-review or plot-review-serial or none
+    parser.add_argument('--n_review', type=int, default=3)  # 1 or 2 or 3 or 20
+    parser.add_argument('--n_plot', type=int, default=3) # 1 or 2 or 3 or 9
     parser.add_argument('--max_plot_len', type=int, default=50)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--max_review_len', type=int, default=50)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--max_dialog_len', type=int, default=50)  # 50, 100, 150, 200, 250, (300)
@@ -21,6 +21,7 @@ def parse_args():
     parser.add_argument('--lr_pt', type=float, default=1e-5, help='Pre-training Learning rate')
     parser.add_argument('--lr_ft', type=float, default=1e-3, help='Fine-tuning Learning rate')
     parser.add_argument('--valid_portion', type=float, default=0.1, help='valid_portion')
+    parser.add_argument('--loss_lambda', type=float, default=0.1, help='lambda')
 
     parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small', 'prajjwal1/bert-mini'])

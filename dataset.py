@@ -18,15 +18,16 @@ class ContentInformation(Dataset):
         self.args = args
         self.data_path = data_path
         self.tokenizer = tokenizer
-        self.data_samples = []
+        # self.data_samples = []
+        self.data_samples = dict()
         self.device = device
         # TODO: duplicated code
         self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
         self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
+        self.key_list = list(self.data_samples.keys())
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
-
         f = open(self.data_path, encoding='utf-8')
         data = json.load(f)[0]
 
@@ -35,100 +36,126 @@ class ContentInformation(Dataset):
         # id2entity = {idx: entity for entity, idx in entity2id.items()}
         # all_entities_name = entity2id.keys()
         for sample in tqdm(data):
+            review_list, plot_list = [], []
+            review_mask_list, plot_mask_list = [], []
+
             crs_id = sample['crs_id']
             reviews = sample['review']
             plots = sample['summary']
             # title = sample['title']
             # _title = title.replace(' ', '_')
 
-            if crs_id not in self.movie2name:
-                continue
-
             if self.movie2name[crs_id][0] == -1:
                 continue
             # self.movie2idx[crs_id] = len(self.movie2idx)
 
             # if 'review' in args.name:
-            if reviews is None or len(reviews) == 0:
-                continue
-            # if 'plot' in args.name:
-            if plots is None or len(plots) == 0:
-                continue
 
-            tokenzied_reviews = self.tokenizer(reviews, max_length=max_review_len, padding='max_length',
+            if len(reviews) == 0:
+                reviews = ['']
+            # if 'plot' in args.name:
+            if len(plots) == 0:
+                plots = ['']
+
+            tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len, padding='max_length',
                                                truncation=True,
                                                add_special_tokens=False)
 
-            tokenzied_plots = self.tokenizer(plots, max_length=max_plot_len, padding='max_length',
+            tokenized_plots = self.tokenizer(plots, max_length=max_plot_len, padding='max_length',
                                              truncation=True,
                                              add_special_tokens=False)
 
-            # Only reviews
-            # for i in range(len(reviews)):
-            #     for j in range(1):
+            for i in range(min(len(reviews), self.args.n_review)):
+                review = tokenized_reviews.input_ids[i]
+                review_mask = tokenized_reviews.attention_mask[i]
+
+                review_list.append(review)
+                review_mask_list.append(review_mask)
+
+            for i in range(self.args.n_review - len(reviews)):
+                zero_vector = [0] * max_review_len
+                review_list.append(zero_vector)
+                review_mask_list.append(zero_vector)
+
+            for i in range(min(len(plots), self.args.n_plot)):
+                plot = tokenized_plots.input_ids[i]
+                plot_mask = tokenized_plots.attention_mask[i]
+
+                plot_list.append(plot)
+                plot_mask_list.append(plot_mask)
+
+            for i in range(self.args.n_plot - len(plots)):
+                zero_vector = [0] * max_plot_len
+                plot_list.append(zero_vector)
+                plot_mask_list.append(zero_vector)
+
+            self.data_samples[str(self.movie2name[crs_id][0])] = {"plot": plot_list, "plot_mask": plot_mask_list,
+                                                                  "review": review_list,
+                                                                  "review_mask": review_mask_list}
+
+            ############################## PREV ##############################
+            # Reviews or plot or review-plot-serial
+            # if 'serial' in self.args.name:
+            #     if 'review' in self.args.name:
+            #         for i in range(len(reviews)):
+            #             review = tokenized_reviews.input_ids[i]
+            #             review_mask = tokenized_reviews.attention_mask[i]
+            #
+            #             blank_plot = self.tokenizer('', max_length=max_plot_len, padding='max_length',
+            #                                         truncation=True,
+            #                                         add_special_tokens=False)
+            #             plot = blank_plot.input_ids
+            #             plot_mask = blank_plot.attention_mask
+            #
+            #             self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
+            #
+            #     if 'plot' in self.args.name:
+            #         for i in range(len(plots)):
+            #             plot = tokenized_plots.input_ids[i]
+            #             plot_mask = tokenized_plots.attention_mask[i]
+            #
+            #             blank_review = self.tokenizer('', max_length=max_review_len, padding='max_length',
+            #                                           truncation=True,
+            #                                           add_special_tokens=False)
+            #             review = blank_review.input_ids
+            #             review_mask = blank_review.attention_mask
+            #
+            #             self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
+            #
+            # # Plot and Review
+            # elif 'plot' in self.args.name and 'review' in self.args.name:
+            #     for i in range(len(reviews)):
             #         review = tokenzied_reviews.input_ids[i]
             #         review_mask = tokenzied_reviews.attention_mask[i]
-            #         plot = tokenzied_plots.input_ids[j]
-            #         plot_mask = tokenzied_plots.attention_mask[j]
             #
-            #         self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
-
-            # Reviews or plot or review-plot-serial
-            if 'serial' in self.args.name:
-                if 'review' in self.args.name:
-                    for i in range(len(reviews)):
-                        review = tokenzied_reviews.input_ids[i]
-                        review_mask = tokenzied_reviews.attention_mask[i]
-
-                        blank_plot = self.tokenizer('', max_length=max_plot_len, padding='max_length',
-                                                    truncation=True,
-                                                    add_special_tokens=False)
-                        plot = blank_plot.input_ids
-                        plot_mask = blank_plot.attention_mask
-
-                        self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
-
-                if 'plot' in self.args.name:
-                    for i in range(len(plots)):
-                        plot = tokenzied_plots.input_ids[i]
-                        plot_mask = tokenzied_plots.attention_mask[i]
-
-                        blank_review = self.tokenizer('', max_length=max_review_len, padding='max_length',
-                                                      truncation=True,
-                                                      add_special_tokens=False)
-                        review = blank_review.input_ids
-                        review_mask = blank_review.attention_mask
-
-                        self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
-
-            # Plot and Review
-            elif 'plot' in self.args.name and 'review' in self.args.name:
-                for i in range(len(reviews)):
-                    review = tokenzied_reviews.input_ids[i]
-                    review_mask = tokenzied_reviews.attention_mask[i]
-
-                    for j in range(len(plots)):
-                        plot = tokenzied_plots.input_ids[j]
-                        plot_mask = tokenzied_plots.attention_mask[j]
-
-                        self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
+            #         for j in range(len(plots)):
+            #             plot = tokenized_plots.input_ids[j]
+            #             plot_mask = tokenized_plots.attention_mask[j]
+            #
+            #             self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
+            ##########################################################################################
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, item):
-        idx, plot, plot_mask, review, review_mask = self.data_samples[item]
+        idx = self.key_list[item]
+        plot = self.data_samples[idx]['plot']
+        plot_mask = self.data_samples[idx]['plot_mask']
+        review = self.data_samples[idx]['review']
+        review_mask = self.data_samples[idx]['review_mask']
+        # idx, plot, plot_mask, review, review_mask = self.data_samples[item]
 
-        idx = self.movie2name[idx][0]  # crs id -> dbpedia id
-        idx = self.movie2id.index(idx)  # dbpedia id -> movie id
+        # idx = self.movie2name[idx][0]  # crs id -> dbpedia id
+        # idx = self.movie2id.index(idx)  # dbpedia id -> movie id
         """
         Todo: convert crs_id to dbpedia_id. 
         Then, predict original movie id by leveraging its sample of content information. 
         """
-        idx = torch.tensor(idx).cuda(self.device)
-        plot_token = torch.LongTensor(plot).cuda(self.device)
-        plot_mask = torch.LongTensor(plot_mask).cuda(self.device)
-        review_token = torch.LongTensor(review).cuda(self.device)
-        review_mask = torch.LongTensor(review_mask).cuda(self.device)
+        idx = torch.tensor(int(idx))
+        plot_token = torch.LongTensor(plot)
+        plot_mask = torch.LongTensor(plot_mask)
+        review_token = torch.LongTensor(review)
+        review_mask = torch.LongTensor(review_mask)
 
         return idx, plot_token, plot_mask, review_token, review_mask
 
@@ -138,10 +165,11 @@ class ContentInformation(Dataset):
 
 # recommendation mode 와 generation mode에 따라 training sample 이 다르므로, torch.Dataset class 상속 X
 class ReDialDataset:
-    def __init__(self, args, data_path, tokenizer):
+    def __init__(self, args, data_path, content_data_path, tokenizer):
         super(ReDialDataset, self).__init__()
         self.args = args
         self.data_path = data_path
+        self.content_data_path = content_data_path
         self.tokenizer = tokenizer
         self._load_other_data()
         self._load_data()
@@ -179,6 +207,8 @@ class ReDialDataset:
             f"[Load entity dictionary and KG from {os.path.join(self.data_path, 'entity2id.json')} and {os.path.join(self.data_path, 'dbpedia_subkg.json')}]")
 
         self.entity_kg = self._entity_kg_process()
+        self.content_dataset = ContentInformation(self.args, self.content_data_path, self.tokenizer,
+                                                  self.args.device_id)
         logger.debug("[Finish entity KG process]")
 
     def _entity_kg_process(self, SELF_LOOP_ID=185):
@@ -211,17 +241,19 @@ class ReDialDataset:
     def _load_data(self):
         train_data_raw, valid_data_raw, test_data_raw = self._load_raw_data()  # load raw train, valid, test data
 
-        if self.args.test:
-            # For test mode
-            train_data_raw.extend(valid_data_raw)
-        else:
-            # For valid mode
-            test_data_raw = valid_data_raw
+        # if self.args.test:
+        #     # For test mode
+        #     train_data_raw.extend(valid_data_raw)
+        # else:
+        #     # For valid mode
+        #     test_data_raw = valid_data_raw
 
         self.train_data = self._raw_data_process(train_data_raw)  # training sample 생성
         logger.debug("[Finish train data process]")
         self.test_data = self._raw_data_process(test_data_raw)
         logger.debug("[Finish test data process]")
+        self.valid_data = self._raw_data_process(valid_data_raw)
+        logger.debug("[Finish valid data process]")
 
     def _raw_data_process(self, raw_data):
         augmented_convs = [self._merge_conv_data(conversation["dialog"]) for
@@ -269,7 +301,22 @@ class ReDialDataset:
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
+            plot, plot_mask, review, review_mask = [], [], [], []
             if len(context_tokens) > 0:
+                # if len(movies) > 1:
+                #     print()
+                for movie in movies:
+                    try:
+                        plot.append(self.content_dataset.data_samples[str(movie)]['plot'])
+                        plot_mask.append(self.content_dataset.data_samples[str(movie)]['plot_mask'])
+                        review.append(self.content_dataset.data_samples[str(movie)]['review'])
+                        review_mask.append(self.content_dataset.data_samples[str(movie)]['review_mask'])
+                    except KeyError as e:
+                        plot.append([])
+                        plot_mask.append([])
+                        review.append([])
+                        review_mask.append([])
+
                 conv_dict = {
                     "role": conv['role'],
                     "context_tokens": copy(context_tokens),
@@ -277,6 +324,10 @@ class ReDialDataset:
                     "context_entities": copy(context_entities),
                     "context_items": copy(context_items),
                     "items": movies,
+                    "plot": plot,
+                    "plot_mask": plot_mask,
+                    "review": review,
+                    "review_mask": review_mask
                 }
                 augmented_conv_dicts.append(conv_dict)
 

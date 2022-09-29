@@ -3,7 +3,7 @@ from torch import nn
 import torch
 from layers import AdditiveAttention, SelfDotAttention
 from torch_geometric.nn import RGCNConv
-
+from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from utils import edge_to_pyg_format
 
 
@@ -32,7 +32,10 @@ class MovieExpertCRS(nn.Module):
         self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
         # Dialog
         self.token_emb_dim = token_emb_dim
-        self.word_encoder = bert_model
+        self.word_encoder = bert_model  # bert or transformer
+        # self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.token_emb_dim, n_head=8)
+        # self.word_encoder = nn.TransformerEncoder(encoder_layer=self.encoder_layer, num_layers=6)
+
         self.token_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
 
@@ -58,48 +61,72 @@ class MovieExpertCRS(nn.Module):
         self.token_attention.initialize()
 
     # Input # todo: meta information (entitiy)도 같이 입력
-    # plot_token    :   [batch_size, max_plot_len]
-    # plot_mask    :   [batch_size, max_plot_len]
-    def pre_forward(self, plot_token, plot_mask, review_token, review_mask):
+    # plot_token    :   [batch_size, n_plot, max_plot_len]
+    # review_token    :   [batch_size, n_review, max_review_len]
+    # target_item   :   [batch_size]
+    def pre_forward(self, plot_token, plot_mask, review_token, review_mask, target_item):
         # text = torch.cat([meta_token, plot_token], dim=1)
         # mask = torch.cat([meta_mask, plot_mask], dim=1)
+        batch_size = plot_token.shape[0]
+        n_plot = plot_token.shape[1]
+        max_plot_len = plot_token.shape[2]
+        n_review = review_token.shape[1]
+        max_review_len = review_token.shape[2]
+
         if 'plot' in self.name and 'review' in self.name:
-            if 'serial' in self.name: # Cand.3: Review | Plot
-                p_mask = torch.sum(plot_mask, dim=1, keepdim=True) > 0
-                text = p_mask * plot_token + (~p_mask) * review_token
-                mask = p_mask * plot_mask + (~p_mask) * review_mask
-            else: # Cand.4: Review & Plot
+            if 'serial' in self.name:  # Cand.3: Review | Plot
+                # p_mask = torch.sum(plot_mask, dim=1, keepdim=True) > 0
+                # text = p_mask * plot_token + (~p_mask) * review_token
+                # mask = p_mask * plot_mask + (~p_mask) * review_mask
+                text = torch.cat([plot_token, review_token], dim=1)  # [B, 2N, L]
+                mask = torch.cat([plot_mask, review_mask], dim=1)  # [B, 2N, L]
+                max_len = max_plot_len
+                n_text = n_plot * 2
+
+            else:  # Cand.4: Review & Plot
                 text = torch.cat([plot_token, review_token], dim=1)
                 mask = torch.cat([plot_mask, review_mask], dim=1)
-        elif 'plot' in self.name: # cand.1: Plot
+        elif 'plot' in self.name:  # cand.1: Plot
             text = plot_token
             mask = plot_mask
-        elif 'review' in self.name: # Cand.2: Review
+            max_len = max_plot_len
+            n_text = n_plot
+
+        elif 'review' in self.name:  # Cand.2: Review
             text = review_token
             mask = review_mask
+            max_len = max_plot_len
+            n_text = n_plot
+        text = text.to(self.device_id)
+        mask = mask.to(self.device_id)
 
+        # [1, B] -> [N, B] -> [N X B]
+        target_item = target_item.unsqueeze(1).repeat(1, n_text).view(-1).to(self.device_id)
         # todo: entitiy 활용해서 pre-train
         # code
-
-        text_emb = self.word_encoder(input_ids=text, attention_mask=mask).last_hidden_state  # [B, L, d]
-        content_emb = self.token_attention(text_emb, mask)  # [B, d]
-        content_emb = self.linear_transformation(content_emb)
+        # text: [B * N, L]
+        text = text.view(-1, max_len)
+        mask = mask.view(-1, max_len)
+        text_emb = self.word_encoder(input_ids=text,
+                                     attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
+        content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
+        content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
         # todo: MLP layer 로 할 지 dot-prodcut 으로 할 지? (실험)
         # scores = self.linear_output(content_emb)  # [B, V]
-        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
-        scores = F.linear(content_emb, kg_embedding)
-
+        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # [E, d']
+        scores = F.linear(content_emb, kg_embedding)  # [B * N, E]
+        loss = self.criterion(scores, target_item)
         # if compute_loss:
         #     return self.criterion(score, label)
-        return scores
+        return loss
 
     def forward(self, context_entities, context_tokens):
 
-        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type) # (n_entity, entity_dim)
+        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask) # (bs, entity_dim)
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (bs, entity_dim)
 
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),

@@ -83,17 +83,22 @@ class ReDialDataLoader:
 
     def rec_process_fn(self):
         augment_dataset = []
-        for conv_dict in (self.dataset):
+        for conv_dict in tqdm(self.dataset):
             if conv_dict['role'] == 'Recommender':
-                for movie in conv_dict['items']:
+                for idx, movie in enumerate(conv_dict['items']):
                     augment_conv_dict = deepcopy(conv_dict)
                     augment_conv_dict['item'] = movie
+                    augment_conv_dict['plot'] = conv_dict['plot'][idx]
+                    augment_conv_dict['plot_mask'] = conv_dict['plot_mask'][idx]
+                    augment_conv_dict['review'] = conv_dict['review'][idx]
+                    augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
                     augment_dataset.append(augment_conv_dict)
         return augment_dataset
 
     def rec_batchify(self, batch):
         batch_context_entities = []
         batch_context_tokens = []
+        batch_plot, batch_plot_mask, batch_review, batch_review_mask = [], [], [], []
         batch_item = []
         for conv_dict in batch:
             batch_context_entities.append(
@@ -101,10 +106,21 @@ class ReDialDataLoader:
             dialog_history_flatten = sum(conv_dict['context_tokens'], [])
             batch_context_tokens.append(truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False))
             batch_item.append(conv_dict['item'])
+            batch_plot.append(conv_dict['plot'])
+            batch_plot_mask.append(conv_dict['plot_mask'])
+            batch_review.append(conv_dict['review'])
+            batch_review_mask.append(conv_dict['review_mask'])
+
 
         return (padded_tensor(batch_context_entities, 0, pad_tail=False),
                 padded_tensor(batch_context_tokens, 0, pad_tail=False),
-                torch.tensor(batch_item, dtype=torch.long))
+                torch.tensor(batch_plot, dtype=torch.long),
+                torch.tensor(batch_plot_mask, dtype=torch.long),
+                torch.tensor(batch_review, dtype=torch.long),
+                torch.tensor(batch_review_mask, dtype=torch.long),
+                torch.tensor(batch_item, dtype=torch.long)
+                )
+
 
     # todo: 아래 retain 뭔지 확인해보기
     def conv_process_fn(self, *args, **kwargs):
