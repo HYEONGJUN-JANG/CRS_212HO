@@ -29,7 +29,7 @@ def pretrain(args, model, pretrain_dataloader, path):
 
     for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        scores, target_id = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id)
+        scores, target_id = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id, compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
