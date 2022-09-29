@@ -32,7 +32,7 @@ def get_time_kst(): return datetime.now(timezone('Asia/Seoul')).strftime('%Y-%m-
 def createResultFile(args):
     mdhm = str(
         datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M'))  # MonthDailyHourMinute .....e.g., 05091040
-    results_file_path = f"./results/train_device_{args.device_id}_{mdhm}_name_{args.name}_{args.n_sample}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}_{args.name}.txt"
+    results_file_path = f"./results/train_device_{args.device_id}_{mdhm}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}_{args.name}.txt"
     if not os.path.exists('./results'): os.mkdir('./results')
 
     # parameters
@@ -78,6 +78,7 @@ if __name__ == '__main__':
     ROOT_PATH = dirname(realpath(__file__))
     DATA_PATH = os.path.join(ROOT_PATH, 'data')
     REDIAL_DATASET_PATH = os.path.join(DATA_PATH, 'redial')
+    content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
@@ -86,7 +87,7 @@ if __name__ == '__main__':
     bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
     # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
 
-    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, tokenizer)
+    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_data_path, tokenizer)
     train_data = crs_dataset.train_data
     test_data = crs_dataset.test_data
 
@@ -98,10 +99,11 @@ if __name__ == '__main__':
     model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
 
-    ## For pre-training
+
+    # For pre-training
     if args.name != "none":
         if not args.pretrained:
-            content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
+            # content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
             content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
 
             pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
@@ -110,7 +112,7 @@ if __name__ == '__main__':
             model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
     train_dataloader = ReDialDataLoader(train_data, word_truncate=args.max_dialog_len)
-    test_dataloader = ReDialDataLoader(test_data, word_truncate=args.max_dialog_len)
+    test_dataloader = ReDialDataLoader(test_data,  word_truncate=args.max_dialog_len)
 
     train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path)
 

@@ -15,10 +15,14 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         logger.info('[Train]')
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, target_items = batch
-            scores = model.forward(context_entities, context_tokens)
-            # todo: 학습할 때도, item에 해당하는 것으로만 해야 할 지? 실험
-            loss = model.criterion(scores, target_items.to(args.device_id))
+            context_entities, context_tokens, plot, plot_mask, review, review_mask, target_items = batch
+            scores_ft = model.forward(context_entities, context_tokens)
+            loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
+
+            loss_pt = model.pre_forward(plot, plot_mask, review, review_mask, target_items)
+            # loss_pt = model.criterion(scores_pt, target_items.to(args.device_id))
+
+            loss = loss_ft + (loss_pt * args.loss_lambda)
             total_loss += loss.data.float()
             optimizer.zero_grad()
             loss.backward()
