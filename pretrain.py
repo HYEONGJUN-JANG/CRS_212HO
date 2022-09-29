@@ -29,17 +29,17 @@ def pretrain(args, model, pretrain_dataloader, path):
 
     for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        scores = model.pre_forward(plot_token, plot_mask, review_token, review_mask)
+        scores, target_id = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
-        movie_id = movie_id.cpu().numpy()
+        target_id = target_id.cpu().numpy()
 
         for k in range(len(topk)):
             sub_scores = scores.topk(topk[k])[1]
             sub_scores = sub_scores.cpu().numpy()
 
-            for (label, score) in zip(movie_id, sub_scores):
+            for (label, score) in zip(target_id, sub_scores):
                 hit[k].append(np.isin(label, score))
 
     print('Epoch %d : pre-train test done')
