@@ -64,7 +64,7 @@ class MovieExpertCRS(nn.Module):
     # plot_token    :   [batch_size, n_plot, max_plot_len]
     # review_token    :   [batch_size, n_review, max_review_len]
     # target_item   :   [batch_size]
-    def pre_forward(self, plot_token, plot_mask, review_token, review_mask, target_item):
+    def pre_forward(self, plot_token, plot_mask, review_token, review_mask, target_item, compute_score=False):
         # text = torch.cat([meta_token, plot_token], dim=1)
         # mask = torch.cat([meta_mask, plot_mask], dim=1)
         batch_size = plot_token.shape[0]
@@ -117,8 +117,8 @@ class MovieExpertCRS(nn.Module):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # [E, d']
         scores = F.linear(content_emb, kg_embedding)  # [B * N, E]
         loss = self.criterion(scores, target_item)
-        # if compute_loss:
-        #     return self.criterion(score, label)
+        if compute_score:
+            return scores, target_item
         return loss
 
     def forward(self, context_entities, context_tokens):
