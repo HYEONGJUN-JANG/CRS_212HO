@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from loguru import logger
 from torch import nn, optim
-
+from tqdm import tqdm
 
 def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path, pretrain_dataloader):
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
@@ -15,7 +15,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         hit_pt = [[], [], [], [], []]
 
         # Pre-training Test
-        for movie_id, plot_token, plot_mask, review_token, review_mask in pretrain_dataloader:
+        for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
             scores, target_id = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id,
                                                   compute_score=True)
             scores = scores[:, torch.LongTensor(model.movie2ids)]
@@ -38,8 +38,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
             result_f.write(
-                '[PRE TRAINING] Epoch:\t%d\t Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                    epoch, total_loss, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
+                '[PRE TRAINING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
+                    epoch, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
                     np.mean(hit_pt[4])))
 
         # Fine-tuning Test
@@ -67,8 +67,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
             result_f.write(
-                '[FINE TUNING] Epoch:\t%d\t Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                    epoch, total_loss, np.mean(hit_ft[0]), np.mean(hit_ft[1]), np.mean(hit_ft[2]), np.mean(hit_ft[3]),
+                '[FINE TUNING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
+                    epoch, np.mean(hit_ft[0]), np.mean(hit_ft[1]), np.mean(hit_ft[2]), np.mean(hit_ft[3]),
                     np.mean(hit_ft[4])))
 
         # TRAIN
@@ -99,7 +99,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     hit_pt = [[], [], [], [], []]
 
     # Pre-training Test
-    for movie_id, plot_token, plot_mask, review_token, review_mask in pretrain_dataloader:
+    for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
         scores, target_id = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id,
                                               compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
@@ -122,8 +122,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
         result_f.write(
-            '[PRE TRAINING] Epoch:\t%d\t Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                args.epoch, total_loss, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
+            '[PRE TRAINING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
+                args.epoch, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
                 np.mean(hit_pt[4])))
 
     # Fine-tuning Test
@@ -151,8 +151,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
         result_f.write(
-            '[FINE TUNING] Epoch:\t%d\t Loss:\t%.2f\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                args.epoch, total_loss, np.mean(hit_ft[0]), np.mean(hit_ft[1]), np.mean(hit_ft[2]), np.mean(hit_ft[3]),
+            '[FINE TUNING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
+                args.epoch, np.mean(hit_ft[0]), np.mean(hit_ft[1]), np.mean(hit_ft[2]), np.mean(hit_ft[3]),
                 np.mean(hit_ft[4])))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
