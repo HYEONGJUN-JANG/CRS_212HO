@@ -128,7 +128,7 @@ if __name__ == '__main__':
     train_dataloader = ReDialDataLoader(train_data, args.n_sample, word_truncate=args.max_dialog_len)
     test_dataloader = ReDialDataLoader(test_data, args.n_sample, word_truncate=args.max_dialog_len)
 
-    train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path)
+    train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path, pretrain_dataloader)
 
     # todo: result 기록하는 부분 --> train_recommender 안에 구현 완료
     # todo: ???
