@@ -82,6 +82,7 @@ if __name__ == '__main__':
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
+    args.vocab_size = tokenizer.vocab_size
     bert_config = AutoConfig.from_pretrained(args.bert_name)
     # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
