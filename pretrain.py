@@ -5,23 +5,23 @@ from torch import nn, optim
 from tqdm import tqdm
 
 
-def pretrain(args, model, pretrain_dataloader, path, movie2id):
+def pretrain(args, model, pretrain_dataloader, path):
     optimizer = optim.Adam(model.parameters(), lr=args.lr_pt)
 
     for epoch in range(args.epoch):
         model.train()
         total_loss = 0
 
-        # for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
-        #         pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        #     loss = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id)
-        #     # scores = scores[:, torch.LongTensor(model.movie2ids)]
-        #     # loss = model.criterion(scores, movie_id)
-        #     total_loss += loss.data.float()
-        #     optimizer.zero_grad()
-        #     loss.backward()
-        #     optimizer.step()
-        # print('Loss:\t%.4f' % total_loss)
+        for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
+                pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            loss = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id)
+            # scores = scores[:, torch.LongTensor(model.movie2ids)]
+            # loss = model.criterion(scores, movie_id)
+            total_loss += loss.data.float()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        print('Loss:\t%.4f' % total_loss)
 
         model.eval()
         topk = [1, 5, 10, 20]
@@ -41,7 +41,7 @@ def pretrain(args, model, pretrain_dataloader, path, movie2id):
                 sub_scores = sub_scores.cpu().numpy()
 
                 for (label, score) in zip(target_id, sub_scores):
-                    y = movie2id.index(label)
+                    y = model.movie2ids.index(label)
                     hit[k].append(np.isin(y, score))
 
 
