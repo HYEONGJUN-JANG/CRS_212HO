@@ -22,6 +22,7 @@ def parse_args():
     parser.add_argument('--lr_ft', type=float, default=1e-3, help='Fine-tuning Learning rate')
     parser.add_argument('--valid_portion', type=float, default=0.1, help='valid_portion')
     parser.add_argument('--loss_lambda', type=float, default=0.1, help='lambda')
+    parser.add_argument('--n_sample', type=int, default=3, help='sampling')
 
     # TransformerEncoder Args
     parser.add_argument('--word_encoder', type=float, default=1, help='0: bert, 1: transformer')
