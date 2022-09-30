@@ -23,6 +23,21 @@ def parse_args():
     parser.add_argument('--valid_portion', type=float, default=0.1, help='valid_portion')
     parser.add_argument('--loss_lambda', type=float, default=0.1, help='lambda')
 
+    # TransformerEncoder Args
+    parser.add_argument('--word_encoder', type=float, default=1, help='0: bert, 1: transformer')
+    parser.add_argument('--n_heads', type=int, default=2, help='n_heads')
+    parser.add_argument('--n_layers', type=int, default=2, help='n_layers')
+    parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
+    parser.add_argument('--attention_dropout', type=float, default=0.0, help='attention_dropout')
+    parser.add_argument('--relu_dropout', type=float, default=0.1, help='relu_dropout')
+    parser.add_argument('--learn_positional_embeddings', type=bool, default=False, help='learn_positional_embeddings')
+    parser.add_argument('--embeddings_scale', type=bool, default=True, help='embeddings_scale')
+    parser.add_argument('--ffn_size', type=int, default=300, help='ffn_size')
+    parser.add_argument('--reduction', type=bool, default=False, help='reduction')
+    parser.add_argument('--n_positions', type=int, default=1024, help='n_positions')
+    parser.add_argument('--pad_token_id', type=int, default=0, help='pad_token_id')
+    parser.add_argument('--vocab_size', type=int, default=30522, help='vocab_size')
+
     parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small', 'prajjwal1/bert-mini'])
 

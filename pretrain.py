@@ -45,7 +45,7 @@ def pretrain(args, model, pretrain_dataloader, path):
                     hit[k].append(np.isin(y, score))
 
 
-        print('Epoch %d : pre-train test done')
+        print('Epoch %d : pre-train test done', epoch+1)
         for k in range(len(topk)):
             hit_score = np.mean(hit[k])
             print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))

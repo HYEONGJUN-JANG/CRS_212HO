@@ -3,7 +3,7 @@ from torch import nn
 import torch
 from layers import AdditiveAttention, SelfDotAttention
 from torch_geometric.nn import RGCNConv
-from torch.nn import TransformerEncoder, TransformerEncoderLayer
+from transformer import TransformerEncoder
 from utils import edge_to_pyg_format
 
 
@@ -32,9 +32,32 @@ class MovieExpertCRS(nn.Module):
         self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
         # Dialog
         self.token_emb_dim = token_emb_dim
-        self.word_encoder = bert_model  # bert or transformer
-        # self.encoder_layer = nn.TransformerEncoderLayer(d_model=self.token_emb_dim, n_head=8)
-        # self.word_encoder = nn.TransformerEncoder(encoder_layer=self.encoder_layer, num_layers=6)
+
+        if args.word_encoder == 0:
+            self.word_encoder = bert_model  # bert or transformer
+        elif args.word_encoder == 1:
+            self.token_emb_dim = self.kg_emb_dim
+            self.token_embedding = nn.Embedding(self.args.vocab_size, self.token_emb_dim,
+                                                self.args.pad_token_id)
+            nn.init.normal_(self.token_embedding.weight, mean=0, std=self.token_emb_dim ** -0.5)
+            nn.init.constant_(self.token_embedding.weight[self.args.pad_token_id], 0)
+
+            self.word_encoder = TransformerEncoder(
+                self.args.n_heads,
+                self.args.n_layers,
+                self.token_emb_dim,
+                self.args.ffn_size,
+                self.args.vocab_size,
+                self.token_embedding,
+                self.args.dropout,
+                self.args.attention_dropout,
+                self.args.relu_dropout,
+                self.args.pad_token_id,
+                self.args.learn_positional_embeddings,
+                self.args.embeddings_scale,
+                self.args.reduction,
+                self.args.n_positions
+            )
 
         self.token_attention = AdditiveAttention(self.token_emb_dim, self.token_emb_dim)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
@@ -107,10 +130,18 @@ class MovieExpertCRS(nn.Module):
         # text: [B * N, L]
         text = text.view(-1, max_len)
         mask = mask.view(-1, max_len)
-        text_emb = self.word_encoder(input_ids=text,
-                                     attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
-        content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
-        content_emb = self.linear_transformation(content_emb)  # [B * N, d']
+
+        if self.args.word_encoder == 0:
+            text_emb = self.word_encoder(input_ids=text,
+                                         attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
+            content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
+            content_emb = self.linear_transformation(content_emb)  # [B * N, d']
+
+        elif self.args.word_encoder == 1:
+            text_emb, _ = self.word_encoder(text) #[B * N , L, d]
+
+            content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
+            # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
         # todo: MLP layer 로 할 지 dot-prodcut 으로 할 지? (실험)
         # scores = self.linear_output(content_emb)  # [B, V]
