@@ -115,15 +115,15 @@ if __name__ == '__main__':
 
 
     # For pre-training
-    # if args.name != "none":
-    #     if not args.pretrained:
-    #         # content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
-    #         content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
-    #
-    #         pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
-    #         pretrain(args, model, pretrain_dataloader, pretrained_path)
-    #     else:
-    #         model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+    if args.name != "none":
+        if not args.pretrained:
+            # content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
+            content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
+
+            pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
+            pretrain(args, model, pretrain_dataloader, pretrained_path)
+        else:
+            model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
     train_dataloader = ReDialDataLoader(train_data, args.n_sample, word_truncate=args.max_dialog_len)
     test_dataloader = ReDialDataLoader(test_data, args.n_sample, word_truncate=args.max_dialog_len)
