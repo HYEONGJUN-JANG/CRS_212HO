@@ -171,13 +171,21 @@ class MovieExpertCRS(nn.Module):
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (bs, entity_dim)
 
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
-        token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
-                                            attention_mask=token_padding_mask.to(
-                                                self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
-        token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
+        if self.args.word_encoder == 0:
+            token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
+                                                attention_mask=token_padding_mask.to(
+                                                    self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
+            token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
+            token_attn_rep = self.linear_transformation(token_attn_rep)
 
-        # todo: Linear transformation을 꼭 해줘야 하는지? 해준다면 word 단에서 할 지 sentence 단에서 할 지
-        token_attn_rep = self.linear_transformation(token_attn_rep)
+        elif self.args.word_encoder == 1:
+            token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
+
+            token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
+
+
+
+
 
         # 22.09.24 Gating mechanism 없이 word 로만 training -->  주석 해제
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))

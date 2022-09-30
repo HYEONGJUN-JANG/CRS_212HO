@@ -7,14 +7,16 @@ from math import ceil
 from tqdm import tqdm
 import torch
 from utils import add_start_end_token_idx, padded_tensor, get_onehot, truncate, merge_utt
+import numpy as np
 
 
 class ReDialDataLoader:
-    def __init__(self, dataset, entity_truncate=None, word_truncate=None, padding_idx=0):
+    def __init__(self, dataset, n_sample, entity_truncate=None, word_truncate=None, padding_idx=0):
         self.dataset = dataset
         self.entity_truncate = entity_truncate
         self.word_truncate = word_truncate
         self.padding_idx = padding_idx
+        self.n_sample = n_sample
 
     def get_data(self, batch_fn, batch_size, shuffle=True, process_fn=None):
         """Collate batch data for system to fit
@@ -106,11 +108,22 @@ class ReDialDataLoader:
             dialog_history_flatten = sum(conv_dict['context_tokens'], [])
             batch_context_tokens.append(truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False))
             batch_item.append(conv_dict['item'])
-            batch_plot.append(conv_dict['plot'])
-            batch_plot_mask.append(conv_dict['plot_mask'])
-            batch_review.append(conv_dict['review'])
-            batch_review_mask.append(conv_dict['review_mask'])
 
+            ### Sampling
+            plot_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['plot_mask']), dim=1))
+            review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
+
+            if plot_exist_num == 0 or review_exist_num == 0:
+                plot_exist_num = 1
+                review_exist_num = 1
+
+            plot_sample_idx = [random.randint(0, plot_exist_num - 1) for _ in range(self.n_sample)]
+            review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.n_sample)]
+
+            batch_plot.append(np.array(conv_dict['plot'])[plot_sample_idx])
+            batch_plot_mask.append(np.array(conv_dict['plot_mask'])[plot_sample_idx])
+            batch_review.append(np.array(conv_dict['review'])[review_sample_idx])
+            batch_review_mask.append(np.array(conv_dict['review_mask'])[review_sample_idx])
 
         return (padded_tensor(batch_context_entities, 0, pad_tail=False),
                 padded_tensor(batch_context_tokens, 0, pad_tail=False),
@@ -120,7 +133,6 @@ class ReDialDataLoader:
                 torch.tensor(batch_review_mask, dtype=torch.long),
                 torch.tensor(batch_item, dtype=torch.long)
                 )
-
 
     # todo: 아래 retain 뭔지 확인해보기
     def conv_process_fn(self, *args, **kwargs):
