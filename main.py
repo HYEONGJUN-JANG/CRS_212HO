@@ -62,19 +62,6 @@ def randomize_model(model):
 
 if __name__ == '__main__':
 
-    # X = torch.tensor([[1, 2, 3], [4, 5, 6]])
-    # Y = torch.tensor([[7, 8], [9, 10]])
-    # X1 = X.unsqueeze(0)
-    # Y1 = Y.unsqueeze(1)
-    # print(X1.shape, Y1.shape)
-    # X2 = X1.repeat(Y.shape[0], 1, 1)
-    # Y2 = Y1.repeat(1, X.shape[0], 1)
-    # print(X2.shape, X2.shape)
-    # Z = torch.cat([X2, Y2], -1)
-    # Z = Z.view(-1, Z.shape[-1])
-    # print(Z.shape)
-
-
     args = parse_args()
 
     pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
@@ -99,7 +86,7 @@ if __name__ == '__main__':
     bert_config = AutoConfig.from_pretrained(args.bert_name)
     # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
-    bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
+    # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
 
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_data_path, tokenizer)
     train_data = crs_dataset.train_data
