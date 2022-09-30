@@ -109,8 +109,8 @@ if __name__ == '__main__':
             # content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
 
             pretrain(args, model, pretrain_dataloader, pretrained_path)
-        else:
-            model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+        # else:
+        #     model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
     train_dataloader = ReDialDataLoader(train_data, args.n_sample, word_truncate=args.max_dialog_len)
     test_dataloader = ReDialDataLoader(test_data, args.n_sample, word_truncate=args.max_dialog_len)
