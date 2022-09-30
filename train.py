@@ -34,11 +34,11 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         hit = [[], [], [], [], []]
 
         for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
-            context_entities, context_tokens, target_item = batch
+            context_entities, context_tokens, plot, plot_mask, review, review_mask, target_items = batch
             scores = model.forward(context_entities, context_tokens)
 
             # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
-            scores = scores[:, torch.LongTensor(model.movie2ids)]
+            # scores = scores[:, torch.LongTensor(model.movie2ids)]
             target_item = target_item.cpu().numpy()
 
             for k in range(len(topk)):
