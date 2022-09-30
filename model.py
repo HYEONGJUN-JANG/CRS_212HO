@@ -107,8 +107,19 @@ class MovieExpertCRS(nn.Module):
                 n_text = n_plot * 2
 
             else:  # Cand.4: Review & Plot
-                text = torch.cat([plot_token, review_token], dim=1)
-                mask = torch.cat([plot_mask, review_mask], dim=1)
+                plot_token = plot_token.repeat(1,1,n_plot).view(batch_size,-1,max_plot_len)
+                review_token = review_token.repeat(1,n_plot,1).view(batch_size,-1,max_plot_len)
+                text = torch.cat([plot_token, review_token], dim=2)
+
+                plot_mask = plot_mask.repeat(1,1,n_plot).view(batch_size,-1,max_plot_len)
+                review_mask = review_mask.repeat(1,n_plot,1).view(batch_size,-1,max_plot_len)
+                mask = torch.cat([plot_mask, review_mask], dim=2)
+
+                max_len = max_plot_len * 2
+                n_text = n_plot**2
+
+                # text = torch.cat([plot_token, review_token], dim=1)
+                # mask = torch.cat([plot_mask, review_mask], dim=1)
         elif 'plot' in self.name:  # cand.1: Plot
             text = plot_token
             mask = plot_mask

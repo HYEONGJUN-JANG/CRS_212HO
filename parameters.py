@@ -5,7 +5,7 @@ import logging
 def parse_args():
     parser = argparse.ArgumentParser()
     # 프로그램 실행 시 필수로 넘겨줘야하는 인자들
-    parser.add_argument('--name', type=str, default='plot-review-serial')  # plot-serial or review-serial or plot-review or plot-review-serial or none
+    parser.add_argument('--name', type=str, default='plot-review')  # plot-serial or review-serial or plot-review or plot-review-serial or none
     parser.add_argument('--n_review', type=int, default=3)  # 1 or 2 or 3 or 20
     parser.add_argument('--n_plot', type=int, default=3) # 1 or 2 or 3 or 9
     parser.add_argument('--max_plot_len', type=int, default=50)  # 50, 100, 150, 200, 250, (300)
