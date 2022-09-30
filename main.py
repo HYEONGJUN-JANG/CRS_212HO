@@ -99,7 +99,7 @@ if __name__ == '__main__':
     bert_config = AutoConfig.from_pretrained(args.bert_name)
     # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
-    # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
+    bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
 
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_data_path, tokenizer)
     train_data = crs_dataset.train_data
