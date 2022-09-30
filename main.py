@@ -107,7 +107,7 @@ if __name__ == '__main__':
             content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
 
             pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
-            pretrain(args, model, pretrain_dataloader, pretrained_path, movie2ids)
+            pretrain(args, model, pretrain_dataloader, pretrained_path)
         else:
             model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
