@@ -39,13 +39,13 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
             # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
             scores = scores[:, torch.LongTensor(model.movie2ids)]
-            target_item = target_item.cpu().numpy()
+            target_items = target_items.cpu().numpy()
 
             for k in range(len(topk)):
                 sub_scores = scores.topk(topk[k])[1]
                 sub_scores = sub_scores.cpu().numpy()
 
-                for (label, score) in zip(target_item, sub_scores):
+                for (label, score) in zip(target_items, sub_scores):
                     target_idx = model.movie2ids.index(label)
                     hit[k].append(np.isin(target_idx, score))
 
