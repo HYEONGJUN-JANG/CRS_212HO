@@ -5,23 +5,23 @@ from torch import nn, optim
 from tqdm import tqdm
 
 
-def pretrain(args, model, pretrain_dataloader, path):
+def pretrain(args, model, pretrain_dataloader, path, movie2id):
     optimizer = optim.Adam(model.parameters(), lr=args.lr_pt)
 
     for epoch in range(args.epoch):
         model.train()
         total_loss = 0
 
-        for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
-                pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            loss = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id)
-            # scores = scores[:, torch.LongTensor(model.movie2ids)]
-            # loss = model.criterion(scores, movie_id)
-            total_loss += loss.data.float()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        print('Loss:\t%.4f' % total_loss)
+        # for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(
+        #         pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        #     loss = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id)
+        #     # scores = scores[:, torch.LongTensor(model.movie2ids)]
+        #     # loss = model.criterion(scores, movie_id)
+        #     total_loss += loss.data.float()
+        #     optimizer.zero_grad()
+        #     loss.backward()
+        #     optimizer.step()
+        # print('Loss:\t%.4f' % total_loss)
 
         model.eval()
         topk = [1, 5, 10, 20]
@@ -31,18 +31,19 @@ def pretrain(args, model, pretrain_dataloader, path):
                 pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             scores, target_id = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id,
                                                   compute_score=True)
-            # scores = scores[:, torch.LongTensor(model.movie2ids)]
+            scores = scores[:, torch.LongTensor(model.movie2ids)]
 
             # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
             target_id = target_id.cpu().numpy()
-            # target_id = model.movie2id.index(target_id)
 
             for k in range(len(topk)):
                 sub_scores = scores.topk(topk[k])[1]
                 sub_scores = sub_scores.cpu().numpy()
 
                 for (label, score) in zip(target_id, sub_scores):
-                    hit[k].append(np.isin(label, score))
+                    y = movie2id.index(label)
+                    hit[k].append(np.isin(y, score))
+
 
         print('Epoch %d : pre-train test done')
         for k in range(len(topk)):
