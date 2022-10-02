@@ -107,16 +107,16 @@ class MovieExpertCRS(nn.Module):
                 n_text = n_plot * 2
 
             else:  # Cand.4: Review & Plot
-                plot_token = plot_token.repeat(1,1,n_plot).view(batch_size,-1,max_plot_len)
-                review_token = review_token.repeat(1,n_plot,1).view(batch_size,-1,max_plot_len)
+                plot_token = plot_token.repeat(1, 1, n_plot).view(batch_size, -1, max_plot_len)
+                review_token = review_token.repeat(1, n_plot, 1).view(batch_size, -1, max_plot_len)
                 text = torch.cat([plot_token, review_token], dim=2)
 
-                plot_mask = plot_mask.repeat(1,1,n_plot).view(batch_size,-1,max_plot_len)
-                review_mask = review_mask.repeat(1,n_plot,1).view(batch_size,-1,max_plot_len)
+                plot_mask = plot_mask.repeat(1, 1, n_plot).view(batch_size, -1, max_plot_len)
+                review_mask = review_mask.repeat(1, n_plot, 1).view(batch_size, -1, max_plot_len)
                 mask = torch.cat([plot_mask, review_mask], dim=2)
 
                 max_len = max_plot_len * 2
-                n_text = n_plot**2
+                n_text = n_plot ** 2
 
                 # text = torch.cat([plot_token, review_token], dim=1)
                 # mask = torch.cat([plot_mask, review_mask], dim=1)
@@ -149,7 +149,7 @@ class MovieExpertCRS(nn.Module):
             content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
         elif self.args.word_encoder == 1:
-            text_emb, _ = self.word_encoder(text) #[B * N , L, d]
+            text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
 
             content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
             # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
@@ -180,12 +180,7 @@ class MovieExpertCRS(nn.Module):
 
         elif self.args.word_encoder == 1:
             token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
-
             token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
-
-
-
-
 
         # 22.09.24 Gating mechanism 없이 word 로만 training -->  주석 해제
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))

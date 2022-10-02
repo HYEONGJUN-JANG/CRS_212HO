@@ -84,9 +84,19 @@ if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
     args.vocab_size = tokenizer.vocab_size
     bert_config = AutoConfig.from_pretrained(args.bert_name)
+
+    if args.t_layer != -1:
+        bert_config.num_hidden_layers = args.t_layer
     # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
     # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
+
+    # BERT model freeze layers
+    if args.n_layer != -1:
+        modules = [bert_model.encoder.layer[:args.t_layer - args.n_layer], bert_model.embeddings]  # 2개 남기기
+        for module in modules:
+            for param in module.parameters():
+                param.requires_grad = False
 
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_data_path, tokenizer)
     train_data = crs_dataset.train_data
@@ -100,7 +110,7 @@ if __name__ == '__main__':
     model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
 
-    content_dataset = ContentInformation(args, content_data_path, tokenizer, args.device_id)
+    content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
     # For pre-training
@@ -115,7 +125,8 @@ if __name__ == '__main__':
     train_dataloader = ReDialDataLoader(train_data, args.n_sample, word_truncate=args.max_dialog_len)
     test_dataloader = ReDialDataLoader(test_data, args.n_sample, word_truncate=args.max_dialog_len)
 
-    train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path, pretrain_dataloader)
+    train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path,
+                      pretrain_dataloader)
 
     # todo: result 기록하는 부분 --> train_recommender 안에 구현 완료
     # todo: ???
