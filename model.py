@@ -16,6 +16,7 @@ class MovieExpertCRS(nn.Module):
         self.movie2ids = movie2ids
         self.name = name  # argument 를 통한 abaltion을 위해 필요
         self.device_id = args.device_id
+        self.dropout = nn.Dropout(0.25)
 
         # R-GCN
         # todo: pre-trainig (R-GCN 자체 or content 내 meta data 를 활용하여?) (후자가 날 듯)
@@ -87,7 +88,8 @@ class MovieExpertCRS(nn.Module):
     # plot_token    :   [batch_size, n_plot, max_plot_len]
     # review_token    :   [batch_size, n_review, max_review_len]
     # target_item   :   [batch_size]
-    def pre_forward(self, plot_token, plot_mask, review_token, review_mask, target_item, compute_score=False):
+    def pre_forward(self, context_entities, plot_token, plot_mask, review_token, review_mask, target_item,
+                    compute_score=False):
         # text = torch.cat([meta_token, plot_token], dim=1)
         # mask = torch.cat([meta_mask, plot_mask], dim=1)
         batch_size = plot_token.shape[0]
@@ -154,10 +156,21 @@ class MovieExpertCRS(nn.Module):
             content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
             # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
-        # todo: MLP layer 로 할 지 dot-prodcut 으로 할 지? (실험)
-        # scores = self.linear_output(content_emb)  # [B, V]
-        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # [E, d']
-        scores = F.linear(content_emb, kg_embedding)  # [B * N, E]
+        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
+        context_entities = context_entities.to(self.device_id)
+        entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+        entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (bs, entity_dim)
+        entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(self.device_id)
+
+        entity_attn_rep = self.dropout(entity_attn_rep)
+        content_emb = self.dropout(content_emb)
+
+        gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
+        user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep
+        # user_embedding = token_attn_rep
+        scores = F.linear(user_embedding, kg_embedding)
+
         loss = self.criterion(scores, target_item)
         if compute_score:
             return scores, target_item

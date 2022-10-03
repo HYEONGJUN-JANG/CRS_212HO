@@ -98,11 +98,13 @@ if __name__ == '__main__':
             for param in module.parameters():
                 param.requires_grad = False
 
-    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_data_path, tokenizer)
+    # Content data 중복해서 읽고 있어서, 한번만 읽고 argument 로 넣어줌
+    content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
+    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer)
+
     train_data = crs_dataset.train_data
     test_data = crs_dataset.test_data
 
-    # todo: {crs_id: [entitiy_id, movie_title]} [movie2info.json 으로 한번에 관리하면 편할 듯] --> 완
     movie2ids = crs_dataset.movie2id
     num_movie = len(movie2ids)
 
@@ -110,7 +112,6 @@ if __name__ == '__main__':
     model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
 
-    content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
     # For pre-training
