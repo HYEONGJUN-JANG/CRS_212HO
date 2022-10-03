@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument('--valid_portion', type=float, default=0.1, help='valid_portion')
     parser.add_argument('--loss_lambda', type=float, default=0.1, help='lambda')
     parser.add_argument('--n_sample', type=int, default=3, help='sampling')
+    parser.add_argument('--meta', action='store_true')
 
     # BERT
     parser.add_argument('--bert_name', type=str, default='prajjwal1/bert-tiny',

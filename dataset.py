@@ -200,8 +200,11 @@ class ContentInformation(Dataset):
         review_mask = self.data_samples[idx]['review_mask']
 
         meta = list(self.meta_information[int(idx)])
-        sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
-        entities = [meta[k] for k in sample_idx]
+        if len(meta) > 0:
+            sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
+            entities = [meta[k] for k in sample_idx]
+        else:
+            entities = [0] * self.args.n_sample
         # idx, plot, plot_mask, review, review_mask = self.data_samples[item]
 
         # idx = self.movie2name[idx][0]  # crs id -> dbpedia id
