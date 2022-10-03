@@ -15,8 +15,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         hit_pt = [[], [], [], [], []]
 
         # Pre-training Test
-        for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
-            scores, target_id = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id,
+        for movie_id, plot_token, plot_mask, review_token, review_mask, entities in tqdm(pretrain_dataloader):
+            scores, target_id = model.pre_forward(entities, plot_token, plot_mask, review_token, review_mask, movie_id,
                                                   compute_score=True)
             scores = scores[:, torch.LongTensor(model.movie2ids)]
 
@@ -99,8 +99,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     hit_pt = [[], [], [], [], []]
 
     # Pre-training Test
-    for movie_id, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
-        scores, target_id = model.pre_forward(plot_token, plot_mask, review_token, review_mask, movie_id,
+    for movie_id, plot_token, plot_mask, review_token, review_mask, entities in tqdm(pretrain_dataloader):
+        scores, target_id = model.pre_forward(entities, plot_token, plot_mask, review_token, review_mask, movie_id,
                                               compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 

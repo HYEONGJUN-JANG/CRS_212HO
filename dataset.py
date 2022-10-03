@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from copy import copy
 
@@ -12,28 +13,28 @@ import os
 import numpy as np
 
 
-class ContentInformation(Dataset):
-    def __init__(self, args, data_path, tokenizer, device):
-        super(Dataset, self).__init__()
-        self.args = args
-        self.data_path = data_path
-        self.tokenizer = tokenizer
-        # self.data_samples = []
-        self.data_samples = dict()
-        self.device = device
-        # TODO: duplicated code
-        self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
-        self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
-        self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
-        self.key_list = list(self.data_samples.keys())
-
+class KGInformation:
+    def __init__(self, data_path):
         self.entity2id = json.load(
-            open(os.path.join(self.data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
+            open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.id2entity = {idx: entity for entity, idx in self.entity2id.items()}
         self.n_entity = max(self.entity2id.values()) + 1
         # {head_entity_id: [(relation_id, tail_entity_id)]}
-        self.entity_kg = json.load(open(os.path.join(self.data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
+        self.entity_kg = json.load(open(os.path.join(data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
         self.entity_kg = self._entity_kg_process()
+        self.entity_neighbor = self._entitiy_kg_neighbor()
+
+    def _entitiy_kg_neighbor(self):
+        # entity_neighbor = dict()
+        entity_neighbor = defaultdict(set)
+
+        for h, t, _ in self.entity_kg['edge']:
+            if h == t:
+                continue
+            entity_neighbor[h].add(t)
+            entity_neighbor[t].add(h)
+
+        return entity_neighbor
 
     def _entity_kg_process(self, SELF_LOOP_ID=185):
         edge_list = []  # [(entity, entity, relation)]
@@ -61,6 +62,24 @@ class ContentInformation(Dataset):
             'n_relation': len(relation2id),
             'entity': list(entities)
         }
+
+
+class ContentInformation(Dataset):
+    def __init__(self, args, data_path, tokenizer, device):
+        super(Dataset, self).__init__()
+        self.args = args
+        self.data_path = data_path
+        self.tokenizer = tokenizer
+        # self.data_samples = []
+        self.data_samples = dict()
+        self.device = device
+
+        self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
+        self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
+        self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
+        self.key_list = list(self.data_samples.keys())  # entity id list
+
+        self.meta_information = KGInformation(data_path).entity_neighbor
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
         f = open(os.path.join(self.data_path, 'content_data.json'), encoding='utf-8')
@@ -179,6 +198,13 @@ class ContentInformation(Dataset):
         plot_mask = self.data_samples[idx]['plot_mask']
         review = self.data_samples[idx]['review']
         review_mask = self.data_samples[idx]['review_mask']
+
+        meta = list(self.meta_information[int(idx)])
+        if len(meta) > 0:
+            sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
+            entities = [meta[k] for k in sample_idx]
+        else:
+            entities = [0] * self.args.n_sample
         # idx, plot, plot_mask, review, review_mask = self.data_samples[item]
 
         # idx = self.movie2name[idx][0]  # crs id -> dbpedia id
@@ -192,8 +218,9 @@ class ContentInformation(Dataset):
         plot_mask = torch.LongTensor(plot_mask)
         review_token = torch.LongTensor(review)
         review_mask = torch.LongTensor(review_mask)
+        entities = torch.LongTensor(entities)
 
-        return idx, plot_token, plot_mask, review_token, review_mask
+        return idx, plot_token, plot_mask, review_token, review_mask, entities
 
     def __len__(self):
         return len(self.data_samples)
@@ -215,16 +242,17 @@ class ReDialDataset:
 
         return train_data, valid_data, test_data
 
-    def __init__(self, args, data_path, content_data_path, tokenizer):
+    def __init__(self, args, data_path, content_dataset, tokenizer):
         super(ReDialDataset, self).__init__()
         self.args = args
         self.data_path = data_path
-        self.content_data_path = content_data_path
+        self.content_dataset = content_dataset
         self.tokenizer = tokenizer
         self._load_other_data()
         self._load_data()
 
     def _load_other_data(self):
+        # todo: KG information 분리 시켜야 함
         # dbpedia
         self.entity2id = json.load(
             open(os.path.join(self.data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
@@ -232,7 +260,6 @@ class ReDialDataset:
         self.n_entity = max(self.entity2id.values()) + 1
         # {head_entity_id: [(relation_id, tail_entity_id)]}
         self.entity_kg = json.load(open(os.path.join(self.data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
-        # todo: key가 실제 dialog 상 id임. entity_id와 match 필요
         self.movie2name = json.load(
             open(os.path.join(self.data_path, 'movie2name.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
 
@@ -243,8 +270,7 @@ class ReDialDataset:
             f"[Load entity dictionary and KG from {os.path.join(self.data_path, 'entity2id.json')} and {os.path.join(self.data_path, 'dbpedia_subkg.json')}]")
 
         self.entity_kg = self._entity_kg_process()
-        self.content_dataset = ContentInformation(self.args, self.data_path, self.tokenizer,
-                                                  self.args.device_id)
+
         logger.debug("[Finish entity KG process]")
 
     def _entity_kg_process(self, SELF_LOOP_ID=185):
