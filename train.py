@@ -95,7 +95,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
             loss.backward()
             optimizer.step()
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
-        scheduler.step()
+        # scheduler.step()
 
     model.eval()
     topk = [1, 5, 10, 20, 50]
