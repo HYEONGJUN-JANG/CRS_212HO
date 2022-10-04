@@ -94,7 +94,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        print('Loss:\t%.4f\t%.2f' % (total_loss, scheduler.get_last_lr()))
+        print('Loss:\t%.4f\t%.2f' % (total_loss, scheduler.get_last_lr()[0]))
         scheduler.step()
 
     model.eval()
