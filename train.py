@@ -6,7 +6,8 @@ from tqdm import tqdm
 
 
 def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path, pretrain_dataloader):
-    optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr_ft / args.warmup_gamma)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[args.warmup_step], gamma=args.warmup_gamma)
 
     for epoch in range(args.epoch):
 
@@ -93,7 +94,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        print('Loss:\t%.4f' % total_loss)
+        print('Loss:\t%.4f\t%.2f' % (total_loss, scheduler.get_last_lr()))
+        scheduler.step()
 
     model.eval()
     topk = [1, 5, 10, 20, 50]
