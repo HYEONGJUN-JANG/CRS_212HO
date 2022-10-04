@@ -220,7 +220,7 @@ class ContentInformation(Dataset):
         review_mask = torch.LongTensor(review_mask)
         entities = torch.LongTensor(entities)
 
-        return idx, plot_token, plot_mask, review_token, review_mask, entities
+        return idx, entities, plot_token, plot_mask, review_token, review_mask
 
     def __len__(self):
         return len(self.data_samples)
@@ -363,17 +363,19 @@ class ReDialDataset:
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
-            plot, plot_mask, review, review_mask = [], [], [], []
+            meta, plot, plot_mask, review, review_mask = [], [], [], [], []
             if len(context_tokens) > 0:
                 # if len(movies) > 1:
                 #     print()
                 for movie in movies:
                     try:
+                        meta.append(list(self.content_dataset.meta_information[movie]))
                         plot.append(self.content_dataset.data_samples[str(movie)]['plot'])
                         plot_mask.append(self.content_dataset.data_samples[str(movie)]['plot_mask'])
                         review.append(self.content_dataset.data_samples[str(movie)]['review'])
                         review_mask.append(self.content_dataset.data_samples[str(movie)]['review_mask'])
                     except KeyError as e:
+                        meta.append([])
                         plot.append([])
                         plot_mask.append([])
                         review.append([])
@@ -386,6 +388,7 @@ class ReDialDataset:
                     "context_entities": copy(context_entities),
                     "context_items": copy(context_items),
                     "items": movies,
+                    "meta": meta,
                     "plot": plot,
                     "plot_mask": plot_mask,
                     "review": review,

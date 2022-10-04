@@ -15,7 +15,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         hit_pt = [[], [], [], [], []]
 
         # Pre-training Test
-        for movie_id, plot_token, plot_mask, review_token, review_mask, entities in tqdm(pretrain_dataloader):
+        for movie_id, entities, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
             scores, target_id = model.pre_forward(entities, plot_token, plot_mask, review_token, review_mask, movie_id,
                                                   compute_score=True)
             scores = scores[:, torch.LongTensor(model.movie2ids)]
@@ -79,11 +79,11 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         logger.info('[Train]')
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, plot, plot_mask, review, review_mask, target_items = batch
+            context_entities, context_tokens, meta, plot, plot_mask, review, review_mask, target_items = batch
             scores_ft = model.forward(context_entities, context_tokens)
             loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
 
-            loss_pt = model.pre_forward(plot, plot_mask, review, review_mask, target_items)
+            loss_pt = model.pre_forward(meta, plot, plot_mask, review, review_mask, target_items)
             # loss_pt = model.criterion(scores_pt, target_items.to(args.device_id))
 
             loss = loss_ft + (loss_pt * args.loss_lambda)
