@@ -4,6 +4,7 @@ from loguru import logger
 from torch import nn, optim
 from tqdm import tqdm
 
+
 def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path, pretrain_dataloader):
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
 
@@ -44,7 +45,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
         # Fine-tuning Test
         for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
-            context_entities, context_tokens, plot, plot_mask, review, review_mask, target_items = batch
+            context_entities, context_tokens, _, _, _, _, _, target_items = batch
+
             scores = model.forward(context_entities, context_tokens)
 
             # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
@@ -128,7 +130,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
-        context_entities, context_tokens, plot, plot_mask, review, review_mask, target_items = batch
+        context_entities, context_tokens, _, _, _, _, target_items = batch
         scores = model.forward(context_entities, context_tokens)
 
         # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
