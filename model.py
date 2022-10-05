@@ -201,6 +201,7 @@ class MovieExpertCRS(nn.Module):
 
         # 22.09.24 Gating mechanism 없이 word 로만 training -->  주석 해제
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
         # user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
