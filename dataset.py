@@ -102,9 +102,6 @@ class ContentInformation(Dataset):
 
             if self.movie2name[crs_id][0] == -1:
                 continue
-            # self.movie2idx[crs_id] = len(self.movie2idx)
-
-            # if 'review' in args.name:
 
             if len(reviews) == 0:
                 reviews = ['']
@@ -148,71 +145,41 @@ class ContentInformation(Dataset):
                                                                   "review": review_list,
                                                                   "review_mask": review_mask_list}
 
-            ############################## PREV ##############################
-            # Reviews or plot or review-plot-serial
-            # if 'serial' in self.args.name:
-            #     if 'review' in self.args.name:
-            #         for i in range(len(reviews)):
-            #             review = tokenized_reviews.input_ids[i]
-            #             review_mask = tokenized_reviews.attention_mask[i]
-            #
-            #             blank_plot = self.tokenizer('', max_length=max_plot_len, padding='max_length',
-            #                                         truncation=True,
-            #                                         add_special_tokens=False)
-            #             plot = blank_plot.input_ids
-            #             plot_mask = blank_plot.attention_mask
-            #
-            #             self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
-            #
-            #     if 'plot' in self.args.name:
-            #         for i in range(len(plots)):
-            #             plot = tokenized_plots.input_ids[i]
-            #             plot_mask = tokenized_plots.attention_mask[i]
-            #
-            #             blank_review = self.tokenizer('', max_length=max_review_len, padding='max_length',
-            #                                           truncation=True,
-            #                                           add_special_tokens=False)
-            #             review = blank_review.input_ids
-            #             review_mask = blank_review.attention_mask
-            #
-            #             self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
-            #
-            # # Plot and Review
-            # elif 'plot' in self.args.name and 'review' in self.args.name:
-            #     for i in range(len(reviews)):
-            #         review = tokenzied_reviews.input_ids[i]
-            #         review_mask = tokenzied_reviews.attention_mask[i]
-            #
-            #         for j in range(len(plots)):
-            #             plot = tokenized_plots.input_ids[j]
-            #             plot_mask = tokenized_plots.attention_mask[j]
-            #
-            #             self.data_samples.append((crs_id, plot, plot_mask, review, review_mask))
-            ##########################################################################################
-
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, item):
-        idx = self.key_list[item]
+        idx = self.key_list[item] # dbpedia id
         plot = self.data_samples[idx]['plot']
         plot_mask = self.data_samples[idx]['plot_mask']
         review = self.data_samples[idx]['review']
         review_mask = self.data_samples[idx]['review_mask']
 
         meta = list(self.meta_information[int(idx)])
+
+        ### Sampling
         if len(meta) > 0:
             sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
             entities = [meta[k] for k in sample_idx]
         else:
             entities = [0] * self.args.n_sample
-        # idx, plot, plot_mask, review, review_mask = self.data_samples[item]
 
-        # idx = self.movie2name[idx][0]  # crs id -> dbpedia id
-        # idx = self.movie2id.index(idx)  # dbpedia id -> movie id
-        """
-        Todo: convert crs_id to dbpedia_id. 
-        Then, predict original movie id by leveraging its sample of content information. 
-        """
+        plot_exist_num = np.count_nonzero(np.sum(np.array(plot_mask), axis=1))
+        review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
+
+        if plot_exist_num == 0 or review_exist_num == 0:
+            plot_exist_num = 1
+            review_exist_num = 1
+
+        plot_sample_idx = [random.randint(0, plot_exist_num - 1) for _ in range(self.args.n_sample)]
+        review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.args.n_sample)]
+
+        plot = [plot[k] for k in plot_sample_idx]
+        plot_mask = [plot_mask[k] for k in plot_sample_idx]
+        review = [review[k] for k in review_sample_idx]
+        review_mask = [review_mask[k] for k in review_sample_idx]
+
+        ##########
+
         idx = torch.tensor(int(idx))
         plot_token = torch.LongTensor(plot)
         plot_mask = torch.LongTensor(plot_mask)
