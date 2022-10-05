@@ -157,16 +157,18 @@ class MovieExpertCRS(nn.Module):
             # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
-        context_entities = context_entities.to(self.device_id)
-        entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
-        entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (bs, entity_dim)
-        entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(self.device_id)
-
-        entity_attn_rep = self.dropout(entity_attn_rep)
         content_emb = self.dropout(content_emb)
 
         if self.args.meta:
+            context_entities = context_entities.to(self.device_id)
+            entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+            entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+            entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (bs, entity_dim)
+            entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(
+                self.device_id)
+
+            entity_attn_rep = self.dropout(entity_attn_rep)
+
             gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
             user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep
         else:
