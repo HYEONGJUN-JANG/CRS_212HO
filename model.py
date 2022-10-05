@@ -64,7 +64,7 @@ class MovieExpertCRS(nn.Module):
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
 
         # Gating
-        self.gating = nn.Linear(2 * self.kg_emb_dim, 1)
+        self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
 
         # Prediction
         # self.linear_output = nn.Linear(self.token_emb_dim, self.num_movies)
