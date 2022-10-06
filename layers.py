@@ -61,6 +61,7 @@ class SelfDotAttention(nn.Module):
         max_len = mask.shape[1]
 
         pos_emb = self.pos_embedding.weight[:max_len]  # [L, d]
+        pos_emb = torch.flip(pos_emb, dims=[0]) # [L, d]
         pos_emb = pos_emb.unsqueeze(0).repeat(batch_size, 1, 1)  # [B, L, d]
 
         h = h + pos_emb
