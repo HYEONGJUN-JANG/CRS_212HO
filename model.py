@@ -30,7 +30,7 @@ class MovieExpertCRS(nn.Module):
         self.edge_type = self.edge_type.to(self.device_id)
         self.pad_entity_idx = 0
 
-        self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
+        self.entity_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
         # Dialog
         self.token_emb_dim = token_emb_dim
 
