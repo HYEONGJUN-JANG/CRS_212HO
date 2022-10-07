@@ -16,7 +16,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         hit_ft = [[], [], [], [], []]
         hit_pt = [[], [], [], [], []]
 
-        if 'none' in args.name:
+        if 'none' not in args.name:
             # Pre-training Test
             for movie_id, meta, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
                 scores, target_id = model.pre_forward(meta, plot_token, plot_mask, review_token, review_mask, movie_id,
@@ -103,7 +103,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     hit_ft = [[], [], [], [], []]
     hit_pt = [[], [], [], [], []]
 
-    if 'none' in args.name:
+    if 'none' not in args.name:
         # Pre-training Test
         for movie_id, meta, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
             scores, target_id = model.pre_forward(meta, plot_token, plot_mask, review_token, review_mask, movie_id,
