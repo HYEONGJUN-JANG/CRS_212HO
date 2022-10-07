@@ -148,12 +148,12 @@ class MovieExpertCRS(nn.Module):
             text_emb = self.word_encoder(input_ids=text,
                                          attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
             text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            content_emb = self.entity_attention(text_emb, mask)  # [B, d] -> [B * N, d]
+            content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
 
         elif self.args.word_encoder == 1:
             text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
 
-            content_emb = self.entity_attention(text_emb, mask)  # [B, d] -> [B * N, d]
+            content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
             # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
@@ -195,11 +195,11 @@ class MovieExpertCRS(nn.Module):
                                                 attention_mask=token_padding_mask.to(
                                                     self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
             token_embedding = self.linear_transformation(token_embedding)
-            token_attn_rep = self.entity_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
+            token_attn_rep = self.entity_atoken_attentionttention(token_embedding, token_padding_mask)  # [bs, word_dim]
 
         elif self.args.word_encoder == 1:
             token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
-            token_attn_rep = self.entity_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
+            token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
 
         # 22.09.24 Gating mechanism 없이 word 로만 training -->  주석 해제
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
