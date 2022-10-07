@@ -16,33 +16,34 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         hit_ft = [[], [], [], [], []]
         hit_pt = [[], [], [], [], []]
 
-        # Pre-training Test
-        for movie_id, meta, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
-            scores, target_id = model.pre_forward(meta, plot_token, plot_mask, review_token, review_mask, movie_id,
-                                                  compute_score=True)
-            scores = scores[:, torch.LongTensor(model.movie2ids)]
+        if 'none' in args.name:
+            # Pre-training Test
+            for movie_id, meta, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
+                scores, target_id = model.pre_forward(meta, plot_token, plot_mask, review_token, review_mask, movie_id,
+                                                      compute_score=True)
+                scores = scores[:, torch.LongTensor(model.movie2ids)]
 
-            # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
-            target_id = target_id.cpu().numpy()
+                # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
+                target_id = target_id.cpu().numpy()
 
+                for k in range(len(topk)):
+                    sub_scores = scores.topk(topk[k])[1]
+                    sub_scores = sub_scores.cpu().numpy()
+
+                    for (label, score) in zip(target_id, sub_scores):
+                        y = model.movie2ids.index(label)
+                        hit_pt[k].append(np.isin(y, score))
+
+            print('Epoch %d : pre-train test done' % (epoch))
             for k in range(len(topk)):
-                sub_scores = scores.topk(topk[k])[1]
-                sub_scores = sub_scores.cpu().numpy()
+                hit_score = np.mean(hit_pt[k])
+                print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
 
-                for (label, score) in zip(target_id, sub_scores):
-                    y = model.movie2ids.index(label)
-                    hit_pt[k].append(np.isin(y, score))
-
-        print('Epoch %d : pre-train test done' % (epoch))
-        for k in range(len(topk)):
-            hit_score = np.mean(hit_pt[k])
-            print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
-
-        with open(results_file_path, 'a', encoding='utf-8') as result_f:
-            result_f.write(
-                '[PRE TRAINING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                    epoch, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
-                    np.mean(hit_pt[4])))
+            with open(results_file_path, 'a', encoding='utf-8') as result_f:
+                result_f.write(
+                    '[PRE TRAINING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
+                        epoch, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
+                        np.mean(hit_pt[4])))
 
         # Fine-tuning Test
         for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
@@ -102,33 +103,34 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     hit_ft = [[], [], [], [], []]
     hit_pt = [[], [], [], [], []]
 
-    # Pre-training Test
-    for movie_id, meta, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
-        scores, target_id = model.pre_forward(meta, plot_token, plot_mask, review_token, review_mask, movie_id,
-                                              compute_score=True)
-        scores = scores[:, torch.LongTensor(model.movie2ids)]
+    if 'none' in args.name:
+        # Pre-training Test
+        for movie_id, meta, plot_token, plot_mask, review_token, review_mask in tqdm(pretrain_dataloader):
+            scores, target_id = model.pre_forward(meta, plot_token, plot_mask, review_token, review_mask, movie_id,
+                                                  compute_score=True)
+            scores = scores[:, torch.LongTensor(model.movie2ids)]
 
-        # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
-        target_id = target_id.cpu().numpy()
+            # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
+            target_id = target_id.cpu().numpy()
 
+            for k in range(len(topk)):
+                sub_scores = scores.topk(topk[k])[1]
+                sub_scores = sub_scores.cpu().numpy()
+
+                for (label, score) in zip(target_id, sub_scores):
+                    y = model.movie2ids.index(label)
+                    hit_pt[k].append(np.isin(y, score))
+
+        print('Epoch %d : pre-train test done' % (args.epoch))
         for k in range(len(topk)):
-            sub_scores = scores.topk(topk[k])[1]
-            sub_scores = sub_scores.cpu().numpy()
+            hit_score = np.mean(hit_pt[k])
+            print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
 
-            for (label, score) in zip(target_id, sub_scores):
-                y = model.movie2ids.index(label)
-                hit_pt[k].append(np.isin(y, score))
-
-    print('Epoch %d : pre-train test done' % (args.epoch))
-    for k in range(len(topk)):
-        hit_score = np.mean(hit_pt[k])
-        print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
-
-    with open(results_file_path, 'a', encoding='utf-8') as result_f:
-        result_f.write(
-            '[PRE TRAINING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                args.epoch, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
-                np.mean(hit_pt[4])))
+        with open(results_file_path, 'a', encoding='utf-8') as result_f:
+            result_f.write(
+                '[PRE TRAINING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
+                    args.epoch, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
+                    np.mean(hit_pt[4])))
 
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
