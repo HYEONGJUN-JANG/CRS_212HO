@@ -60,7 +60,7 @@ class MovieExpertCRS(nn.Module):
                 self.args.n_positions
             )
 
-        self.token_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
+        self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
 
         # Gating
