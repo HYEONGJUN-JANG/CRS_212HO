@@ -31,7 +31,7 @@ def get_time_kst(): return datetime.now(timezone('Asia/Seoul')).strftime('%Y-%m-
 def createResultFile(args):
     mdhm = str(
         datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M%S'))  # MonthDailyHourMinute .....e.g., 05091040
-    results_file_path = f"./results/train_device_{args.device_id}_{mdhm}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}_{args.name}.txt"
+    results_file_path = f"./results/{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}_{args.name}.txt"
     if not os.path.exists('./results'): os.mkdir('./results')
 
     # parameters
