@@ -44,6 +44,7 @@ def createResultFile(args):
         for i, v in vars(args).items():
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
+        result_f.write('Hit@1\tHit@5\tHit@10\tHit@20\tHit@50\n')
     return results_file_path
 
 

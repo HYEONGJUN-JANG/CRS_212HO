@@ -41,9 +41,9 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
             with open(results_file_path, 'a', encoding='utf-8') as result_f:
                 result_f.write(
-                    '[PRE TRAINING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                        epoch, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
-                        np.mean(hit_pt[4])))
+                    '[PRE TRAINING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
+                        epoch, 100 * np.mean(hit_pt[0]), 100 * np.mean(hit_pt[1]), 100 * np.mean(hit_pt[2]),
+                        100 * np.mean(hit_pt[3]), 100 * np.mean(hit_pt[4])))
 
         # Fine-tuning Test
         for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
@@ -71,9 +71,9 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
             result_f.write(
-                '[FINE TUNING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                    epoch, np.mean(hit_ft[0]), np.mean(hit_ft[1]), np.mean(hit_ft[2]), np.mean(hit_ft[3]),
-                    np.mean(hit_ft[4])))
+                '[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
+                    epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
+                    100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
 
         # TRAIN
         model.train()
@@ -131,9 +131,9 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
             result_f.write(
-                '[PRE TRAINING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                    args.epoch, np.mean(hit_pt[0]), np.mean(hit_pt[1]), np.mean(hit_pt[2]), np.mean(hit_pt[3]),
-                    np.mean(hit_pt[4])))
+                '[PRE TRAINING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
+                    args.epoch, 100 * np.mean(hit_pt[0]), 100 * np.mean(hit_pt[1]), 100 * np.mean(hit_pt[2]),
+                    100 * np.mean(hit_pt[3]), 100 * np.mean(hit_pt[4])))
 
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
@@ -160,9 +160,9 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
         result_f.write(
-            '[FINE TUNING] Epoch:\t%d\tH@1\t%.4f\tH@5\t%.4f\tH@10\t%.4f\tH@20\t%.4f\tH@50\t%.4f\n' % (
-                args.epoch, np.mean(hit_ft[0]), np.mean(hit_ft[1]), np.mean(hit_ft[2]), np.mean(hit_ft[3]),
-                np.mean(hit_ft[4])))
+            '[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
+                args.epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
+                100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
