@@ -12,9 +12,9 @@ def pretrain(args, model, pretrain_dataloader, path):
         model.train()
         total_loss = 0
 
-        for movie_id, meta, plot_token, plot_mask, review_token, review_mask in tqdm(
+        for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(
                 pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            loss = model.pre_forward(meta, plot_token, plot_mask, review_token, review_mask, movie_id)
+            loss = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, movie_id)
             # scores = scores[:, torch.LongTensor(model.movie2ids)]
             # loss = model.criterion(scores, movie_id)
             total_loss += loss.data.float()
@@ -29,9 +29,10 @@ def pretrain(args, model, pretrain_dataloader, path):
     topk = [1, 5, 10, 20]
     hit = [[], [], [], []]
 
-    for movie_id, meta, plot_token, plot_mask, review_token, review_mask in tqdm(
+    for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        scores, target_id = model.pre_forward(meta, plot_token, plot_mask, review_token, review_mask, movie_id,
+        scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask,
+                                              movie_id,
                                               compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
@@ -50,5 +51,3 @@ def pretrain(args, model, pretrain_dataloader, path):
     for k in range(len(topk)):
         hit_score = np.mean(hit[k])
         print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
-
-

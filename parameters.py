@@ -9,6 +9,7 @@ def parse_args():
                         default='plot-review')  # plot-serial or review-serial or plot-review or plot-review-serial or none
     parser.add_argument('--n_review', type=int, default=9)  # 1 or 2 or 3 or 20
     parser.add_argument('--n_plot', type=int, default=9)  # 1 or 2 or 3 or 9
+    parser.add_argument('--n_meta', type=int, default=5)  # 1 or 2 or 3 or 9
     parser.add_argument('--max_plot_len', type=int, default=50)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--max_review_len', type=int, default=50)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--max_dialog_len', type=int, default=50)  # 50, 100, 150, 200, 250, (300)
