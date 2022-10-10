@@ -73,7 +73,8 @@ class ContentInformation(Dataset):
         # self.data_samples = []
         self.data_samples = dict()
         self.device = device
-
+        self.entity2id = json.load(
+            open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
         self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
@@ -82,9 +83,9 @@ class ContentInformation(Dataset):
         self.meta_information = KGInformation(data_path).entity_neighbor
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
-        f = open(os.path.join(self.data_path, 'content_data.json'), encoding='utf-8')
+        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
 
-        data = json.load(f)[0]
+        data = json.load(f)
 
         # entity2id = json.load(
         #     open(os.path.join('data/redial/', 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
@@ -92,11 +93,14 @@ class ContentInformation(Dataset):
         # all_entities_name = entity2id.keys()
         for sample in tqdm(data):
             review_list, plot_list = [], []
-            review_mask_list, plot_mask_list = [], []
+            review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
             crs_id = sample['crs_id']
-            reviews = sample['review']
-            plots = sample['summary']
+            reviews = sample['reviews']
+            plots = sample['plots']
+            plots_meta = sample['plots_meta']
+            reviews_meta = sample['reviews_meta']
+
             # title = sample['title']
             # _title = title.replace(' ', '_')
 
@@ -124,6 +128,10 @@ class ContentInformation(Dataset):
                 review_list.append(review)
                 review_mask_list.append(review_mask)
 
+                meta = [self.entity2id[entity] for entity in reviews_meta[i]][:self.args.n_meta]
+                meta = meta + [0] * (self.args.n_meta - len(meta))
+                reviews_meta_list.append(meta)
+
             for i in range(self.args.n_review - len(reviews)):
                 zero_vector = [0] * max_review_len
                 review_list.append(zero_vector)
@@ -136,6 +144,10 @@ class ContentInformation(Dataset):
                 plot_list.append(plot)
                 plot_mask_list.append(plot_mask)
 
+                meta = [self.entity2id[entity] for entity in plots_meta[i]][:self.args.n_meta]
+                meta = meta + [0] * (self.args.n_meta - len(meta))
+                plots_meta_list.append(meta)
+
             for i in range(self.args.n_plot - len(plots)):
                 zero_vector = [0] * max_plot_len
                 plot_list.append(zero_vector)
@@ -143,25 +155,27 @@ class ContentInformation(Dataset):
 
             self.data_samples[str(self.movie2name[crs_id][0])] = {"plot": plot_list, "plot_mask": plot_mask_list,
                                                                   "review": review_list,
-                                                                  "review_mask": review_mask_list}
+                                                                  "review_mask": review_mask_list,
+                                                                  "review_meta": reviews_meta_list,
+                                                                  "plot_meta": plots_meta_list}
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, item):
-        idx = self.key_list[item] # dbpedia id
+        idx = self.key_list[item]  # dbpedia id
         plot = self.data_samples[idx]['plot']
         plot_mask = self.data_samples[idx]['plot_mask']
         review = self.data_samples[idx]['review']
         review_mask = self.data_samples[idx]['review_mask']
+        review_meta = self.data_samples[idx]['review_meta']
+        plot_meta = self.data_samples[idx]['plot_meta']
 
-        meta = list(self.meta_information[int(idx)])
-
-        ### Sampling
-        if len(meta) > 0:
-            sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
-            entities = [meta[k] for k in sample_idx]
-        else:
-            entities = [0] * self.args.n_sample
+        # ### Sampling
+        # if len(meta) > 0:
+        #     sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
+        #     entities = [meta[k] for k in sample_idx]
+        # else:
+        #     entities = [0] * self.args.n_sample
 
         plot_exist_num = np.count_nonzero(np.sum(np.array(plot_mask), axis=1))
         review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
