@@ -98,7 +98,7 @@ class MovieExpertCRS(nn.Module):
         max_plot_len = plot_token.shape[2]
         n_review = review_token.shape[1]
         max_review_len = review_token.shape[2]
-        n_meta = plot_meta.shape[1]
+        n_meta = plot_meta.shape[2]
 
         if 'plot' in self.name and 'review' in self.name:
             if 'serial' in self.name:  # Cand.3: Review | Plot
