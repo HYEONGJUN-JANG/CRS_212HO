@@ -353,21 +353,23 @@ class ReDialDataset:
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
-            meta, plot, plot_mask, review, review_mask = [], [], [], [], []
+            plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
                 # if len(movies) > 1:
                 #     print()
                 for movie in movies:
                     try:
-                        meta.append(list(self.content_dataset.meta_information[movie]))
+                        plot_meta.append(self.content_dataset.data_samples[str(movie)]['plot_meta'])
                         plot.append(self.content_dataset.data_samples[str(movie)]['plot'])
                         plot_mask.append(self.content_dataset.data_samples[str(movie)]['plot_mask'])
+                        review_meta.append(self.content_dataset.data_samples[str(movie)]['review_meta'])
                         review.append(self.content_dataset.data_samples[str(movie)]['review'])
                         review_mask.append(self.content_dataset.data_samples[str(movie)]['review_mask'])
                     except KeyError as e:
-                        meta.append([])
+                        plot_meta.append([])
                         plot.append([])
                         plot_mask.append([])
+                        review_meta.append([])
                         review.append([])
                         review_mask.append([])
 
@@ -378,9 +380,10 @@ class ReDialDataset:
                     "context_entities": copy(context_entities),
                     "context_items": copy(context_items),
                     "items": movies,
-                    "meta": meta,
+                    "plot_meta": plot_meta,
                     "plot": plot,
                     "plot_mask": plot_mask,
+                    "review_meta": review_meta,
                     "review": review,
                     "review_mask": review_mask
                 }

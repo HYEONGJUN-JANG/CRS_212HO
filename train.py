@@ -50,7 +50,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
         # Fine-tuning Test
         for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
-            context_entities, context_tokens, _, _, _, _, _, target_items = batch
+            context_entities, context_tokens, _, _, _, _, _, _, target_items = batch
 
             scores = model.forward(context_entities, context_tokens)
 
@@ -91,12 +91,12 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         logger.info('[Train]')
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, meta, plot, plot_mask, review, review_mask, target_items = batch
+            context_entities, context_tokens, plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items = batch
             scores_ft = model.forward(context_entities, context_tokens)
             loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
 
             if 'none' not in args.name:
-                loss_pt = model.pre_forward(meta, plot, plot_mask, review, review_mask, target_items)
+                loss_pt = model.pre_forward(plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items)
                 # loss_pt = model.criterion(scores_pt, target_items.to(args.device_id))
                 loss = loss_ft + (loss_pt * args.loss_lambda)
             else:
@@ -146,7 +146,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
-        context_entities, context_tokens, _, _, _, _, _, target_items = batch
+        context_entities, context_tokens, _, _, _, _, _, _, target_items = batch
         scores = model.forward(context_entities, context_tokens)
 
         # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
