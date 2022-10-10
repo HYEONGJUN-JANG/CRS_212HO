@@ -179,8 +179,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
         result_f.write(
             '[BEST] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
-                args.epoch, 100 * best_hit[0], 100 * best_hit[0], 100 * best_hit[0], 100 * best_hit[0],
-                100 * best_hit[0]))
+                args.epoch, 100 * best_hit[0], 100 * best_hit[1], 100 * best_hit[2], 100 * best_hit[3],
+                100 * best_hit[4]))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
