@@ -109,9 +109,11 @@ class ContentInformation(Dataset):
 
             if len(reviews) == 0:
                 reviews = ['']
+                reviews_meta = [[]]
             # if 'plot' in args.name:
             if len(plots) == 0:
                 plots = ['']
+                plots_meta = [[]]
 
             tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len, padding='max_length',
                                                truncation=True,
@@ -121,16 +123,22 @@ class ContentInformation(Dataset):
                                              truncation=True,
                                              add_special_tokens=False)
 
+            for idx, meta in enumerate(reviews_meta):
+                reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))
+
+            for idx, meta in enumerate(plots_meta):
+                plots_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                plots_meta[idx] = plots_meta[idx] + [0] * (self.args.n_meta - len(meta))
+
+
             for i in range(min(len(reviews), self.args.n_review)):
                 review = tokenized_reviews.input_ids[i]
                 review_mask = tokenized_reviews.attention_mask[i]
 
                 review_list.append(review)
                 review_mask_list.append(review_mask)
-
-                meta = [self.entity2id[entity] for entity in reviews_meta[i]][:self.args.n_meta]
-                meta = meta + [0] * (self.args.n_meta - len(meta))
-                reviews_meta_list.append(meta)
+                reviews_meta_list.append(reviews_meta[i])
 
             for i in range(self.args.n_review - len(reviews)):
                 zero_vector = [0] * max_review_len
@@ -144,9 +152,7 @@ class ContentInformation(Dataset):
                 plot_list.append(plot)
                 plot_mask_list.append(plot_mask)
 
-                meta = [self.entity2id[entity] for entity in plots_meta[i]][:self.args.n_meta]
-                meta = meta + [0] * (self.args.n_meta - len(meta))
-                plots_meta_list.append(meta)
+                plots_meta_list.append(plots_meta[i])
 
             for i in range(self.args.n_plot - len(plots)):
                 zero_vector = [0] * max_plot_len
@@ -189,19 +195,22 @@ class ContentInformation(Dataset):
 
         plot = [plot[k] for k in plot_sample_idx]
         plot_mask = [plot_mask[k] for k in plot_sample_idx]
+        plot_meta = [plot_meta[k] for k in plot_sample_idx]
+
         review = [review[k] for k in review_sample_idx]
         review_mask = [review_mask[k] for k in review_sample_idx]
+        review_meta = [review_meta[k] for k in review_sample_idx]
 
-        ##########
 
         idx = torch.tensor(int(idx))
         plot_token = torch.LongTensor(plot)
         plot_mask = torch.LongTensor(plot_mask)
+        plot_meta = torch.LongTensor(plot_meta)
         review_token = torch.LongTensor(review)
         review_mask = torch.LongTensor(review_mask)
-        entities = torch.LongTensor(entities)
+        review_meta = torch.LongTensor(review_meta)
 
-        return idx, entities, plot_token, plot_mask, review_token, review_mask
+        return idx, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask
 
     def __len__(self):
         return len(self.data_samples)

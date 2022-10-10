@@ -86,9 +86,10 @@ class MovieExpertCRS(nn.Module):
 
     # Input # todo: meta information (entitiy)도 같이 입력
     # plot_token    :   [batch_size, n_plot, max_plot_len]
-    # review_token    :   [batch_size, n_review, max_review_len]
+    # review_token    :   [batch_size, n_plot, max_review_len]
+    # plot_meta    :   [batch_size, n_plot, n_meta]
     # target_item   :   [batch_size]
-    def pre_forward(self, context_entities, plot_token, plot_mask, review_token, review_mask, target_item,
+    def pre_forward(self, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, target_item,
                     compute_score=False):
         # text = torch.cat([meta_token, plot_token], dim=1)
         # mask = torch.cat([meta_mask, plot_mask], dim=1)
@@ -97,6 +98,7 @@ class MovieExpertCRS(nn.Module):
         max_plot_len = plot_token.shape[2]
         n_review = review_token.shape[1]
         max_review_len = review_token.shape[2]
+        n_meta = plot_meta.shape[1]
 
         if 'plot' in self.name and 'review' in self.name:
             if 'serial' in self.name:  # Cand.3: Review | Plot
@@ -105,7 +107,9 @@ class MovieExpertCRS(nn.Module):
                 # mask = p_mask * plot_mask + (~p_mask) * review_mask
                 text = torch.cat([plot_token, review_token], dim=1)  # [B, 2N, L]
                 mask = torch.cat([plot_mask, review_mask], dim=1)  # [B, 2N, L]
+                meta = torch.cat([plot_meta, review_meta], dim=1) # [B, 2N, L']
                 max_len = max_plot_len
+                max_meta_len = n_meta
                 n_text = n_plot * 2
 
             else:  # Cand.4: Review & Plot
@@ -117,7 +121,11 @@ class MovieExpertCRS(nn.Module):
                 review_mask = review_mask.repeat(1, n_plot, 1).view(batch_size, -1, max_plot_len)
                 mask = torch.cat([plot_mask, review_mask], dim=2)
 
+                plot_meta = plot_meta.repeat(1, 1, n_plot).view(batch_size, -1, n_meta)
+                review_meta = review_meta.repeat(1, n_plot, 1).view(batch_size, -1, n_meta)
+                meta = torch.cat([plot_meta, review_meta], dim=2)
                 max_len = max_plot_len * 2
+                max_meta_len = n_meta * 2
                 n_text = n_plot ** 2
 
                 # text = torch.cat([plot_token, review_token], dim=1)
@@ -125,13 +133,17 @@ class MovieExpertCRS(nn.Module):
         elif 'plot' in self.name:  # cand.1: Plot
             text = plot_token
             mask = plot_mask
+            meta = plot_meta
             max_len = max_plot_len
+            max_meta_len = n_meta
             n_text = n_plot
 
         elif 'review' in self.name:  # Cand.2: Review
             text = review_token
             mask = review_mask
+            meta = review_meta
             max_len = max_plot_len
+            max_meta_len = n_meta
             n_text = n_plot
         text = text.to(self.device_id)
         mask = mask.to(self.device_id)
@@ -160,12 +172,13 @@ class MovieExpertCRS(nn.Module):
         content_emb = self.dropout(content_emb)
 
         if self.args.meta:
-            context_entities = context_entities.to(self.device_id)
-            entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
-            entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-            entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (bs, entity_dim)
-            entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(
-                self.device_id)
+            meta = meta.to(self.device_id) # [B, N, L']
+            meta = meta.view(-1, max_meta_len) # [B * N, L']
+            entity_representations = kg_embedding[meta]  # [B * N, L', d]
+            entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+            entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
+            # entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(
+            #     self.device_id)
 
             entity_attn_rep = self.dropout(entity_attn_rep)
 
