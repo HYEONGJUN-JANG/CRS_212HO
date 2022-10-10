@@ -8,6 +8,8 @@ from tqdm import tqdm
 def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path, pretrain_dataloader):
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
+    best_hit = [[], [], [], [], []]
+    eval_metric = -1
 
     for epoch in range(args.epoch):
 
@@ -74,6 +76,11 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
                 '[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
                     epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
                     100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
+
+        if np.mean(hit_ft[0]) > eval_metric:
+            eval_metric = np.mean(hit_ft[0])
+            for k in range(len(topk)):
+                best_hit[k] = np.mean(hit_ft[k])
 
         # TRAIN
         model.train()
@@ -158,11 +165,22 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         hit_score = np.mean(hit_ft[k])
         print('hit@%d:\t%.4f' % (topk[k], hit_score))
 
+    if np.mean(hit_ft[0]) > eval_metric:
+        # eval_metric = np.mean(hit_ft[0])
+        for k in range(len(topk)):
+            best_hit[k] = np.mean(hit_ft[k])
+
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
         result_f.write(
             '[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
                 args.epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
                 100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
+
+    with open(results_file_path, 'a', encoding='utf-8') as result_f:
+        result_f.write(
+            '[BEST] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
+                args.epoch, 100 * best_hit[0], 100 * best_hit[0], 100 * best_hit[0], 100 * best_hit[0],
+                100 * best_hit[0]))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
