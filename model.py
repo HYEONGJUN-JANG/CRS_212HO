@@ -107,7 +107,7 @@ class MovieExpertCRS(nn.Module):
                 # mask = p_mask * plot_mask + (~p_mask) * review_mask
                 text = torch.cat([plot_token, review_token], dim=1)  # [B, 2N, L]
                 mask = torch.cat([plot_mask, review_mask], dim=1)  # [B, 2N, L]
-                meta = torch.cat([plot_meta, review_meta], dim=1) # [B, 2N, L']
+                meta = torch.cat([plot_meta, review_meta], dim=1)  # [B, 2N, L']
                 max_len = max_plot_len
                 max_meta_len = n_meta
                 n_text = n_plot * 2
@@ -172,11 +172,12 @@ class MovieExpertCRS(nn.Module):
         content_emb = self.dropout(content_emb)
 
         if self.args.meta:
-            meta = meta.to(self.device_id) # [B, N, L']
-            meta = meta.view(-1, max_meta_len) # [B * N, L']
+            meta = meta.to(self.device_id)  # [B, N, L']
+            meta = meta.view(-1, max_meta_len)  # [B * N, L']
             entity_representations = kg_embedding[meta]  # [B * N, L', d]
             entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-            entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
+            entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
+                                                    position=self.args.position)  # (B *  N, d)
             # entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(
             #     self.device_id)
 
@@ -200,7 +201,8 @@ class MovieExpertCRS(nn.Module):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (bs, entity_dim)
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
+                                                position=self.args.position)  # (bs, entity_dim)
 
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
         if self.args.word_encoder == 0:

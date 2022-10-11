@@ -50,7 +50,7 @@ class SelfDotAttention(nn.Module):
         nn.init.xavier_uniform_(self.affine2.weight)
         nn.init.zeros_(self.affine2.bias)
 
-    def forward(self, h, mask=None, return_logits=False):
+    def forward(self, h, mask=None, return_logits=False, position=False):
         """
         For the padding tokens, its corresponding mask is True
         if mask==[1, 1, 1, ...]
@@ -60,11 +60,11 @@ class SelfDotAttention(nn.Module):
         batch_size = mask.shape[0]
         max_len = mask.shape[1]
 
-        pos_emb = self.pos_embedding.weight[:max_len]  # [L, d]
-        pos_emb = torch.flip(pos_emb, dims=[0])  # [L, d]
-        pos_emb = pos_emb.unsqueeze(0).repeat(batch_size, 1, 1)  # [B, L, d]
-
-        h = h + pos_emb
+        if position:
+            pos_emb = self.pos_embedding.weight[:max_len]  # [L, d]
+            pos_emb = torch.flip(pos_emb, dims=[0])  # [L, d]
+            pos_emb = pos_emb.unsqueeze(0).repeat(batch_size, 1, 1)  # [B, L, d]
+            h = h + pos_emb
 
         a = self.affine2(torch.tanh(self.affine1(h))).squeeze(2)
         if mask is not None:
@@ -117,7 +117,7 @@ class LastQueryAttention(nn.Module):
         # pos_emb = torch.flip(pos_emb, dims=[0])  # [L, d]
         # pos_emb = pos_emb.unsqueeze(0).repeat(batch_size, 1, 1)  # [B, L, d]
         # h = h + pos_emb
-        q = h[:,-1].unsqueeze(1)
+        q = h[:, -1].unsqueeze(1)
         a = self.Wp(torch.tanh(self.Wq(q) + self.Wk(h))).squeeze(2)
         # a = self.affine2(torch.tanh(self.affine1(h))).squeeze(2)
         if mask is not None:
