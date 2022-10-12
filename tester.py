@@ -27,4 +27,4 @@ if __name__ == '__main__':
     results_file_path = f"./results/Final_{mdhm}_name_{args.name}.txt"
     # parameters
     with open(results_file_path, 'w', encoding='utf-8') as result_f:
-        result_f.write('\t'.join(list(avg_result)))
+        result_f.write('\t'.join(map(str, list(avg_result))))
