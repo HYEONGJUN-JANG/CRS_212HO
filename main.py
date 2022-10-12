@@ -60,10 +60,7 @@ def randomize_model(model):
     return model
 
 
-if __name__ == '__main__':
-
-    args = parse_args()
-
+def main(args):
     pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
     trained_path = f'./saved_model/trained_model_{args.name}.pt'
 
@@ -126,8 +123,14 @@ if __name__ == '__main__':
     train_dataloader = ReDialDataLoader(train_data, args.n_sample, word_truncate=args.max_dialog_len)
     test_dataloader = ReDialDataLoader(test_data, args.n_sample, word_truncate=args.max_dialog_len)
 
-    train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path,
-                      pretrain_dataloader)
+    best_result = train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path,
+                                    pretrain_dataloader)
 
+    return best_result
     # todo: result 기록하는 부분 --> train_recommender 안에 구현 완료
     # todo: ???
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)

@@ -118,7 +118,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         # Pre-training Test
         for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(
                 pretrain_dataloader):
-            scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, movie_id,
+            scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token,
+                                                  review_mask, movie_id,
                                                   compute_score=True)
             scores = scores[:, torch.LongTensor(model.movie2ids)]
 
@@ -178,12 +179,9 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
                 args.epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
                 100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
 
-    with open(results_file_path, 'a', encoding='utf-8') as result_f:
-        result_f.write(
-            '[BEST] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
-                args.epoch, 100 * best_hit[0], 100 * best_hit[1], 100 * best_hit[2], 100 * best_hit[3],
-                100 * best_hit[4]))
+    best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
+    return best_result
 
 # todo: train_generator
