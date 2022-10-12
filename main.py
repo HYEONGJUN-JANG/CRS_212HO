@@ -123,10 +123,11 @@ def main(args):
     train_dataloader = ReDialDataLoader(train_data, args.n_sample, word_truncate=args.max_dialog_len)
     test_dataloader = ReDialDataLoader(test_data, args.n_sample, word_truncate=args.max_dialog_len)
 
-    best_result = train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path,
-                                    pretrain_dataloader)
+    content_hit, initial_hit, best_result = train_recommender(args, model, train_dataloader, test_dataloader,
+                                                              trained_path, results_file_path,
+                                                              pretrain_dataloader)
 
-    return best_result
+    return content_hit, initial_hit, best_result
     # todo: result 기록하는 부분 --> train_recommender 안에 구현 완료
     # todo: ???
 
