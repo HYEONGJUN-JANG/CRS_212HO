@@ -6,7 +6,7 @@ from parameters import parse_args
 from main import main
 import numpy as np
 
-NUM_TRIAL = 1
+NUM_TRIAL = 5
 content_hits, initial_hits, best_results = [], [], []
 if __name__ == '__main__':
     args = parse_args()
