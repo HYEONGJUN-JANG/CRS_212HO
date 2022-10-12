@@ -84,30 +84,30 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
                 best_hit[k] = np.mean(hit_ft[k])
 
         # TRAIN
-        model.train()
-        total_loss = 0
-
-        logger.info(f'[Recommendation epoch {str(epoch)}]')
-        logger.info('[Train]')
-
-        for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items = batch
-            scores_ft = model.forward(context_entities, context_tokens)
-            loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
-
-            if 'none' not in args.name:
-                loss_pt = model.pre_forward(plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items)
-                # loss_pt = model.criterion(scores_pt, target_items.to(args.device_id))
-                loss = loss_ft + (loss_pt * args.loss_lambda)
-            else:
-                loss = loss_ft
-
-            total_loss += loss.data.float()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
-        # scheduler.step()
+        # model.train()
+        # total_loss = 0
+        #
+        # logger.info(f'[Recommendation epoch {str(epoch)}]')
+        # logger.info('[Train]')
+        #
+        # for batch in train_dataloader.get_rec_data(args.batch_size):
+        #     context_entities, context_tokens, plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items = batch
+        #     scores_ft = model.forward(context_entities, context_tokens)
+        #     loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
+        #
+        #     if 'none' not in args.name:
+        #         loss_pt = model.pre_forward(plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items)
+        #         # loss_pt = model.criterion(scores_pt, target_items.to(args.device_id))
+        #         loss = loss_ft + (loss_pt * args.loss_lambda)
+        #     else:
+        #         loss = loss_ft
+        #
+        #     total_loss += loss.data.float()
+        #     optimizer.zero_grad()
+        #     loss.backward()
+        #     optimizer.step()
+        # print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
+        # # scheduler.step()
 
     model.eval()
     topk = [1, 5, 10, 20, 50]
