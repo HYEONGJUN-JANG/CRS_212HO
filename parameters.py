@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--valid_portion', type=float, default=0.1, help='valid_portion')
     parser.add_argument('--loss_lambda', type=float, default=0.1, help='lambda')
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
-    parser.add_argument('--meta', action='store_true')
+    parser.add_argument('--meta', type=str, default='meta-word')
     parser.add_argument('--position', action='store_true')
 
     parser.add_argument('--warmup_step', type=int, default=1, help='warmup_step')

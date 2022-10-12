@@ -171,22 +171,24 @@ class MovieExpertCRS(nn.Module):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         content_emb = self.dropout(content_emb)
 
-        if self.args.meta:
-            meta = meta.to(self.device_id)  # [B, N, L']
-            meta = meta.view(-1, max_meta_len)  # [B * N, L']
-            entity_representations = kg_embedding[meta]  # [B * N, L', d]
-            entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-            entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
-                                                    position=self.args.position)  # (B *  N, d)
-            # entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(
-            #     self.device_id)
+        meta = meta.to(self.device_id)  # [B, N, L']
+        meta = meta.view(-1, max_meta_len)  # [B * N, L']
+        entity_representations = kg_embedding[meta]  # [B * N, L', d]
+        entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
+                                                position=self.args.position)  # (B *  N, d)
+        # entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(
+        #     self.device_id)
 
-            entity_attn_rep = self.dropout(entity_attn_rep)
+        entity_attn_rep = self.dropout(entity_attn_rep)
 
+        if 'word' in self.args.meta and 'meta' in self.args.meta:
             gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
             user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep
-        else:
+        elif 'word' in self.args.meta:
             user_embedding = content_emb
+        elif 'meta' in self.args.meta:
+            user_embedding = entity_attn_rep
 
         # user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
