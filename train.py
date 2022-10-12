@@ -9,8 +9,6 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
     best_hit = [[], [], [], [], []]
-    initial_hit = [[], [], [], [], []]
-    content_hit = [[], [], [], [], []]
 
     eval_metric = -1
 
@@ -50,9 +48,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
                         epoch, 100 * np.mean(hit_pt[0]), 100 * np.mean(hit_pt[1]), 100 * np.mean(hit_pt[2]),
                         100 * np.mean(hit_pt[3]), 100 * np.mean(hit_pt[4])))
             if epoch == 0:
-                content_hit[0] = 100 * np.mean(hit_pt[0])
-                content_hit[2] = 100 * np.mean(hit_pt[2])
-                content_hit[4] = 100 * np.mean(hit_pt[4])
+                content_result = [100 * np.mean(hit_pt[0]), 100 * np.mean(hit_pt[2]), 100 * np.mean(hit_pt[4])]
         # Fine-tuning Test
         for batch in test_dataloader.get_rec_data(args.batch_size, shuffle=False):
             context_entities, context_tokens, _, _, _, _, _, _, target_items = batch
@@ -84,9 +80,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
                     100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
 
         if epoch == 0:
-            initial_hit[0] = 100 * np.mean(hit_ft[0])
-            initial_hit[2] = 100 * np.mean(hit_ft[2])
-            initial_hit[4] = 100 * np.mean(hit_ft[4])
+            intial_result = [100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[2]), 100 * np.mean(hit_ft[4])]
 
         if np.mean(hit_ft[0]) > eval_metric:
             eval_metric = np.mean(hit_ft[0])
@@ -192,6 +186,6 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
-    return content_hit, initial_hit, best_result
+    return content_result, intial_result, best_result
 
 # todo: train_generator

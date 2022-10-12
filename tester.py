@@ -21,6 +21,8 @@ if __name__ == '__main__':
         initial_hits.append(initial_hit)
         best_results.append(best_result)
 
+    print(content_hits)
+
     avg_content_hits = np.mean(np.array(content_hits), axis=0)
     avg_initial_hits = np.mean(np.array(initial_hits), axis=0)
     avg_best_results = np.mean(np.array(best_results), axis=0)
