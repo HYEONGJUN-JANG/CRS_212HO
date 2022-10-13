@@ -13,57 +13,6 @@ import os
 import numpy as np
 
 
-class KGInformation:
-    def __init__(self, data_path):
-        self.entity2id = json.load(
-            open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
-        self.id2entity = {idx: entity for entity, idx in self.entity2id.items()}
-        self.n_entity = max(self.entity2id.values()) + 1
-        # {head_entity_id: [(relation_id, tail_entity_id)]}
-        self.entity_kg = json.load(open(os.path.join(data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
-        self.entity_kg = self._entity_kg_process()
-        self.entity_neighbor = self._entitiy_kg_neighbor()
-
-    def _entitiy_kg_neighbor(self):
-        # entity_neighbor = dict()
-        entity_neighbor = defaultdict(set)
-
-        for h, t, _ in self.entity_kg['edge']:
-            if h == t:
-                continue
-            entity_neighbor[h].add(t)
-            entity_neighbor[t].add(h)
-
-        return entity_neighbor
-
-    def _entity_kg_process(self, SELF_LOOP_ID=185):
-        edge_list = []  # [(entity, entity, relation)]
-        for entity in range(self.n_entity):
-            if str(entity) not in self.entity_kg:
-                continue
-            edge_list.append((entity, entity, SELF_LOOP_ID))  # add self loop
-            for tail_and_relation in self.entity_kg[str(entity)]:
-                if entity != tail_and_relation[1] and tail_and_relation[0] != SELF_LOOP_ID:
-                    edge_list.append((entity, tail_and_relation[1], tail_and_relation[0]))
-                    edge_list.append((tail_and_relation[1], entity, tail_and_relation[0]))
-
-        relation_cnt, relation2id, edges, entities = defaultdict(int), dict(), set(), set()
-        for h, t, r in edge_list:
-            relation_cnt[r] += 1
-        for h, t, r in edge_list:
-            if relation_cnt[r] > 1000:
-                if r not in relation2id:
-                    relation2id[r] = len(relation2id)
-                edges.add((h, t, relation2id[r]))
-                entities.add(self.id2entity[h])
-                entities.add(self.id2entity[t])
-        return {
-            'edge': list(edges),
-            'n_relation': len(relation2id),
-            'entity': list(entities)
-        }
-
-
 class ContentInformation(Dataset):
     def __init__(self, args, data_path, tokenizer, device):
         super(Dataset, self).__init__()
@@ -79,8 +28,6 @@ class ContentInformation(Dataset):
         self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
         self.key_list = list(self.data_samples.keys())  # entity id list
-
-        self.meta_information = KGInformation(data_path).entity_neighbor
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
         f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
@@ -131,13 +78,9 @@ class ContentInformation(Dataset):
                 plots_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
                 plots_meta[idx] = plots_meta[idx] + [0] * (self.args.n_meta - len(meta))
 
-
             for i in range(min(len(reviews), self.args.n_review)):
-                review = tokenized_reviews.input_ids[i]
-                review_mask = tokenized_reviews.attention_mask[i]
-
-                review_list.append(review)
-                review_mask_list.append(review_mask)
+                review_list.append(tokenized_reviews.input_ids[i])
+                review_mask_list.append(tokenized_reviews.attention_mask[i])
                 reviews_meta_list.append(reviews_meta[i])
 
             for i in range(self.args.n_review - len(reviews)):
@@ -146,12 +89,8 @@ class ContentInformation(Dataset):
                 review_mask_list.append(zero_vector)
 
             for i in range(min(len(plots), self.args.n_plot)):
-                plot = tokenized_plots.input_ids[i]
-                plot_mask = tokenized_plots.attention_mask[i]
-
-                plot_list.append(plot)
-                plot_mask_list.append(plot_mask)
-
+                plot_list.append(tokenized_plots.input_ids[i])
+                plot_mask_list.append(tokenized_plots.attention_mask[i])
                 plots_meta_list.append(plots_meta[i])
 
             for i in range(self.args.n_plot - len(plots)):
@@ -159,19 +98,19 @@ class ContentInformation(Dataset):
                 plot_list.append(zero_vector)
                 plot_mask_list.append(zero_vector)
 
-            self.data_samples[str(self.movie2name[crs_id][0])] = {"plot": plot_list, "plot_mask": plot_mask_list,
-                                                                  "review": review_list,
-                                                                  "review_mask": review_mask_list,
-                                                                  "review_meta": reviews_meta_list,
-                                                                  "plot_meta": plots_meta_list}
+            self.data_samples[self.movie2name[crs_id][0]] = {"plot": plot_list, "plot_mask": plot_mask_list,
+                                                             "review": review_list,
+                                                             "review_mask": review_mask_list,
+                                                             "review_meta": reviews_meta_list,
+                                                             "plot_meta": plots_meta_list}
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, item):
         idx = self.key_list[item]  # dbpedia id
-        plot = self.data_samples[idx]['plot']
+        plot_token = self.data_samples[idx]['plot']
         plot_mask = self.data_samples[idx]['plot_mask']
-        review = self.data_samples[idx]['review']
+        review_token = self.data_samples[idx]['review']
         review_mask = self.data_samples[idx]['review_mask']
         review_meta = self.data_samples[idx]['review_meta']
         plot_meta = self.data_samples[idx]['plot_meta']
@@ -186,27 +125,28 @@ class ContentInformation(Dataset):
         plot_exist_num = np.count_nonzero(np.sum(np.array(plot_mask), axis=1))
         review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
 
-        if plot_exist_num == 0 or review_exist_num == 0:
+        # 221013. 기존코드는 plot 혹은 review가 0이라면, 둘 다 1로 설정; plot 은 0인데 , review 는 10개라면?
+        if plot_exist_num == 0:
             plot_exist_num = 1
+        if review_exist_num == 0:
             review_exist_num = 1
 
         plot_sample_idx = [random.randint(0, plot_exist_num - 1) for _ in range(self.args.n_sample)]
         review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.args.n_sample)]
 
-        plot = [plot[k] for k in plot_sample_idx]
+        plot_token = [plot_token[k] for k in plot_sample_idx]
         plot_mask = [plot_mask[k] for k in plot_sample_idx]
         plot_meta = [plot_meta[k] for k in plot_sample_idx]
 
-        review = [review[k] for k in review_sample_idx]
+        review_token = [review_token[k] for k in review_sample_idx]
         review_mask = [review_mask[k] for k in review_sample_idx]
         review_meta = [review_meta[k] for k in review_sample_idx]
 
-
-        idx = torch.tensor(int(idx))
-        plot_token = torch.LongTensor(plot)
+        idx = torch.tensor(idx)
+        plot_token = torch.LongTensor(plot_token)
         plot_mask = torch.LongTensor(plot_mask)
         plot_meta = torch.LongTensor(plot_meta)
-        review_token = torch.LongTensor(review)
+        review_token = torch.LongTensor(review_token)
         review_mask = torch.LongTensor(review_mask)
         review_meta = torch.LongTensor(review_meta)
 
@@ -250,6 +190,8 @@ class ReDialDataset:
         self.n_entity = max(self.entity2id.values()) + 1
         # {head_entity_id: [(relation_id, tail_entity_id)]}
         self.entity_kg = json.load(open(os.path.join(self.data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
+        self.entity_kg = self._entity_kg_process()
+
         self.movie2name = json.load(
             open(os.path.join(self.data_path, 'movie2name.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
 
@@ -258,8 +200,6 @@ class ReDialDataset:
 
         logger.debug(
             f"[Load entity dictionary and KG from {os.path.join(self.data_path, 'entity2id.json')} and {os.path.join(self.data_path, 'dbpedia_subkg.json')}]")
-
-        self.entity_kg = self._entity_kg_process()
 
         logger.debug("[Finish entity KG process]")
 
@@ -293,13 +233,6 @@ class ReDialDataset:
     def _load_data(self):
         train_data_raw, valid_data_raw, test_data_raw = self._load_raw_data()  # load raw train, valid, test data
 
-        # if self.args.test:
-        #     # For test mode
-        #     train_data_raw.extend(valid_data_raw)
-        # else:
-        #     # For valid mode
-        #     test_data_raw = valid_data_raw
-
         self.train_data = self._raw_data_process(train_data_raw)  # training sample 생성
         logger.debug("[Finish train data process]")
         self.test_data = self._raw_data_process(test_data_raw)
@@ -323,7 +256,7 @@ class ReDialDataset:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
             for idx, word in enumerate(utt['text']):
                 if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = self.movie2name[word[1:]][1]  # movie2name -> movie2info 로 변경 필요
+                    utt['text'][idx] = self.movie2name[word[1:]][1]
 
             text = ' '.join(utt['text'])
             text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
@@ -358,20 +291,12 @@ class ReDialDataset:
                 # if len(movies) > 1:
                 #     print()
                 for movie in movies:
-                    try:
-                        plot_meta.append(self.content_dataset.data_samples[str(movie)]['plot_meta'])
-                        plot.append(self.content_dataset.data_samples[str(movie)]['plot'])
-                        plot_mask.append(self.content_dataset.data_samples[str(movie)]['plot_mask'])
-                        review_meta.append(self.content_dataset.data_samples[str(movie)]['review_meta'])
-                        review.append(self.content_dataset.data_samples[str(movie)]['review'])
-                        review_mask.append(self.content_dataset.data_samples[str(movie)]['review_mask'])
-                    except KeyError as e:
-                        plot_meta.append([])
-                        plot.append([])
-                        plot_mask.append([])
-                        review_meta.append([])
-                        review.append([])
-                        review_mask.append([])
+                    plot_meta.append(self.content_dataset.data_samples[movie]['plot_meta'])
+                    plot.append(self.content_dataset.data_samples[movie]['plot'])
+                    plot_mask.append(self.content_dataset.data_samples[movie]['plot_mask'])
+                    review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
+                    review.append(self.content_dataset.data_samples[movie]['review'])
+                    review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
 
                 conv_dict = {
                     "role": conv['role'],

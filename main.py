@@ -61,20 +61,25 @@ def randomize_model(model):
 
 
 def main(args):
+    # 22.10.13: path of saved model
     pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
     trained_path = f'./saved_model/trained_model_{args.name}.pt'
 
+    # CUDA device check
+    # todo: multi-GPU
     if torch.cuda.device_count() > 1:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(device)
 
     # create result file
+    # todo: tester 와 겹치는 부분 없는지?
     results_file_path = createResultFile(args)
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
     DATA_PATH = os.path.join(ROOT_PATH, 'data')
     REDIAL_DATASET_PATH = os.path.join(DATA_PATH, 'redial')
+    # todo: 삭제??
     content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
 
     # Load BERT (by using huggingface)
@@ -95,7 +100,6 @@ def main(args):
             for param in module.parameters():
                 param.requires_grad = False
 
-    # Content data 중복해서 읽고 있어서, 한번만 읽고 argument 로 넣어줌
     content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer)
 
@@ -111,17 +115,17 @@ def main(args):
 
     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
-    # For pre-training
-    if args.name != "none":
-        if not args.pretrained:
-            # content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
+    # # For pre-training
+    # if args.name != "none":
+    #     if not args.pretrained:
+    #         # content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
+    #
+    #         pretrain(args, model, pretrain_dataloader, pretrained_path)
+    #     else:
+    #         model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
-            pretrain(args, model, pretrain_dataloader, pretrained_path)
-        else:
-            model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
-
-    train_dataloader = ReDialDataLoader(train_data, args.n_sample, word_truncate=args.max_dialog_len)
-    test_dataloader = ReDialDataLoader(test_data, args.n_sample, word_truncate=args.max_dialog_len)
+    train_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size, word_truncate=args.max_dialog_len)
+    test_dataloader = ReDialDataLoader(test_data, args.n_sample, args.batch_size, word_truncate=args.max_dialog_len)
 
     best_result = train_recommender(args, model, train_dataloader, test_dataloader, trained_path, results_file_path,
                                     pretrain_dataloader)
