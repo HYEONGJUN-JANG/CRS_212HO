@@ -17,10 +17,12 @@ def parse_args():
     parser.add_argument('--num_bases', type=int, default=8)
 
     parser.add_argument('--max_title_len', type=int, default=20)
-    parser.add_argument('--epoch', type=int, default=30)
+    parser.add_argument('--epoch_pt', type=int, default=30)
+    parser.add_argument('--epoch_ft', type=int, default=20)
+
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--device_id', type=int, default=0)
-    parser.add_argument('--lr_pt', type=float, default=1e-5, help='Pre-training Learning rate')
+    parser.add_argument('--lr_pt', type=float, default=1e-4, help='Pre-training Learning rate')
     parser.add_argument('--lr_ft', type=float, default=1e-3, help='Fine-tuning Learning rate')
     parser.add_argument('--valid_portion', type=float, default=0.1, help='valid_portion')
     parser.add_argument('--loss_lambda', type=float, default=0.1, help='lambda')
@@ -32,7 +34,7 @@ def parse_args():
     parser.add_argument('--warmup_gamma', type=float, default=10.0, help='warmup_gamma')
 
     # BERT
-    parser.add_argument('--bert_name', type=str, default='prajjwal1/bert-tiny',
+    parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small',
                                  'prajjwal1/bert-mini', 'prajjwal1/bert-tiny'])
     parser.add_argument('--n_layer', type=int, default=2)

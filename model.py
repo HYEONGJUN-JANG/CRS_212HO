@@ -102,9 +102,6 @@ class MovieExpertCRS(nn.Module):
 
         if 'plot' in self.name and 'review' in self.name:
             if 'serial' in self.name:  # Cand.3: Review | Plot
-                # p_mask = torch.sum(plot_mask, dim=1, keepdim=True) > 0
-                # text = p_mask * plot_token + (~p_mask) * review_token
-                # mask = p_mask * plot_mask + (~p_mask) * review_mask
                 text = torch.cat([plot_token, review_token], dim=1)  # [B, 2N, L]
                 mask = torch.cat([plot_mask, review_mask], dim=1)  # [B, 2N, L]
                 meta = torch.cat([plot_meta, review_meta], dim=1)  # [B, 2N, L']

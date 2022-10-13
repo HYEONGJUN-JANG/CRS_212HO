@@ -84,7 +84,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
 
-    for epoch in range(args.epoch):
+    for epoch in range(args.epoch_ft):
         pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path)
         finetuning_evaluate(model, test_dataloader, epoch, results_file_path)
 
