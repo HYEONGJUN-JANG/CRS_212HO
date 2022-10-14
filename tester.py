@@ -34,7 +34,7 @@ if __name__ == '__main__':
         initial_hits.append(initial_hit)
         best_results.append(best_result)
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
-            result_f.write('#TRIAL:\t%d\n', t)
+            result_f.write('#TRIAL:\t%d\n' % t)
             result_f.write('content_hits:\t' + '\t'.join(format(x, ".2f") for x in content_hit) + '\n')
             result_f.write('initial_hits:\t' + '\t'.join(format(x, ".2f") for x in initial_hit) + '\n')
             result_f.write('best_hits:\t' + '\t'.join(format(x, ".2f") for x in best_result) + '\n')
