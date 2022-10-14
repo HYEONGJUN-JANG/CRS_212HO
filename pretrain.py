@@ -8,7 +8,7 @@ from tqdm import tqdm
 def pretrain(args, model, pretrain_dataloader, path):
     optimizer = optim.Adam(model.parameters(), lr=args.lr_pt)
 
-    for epoch in range(args.epoch):
+    for epoch in range(args.epoch_pt):
         model.train()
         total_loss = 0
 

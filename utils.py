@@ -9,6 +9,9 @@ from datetime import datetime
 from pytz import timezone
 
 
+def get_time_kst(): return datetime.now(timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
+
+
 def split_validation(train_set, valid_portion):
     n_samples = len(train_set)
     sidx = np.arange(n_samples, dtype='int32')
