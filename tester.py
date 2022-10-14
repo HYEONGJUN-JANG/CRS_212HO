@@ -9,6 +9,7 @@ import numpy as np
 NUM_TRIAL = 5
 content_hits, initial_hits, best_results = [], [], []
 if __name__ == '__main__':
+
     args = parse_args()
     command = 'python main.py'
     for i, v in vars(args).items():
