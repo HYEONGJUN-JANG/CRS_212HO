@@ -30,8 +30,8 @@ def parse_args():
     parser.add_argument('--meta', type=str, default='meta-word')
     parser.add_argument('--position', action='store_true')
 
-    parser.add_argument('--warmup_step', type=int, default=1, help='warmup_step')
-    parser.add_argument('--warmup_gamma', type=float, default=10.0, help='warmup_gamma')
+    parser.add_argument('--warmup_step', type=int, default=5, help='warmup_step')
+    parser.add_argument('--warmup_gamma', type=float, default=0.1, help='warmup_gamma')
 
     # BERT
     parser.add_argument('--bert_name', type=str, default='bert-base-uncased',

@@ -111,7 +111,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
             loss.backward()
             optimizer.step()
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
-        # scheduler.step()
+        scheduler.step()
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
     pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path)
