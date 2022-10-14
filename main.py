@@ -25,7 +25,7 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertM
 
 
 ## HJ Branch Test
-def get_time_kst(): return datetime.now(timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M:%S')
+from utils import get_time_kst
 
 
 def createResultFile(args):

@@ -6,6 +6,8 @@ from parameters import parse_args
 from main import main
 import numpy as np
 
+from utils import get_time_kst
+
 NUM_TRIAL = 5
 content_hits, initial_hits, best_results = [], [], []
 if __name__ == '__main__':
@@ -20,6 +22,8 @@ if __name__ == '__main__':
     results_file_path = f"./results/Final_{mdhm}_name_{args.name}.txt"
     with open(results_file_path, 'w', encoding='utf-8') as result_f:
         result_f.write('\n=================================================\n')
+        result_f.write(get_time_kst())
+        result_f.write('\n')
         for i, v in vars(args).items():
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
