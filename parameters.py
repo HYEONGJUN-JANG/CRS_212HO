@@ -29,6 +29,8 @@ def parse_args():
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
     parser.add_argument('--meta', type=str, default='word')
     parser.add_argument('--position', action='store_false')
+    parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
+
 
     parser.add_argument('--lr_dc_step', type=int, default=5, help='warmup_step')
     parser.add_argument('--lr_dc', type=float, default=0.1, help='warmup_gamma')
