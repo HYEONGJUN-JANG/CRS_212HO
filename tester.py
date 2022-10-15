@@ -39,7 +39,7 @@ if __name__ == '__main__':
             result_f.write('initial_hits:\t' + '\t'.join(format(x, ".2f") for x in initial_hit) + '\n')
             result_f.write('best_hits:\t' + '\t'.join(format(x, ".2f") for x in best_result) + '\n')
 
-    print(content_hits)
+    # print(content_hits)
 
     avg_content_hits = np.mean(np.array(content_hits), axis=0)
     avg_initial_hits = np.mean(np.array(initial_hits), axis=0)
