@@ -24,6 +24,8 @@ if __name__ == '__main__':
         result_f.write('\n=================================================\n')
         result_f.write(get_time_kst())
         result_f.write('\n')
+        result_f.write(command)
+        result_f.write('\n')
         for i, v in vars(args).items():
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
