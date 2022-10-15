@@ -16,8 +16,8 @@ class MovieExpertCRS(nn.Module):
         self.movie2ids = movie2ids
         self.name = name  # argument 를 통한 abaltion을 위해 필요
         self.device_id = args.device_id
-        self.dropout = nn.Dropout(0.25)
-
+        self.dropout_pt = nn.Dropout(args.dropout_pt)
+        self.dropout_ft = nn.Dropout(args.dropout_ft)
         # R-GCN
         # todo: pre-trainig (R-GCN 자체 or content 내 meta data 를 활용하여?) (후자가 날 듯)
         self.n_entity = n_entity
@@ -165,7 +165,7 @@ class MovieExpertCRS(nn.Module):
             # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
-        content_emb = self.dropout(content_emb)
+        content_emb = self.dropout_pt(content_emb)
 
         meta = meta.to(self.device_id)  # [B, N, L']
         meta = meta.view(-1, max_meta_len)  # [B * N, L']
@@ -175,7 +175,7 @@ class MovieExpertCRS(nn.Module):
         # entity_attn_rep = entity_attn_rep.unsqueeze(1).repeat(1, n_text, 1).view(-1, self.kg_emb_dim).to(
         #     self.device_id)
 
-        entity_attn_rep = self.dropout(entity_attn_rep)
+        entity_attn_rep = self.dropout_pt(entity_attn_rep)
 
         if 'word' in self.args.meta and 'meta' in self.args.meta:
             gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
@@ -213,7 +213,10 @@ class MovieExpertCRS(nn.Module):
             token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
             token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
 
-        # 22.09.24 Gating mechanism 없이 word 로만 training -->  주석 해제
+        # dropout
+        token_attn_rep = self.dropout_ft(token_attn_rep)
+        entity_attn_rep = self.dropout_ft(entity_attn_rep)
+
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
 
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
