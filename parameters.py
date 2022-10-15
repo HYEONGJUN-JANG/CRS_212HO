@@ -17,8 +17,8 @@ def parse_args():
     parser.add_argument('--num_bases', type=int, default=8)
 
     parser.add_argument('--max_title_len', type=int, default=20)
-    parser.add_argument('--epoch_pt', type=int, default=30)
-    parser.add_argument('--epoch_ft', type=int, default=10)
+    parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
+    parser.add_argument('--epoch_ft', type=int, default=10)  # [NEW] # eprochs if fine-tuning
 
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--device_id', type=int, default=0)
@@ -27,10 +27,11 @@ def parse_args():
     parser.add_argument('--valid_portion', type=float, default=0.1, help='valid_portion')
     parser.add_argument('--loss_lambda', type=float, default=0.1, help='lambda')
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
-    parser.add_argument('--meta', type=str, default='word')
-    parser.add_argument('--position', action='store_false')
-    parser.add_argument('--dropout_pt', type=float, default=0, help='dropout_pt')
-    parser.add_argument('--dropout_ft', type=float, default=0, help='dropout_ft')
+    parser.add_argument('--meta', type=str, default='word',
+                        choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
+    parser.add_argument('--position', action='store_false')  # [NEW] default: use the positional embedding
+    parser.add_argument('--dropout_pt', type=float, default=0, help='dropout_pt')  # [NEW] dropout in pre-training
+    parser.add_argument('--dropout_ft', type=float, default=0, help='dropout_ft')  # [NEW] dropout in fine-tuning
 
     parser.add_argument('--lr_dc_step', type=int, default=5, help='warmup_step')
     parser.add_argument('--lr_dc', type=float, default=0.1, help='warmup_gamma')
@@ -38,7 +39,7 @@ def parse_args():
     # BERT
     parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small',
-                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base'])
+                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base'])  # [NEW] add roberta
     parser.add_argument('--n_layer', type=int, default=2)
     parser.add_argument('--t_layer', type=int, default=8)
 
