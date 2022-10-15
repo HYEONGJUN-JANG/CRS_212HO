@@ -18,7 +18,7 @@ def parse_args():
 
     parser.add_argument('--max_title_len', type=int, default=20)
     parser.add_argument('--epoch_pt', type=int, default=30)
-    parser.add_argument('--epoch_ft', type=int, default=20)
+    parser.add_argument('--epoch_ft', type=int, default=10)
 
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--device_id', type=int, default=0)
