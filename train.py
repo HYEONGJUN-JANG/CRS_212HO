@@ -6,6 +6,9 @@ from tqdm import tqdm
 
 topk = [1, 5, 10, 20, 50]
 best_hit = [[], [], [], [], []]
+initial_hit = [[], [], []]
+content_hit = [[], [], []]
+
 eval_metric = [-1]
 
 
@@ -41,6 +44,11 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path):
                 epoch, 100 * np.mean(hit_pt[0]), 100 * np.mean(hit_pt[1]), 100 * np.mean(hit_pt[2]),
                 100 * np.mean(hit_pt[3]), 100 * np.mean(hit_pt[4])))
 
+    if epoch == 0:
+        content_hit[0] = 100 * np.mean(hit_pt[0])
+        content_hit[1] = 100 * np.mean(hit_pt[2])
+        content_hit[2] = 100 * np.mean(hit_pt[4])
+
 
 def finetuning_evaluate(model, test_dataloader, epoch, results_file_path):
     hit_ft = [[], [], [], [], []]
@@ -73,6 +81,11 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path):
             '[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
                 epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
                 100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
+
+    if epoch == 0:
+        initial_hit[0] = 100 * np.mean(hit_ft[0])
+        initial_hit[1] = 100 * np.mean(hit_ft[2])
+        initial_hit[2] = 100 * np.mean(hit_ft[4])
 
     if np.mean(hit_ft[0]) > eval_metric[0]:
         eval_metric[0] = np.mean(hit_ft[0])
@@ -120,6 +133,6 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
-    return best_result
+    return content_hit, initial_hit, best_result
 
 # todo: train_generator
