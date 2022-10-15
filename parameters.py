@@ -34,9 +34,9 @@ def parse_args():
     parser.add_argument('--lr_dc', type=float, default=0.1, help='warmup_gamma')
 
     # BERT
-    parser.add_argument('--bert_name', type=str, default='roberta-base',
+    parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small',
-                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny','roberta-base'])
+                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base'])
     parser.add_argument('--n_layer', type=int, default=2)
     parser.add_argument('--t_layer', type=int, default=8)
 
