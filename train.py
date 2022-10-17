@@ -5,14 +5,9 @@ from torch import nn, optim
 from tqdm import tqdm
 
 topk = [1, 5, 10, 20, 50]
-best_hit = [[], [], [], [], []]
-initial_hit = [[], [], []]
-content_hit = [[], [], []]
-
-eval_metric = [-1]
 
 
-def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path):
+def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit):
     model.eval()
     hit_pt = [[], [], [], [], []]
 
@@ -50,9 +45,9 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path):
         content_hit[2] = 100 * np.mean(hit_pt[4])
 
 
-def finetuning_evaluate(model, test_dataloader, epoch, results_file_path):
+def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit):
     hit_ft = [[], [], [], [], []]
-
+    eval_metric = [0]
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(shuffle=False):
         context_entities, context_tokens, _, _, _, _, _, _, target_items = batch
@@ -94,6 +89,10 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path):
 
 
 def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path, pretrain_dataloader):
+    best_hit = [[], [], [], [], []]
+    initial_hit = [[], [], []]
+    content_hit = [[], [], []]
+
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
@@ -128,8 +127,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         scheduler.step()
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
-    pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path)
-    finetuning_evaluate(model, test_dataloader, epoch, results_file_path)
+    pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+    finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
