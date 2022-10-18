@@ -98,8 +98,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
 
     for epoch in range(args.epoch_ft):
-        pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path)
-        finetuning_evaluate(model, test_dataloader, epoch, results_file_path)
+        pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit)
 
         # TRAIN
         model.train()
