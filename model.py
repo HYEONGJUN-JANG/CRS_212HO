@@ -220,9 +220,9 @@ class MovieExpertCRS(nn.Module):
         if 'word' in self.args.meta and 'meta' in self.args.meta:
             gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
             user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
-        elif 'word' in self.args.data:
+        elif 'word' in self.args.meta:
             user_embedding = token_attn_rep
-        elif 'meta' in self.args.data:
+        elif 'meta' in self.args.meta:
             user_embedding = entity_attn_rep
 
         # user_embedding = token_attn_rep
