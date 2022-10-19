@@ -7,6 +7,7 @@ from main import main
 import numpy as np
 
 from utils import get_time_kst
+from pygit2 import Repository
 
 NUM_TRIAL = 5
 content_hits, initial_hits, best_results = [], [], []
@@ -14,6 +15,12 @@ if __name__ == '__main__':
 
     args = parse_args()
     command = 'python main.py'
+
+    # Git branch
+    repo = Repository(os.getcwd())
+    branch = repo.head.shorthand
+    hash = repo.head.target
+
     for i, v in vars(args).items():
         # print(i, v)
         command += f' --{i}={v}'
@@ -23,6 +30,10 @@ if __name__ == '__main__':
     with open(results_file_path, 'w', encoding='utf-8') as result_f:
         result_f.write('\n=================================================\n')
         result_f.write(get_time_kst())
+        result_f.write('\n')
+        result_f.write(branch)
+        result_f.write('\n')
+        result_f.write(hash)
         result_f.write('\n')
         result_f.write(command)
         result_f.write('\n')
