@@ -45,9 +45,8 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
         content_hit[2] = 100 * np.mean(hit_pt[4])
 
 
-def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit):
+def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric):
     hit_ft = [[], [], [], [], []]
-    eval_metric = [0]
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(shuffle=False):
         context_entities, context_tokens, _, _, _, _, _, _, target_items = batch
@@ -92,6 +91,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     best_hit = [[], [], [], [], []]
     initial_hit = [[], [], []]
     content_hit = [[], [], []]
+    eval_metric = [-1]
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
@@ -99,7 +99,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     for epoch in range(args.epoch_ft):
         pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit)
+        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
 
         # TRAIN
         model.train()
@@ -128,7 +128,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
     pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-    finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit)
+    finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
