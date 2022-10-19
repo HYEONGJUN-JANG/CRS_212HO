@@ -8,6 +8,7 @@ import numpy as np
 
 from utils import get_time_kst
 from pygit2 import Repository
+import sys
 
 NUM_TRIAL = 5
 content_hits, initial_hits, best_results = [], [], []
@@ -19,11 +20,11 @@ if __name__ == '__main__':
     # Git branch
     repo = Repository(os.getcwd())
     branch = repo.head.shorthand
-    hash = repo.head.target
+    hash = str(repo.head.target)
 
-    for i, v in vars(args).items():
-        # print(i, v)
-        command += f' --{i}={v}'
+    # for i, v in sys.argv:
+    #     # print(i, v)
+    #     command += f' --{i}={v}'
     # num_metric = 0
     mdhm = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M%S'))  # MonthDailyHourMinute .....e.g., 05091040
     results_file_path = f"./results/Final_{mdhm}_name_{args.name}.txt"
@@ -35,7 +36,7 @@ if __name__ == '__main__':
         result_f.write('\n')
         result_f.write(hash)
         result_f.write('\n')
-        result_f.write(command)
+        result_f.write(str(sys.argv))
         result_f.write('\n')
         for i, v in vars(args).items():
             result_f.write(f'{i}:{v} || ')
