@@ -121,7 +121,7 @@ def main(args):
     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
     # For pre-training
-    if args.name != "none":
+    if 'none' in args.name:
         if not args.pretrained:
             # content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
 
