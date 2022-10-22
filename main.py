@@ -31,8 +31,13 @@ from utils import get_time_kst
 def createResultFile(args):
     mdhm = str(
         datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M%S'))  # MonthDailyHourMinute .....e.g., 05091040
-    results_file_path = f"./results/{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}_{args.name}.txt"
-    if not os.path.exists('./results'): os.mkdir('./results')
+    # results_file_path = f"train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}_{args.name}.txt"
+    # if not os.path.exists('./results'): os.mkdir('./results')
+    rawSubfolder_name = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d') + '_raw')
+    rawFolder_path = os.path.join('./results', rawSubfolder_name)
+    if not os.path.exists(rawFolder_path): os.mkdir(rawFolder_path)
+
+    results_file_path = os.path.join(rawFolder_path, f"{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
 
     # parameters
     with open(results_file_path, 'a', encoding='utf-8') as result_f:

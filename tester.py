@@ -15,7 +15,7 @@ content_hits, initial_hits, best_results = [], [], []
 if __name__ == '__main__':
 
     args = parse_args()
-    command = 'python main.py'
+    command = 'python main.py --name=plot-review-serial-filepathtest'
 
     # Git branch
     repo = Repository(os.getcwd())
@@ -27,12 +27,13 @@ if __name__ == '__main__':
     #     command += f' --{i}={v}'
     # num_metric = 0
     mdhm = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M%S'))  # MonthDailyHourMinute .....e.g., 05091040
-    subfolder_name = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d'))
-    folder_path = os.path.join('./results', subfolder_name)
-    if not os.path.exists(folder_path): os.mkdir(folder_path)
+    finalSubfolder_name = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d') + '_final')
+    finalFolder_path = os.path.join('./results', finalSubfolder_name)
+    if not os.path.exists(finalFolder_path): os.mkdir(finalFolder_path)
+
 
     # results_file_path = f"./results/Final_{mdhm}_name_{args.name}.txt"
-    results_file_path = os.path.join(folder_path, f"Final_{mdhm}_name_{args.name}.txt")
+    results_file_path = os.path.join(finalFolder_path, f"Final_{mdhm}_name_{args.name}.txt")
     with open(results_file_path, 'w', encoding='utf-8') as result_f:
         result_f.write('\n=================================================\n')
         result_f.write(get_time_kst())
