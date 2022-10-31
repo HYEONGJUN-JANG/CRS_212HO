@@ -6,6 +6,7 @@ import torch
 class AdditiveAttention(nn.Module):
     def __init__(self, feature_dim: int, attention_dim: int):
         super(AdditiveAttention, self).__init__()
+        self.hidden_size = feature_dim
         self.linear_key = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
         self.linear_query = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
         self.linear_proj = nn.Linear(in_features=attention_dim, out_features=1, bias=False)
@@ -26,11 +27,15 @@ class AdditiveAttention(nn.Module):
     def forward(self, feature, query=None, mask=None):
         if query is None:
             attention = torch.tanh(self.linear_key(feature))  # [batch_size, length, attention_dim]
-        else:
-            attention = torch.tanh(
-                self.linear_key(feature) + self.linear_query(query).unsqueeze(1))  # [batch_size, length, attention_dim]
+            a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
 
-        a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
+        else:
+            # attention = torch.tanh(
+            #     self.linear_key(feature) + self.linear_query(query).unsqueeze(1))  # [batch_size, length, attention_dim]
+            # a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
+
+            a = torch.matmul(self.linear_key(feature), self.linear_query(query).unsqueeze(-1)) / torch.sqrt(self.hidden_size)
+
         if mask is not None:
             alpha = F.softmax(a.masked_fill(mask == 0, -1e9), dim=1).unsqueeze(dim=1)  # [batch_size, 1, length]
         else:
