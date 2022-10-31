@@ -1,6 +1,7 @@
 import torch.nn.functional as F
 from torch import nn, optim
 import torch
+import math
 
 
 class AdditiveAttention(nn.Module):
@@ -30,11 +31,12 @@ class AdditiveAttention(nn.Module):
             a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
 
         else:
-            attention = torch.tanh(
-                self.linear_key(feature) + self.linear_query(query).unsqueeze(1))  # [batch_size, length, attention_dim]
-            a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
-
-            # a = torch.matmul(self.linear_key(feature), self.linear_query(query).unsqueeze(-1)) / torch.sqrt(self.hidden_size)
+            # attention = torch.tanh(
+            #     self.linear_key(feature) + self.linear_query(query).unsqueeze(1))  # [batch_size, length, attention_dim]
+            # a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
+            query = query.unsqueeze(-1)
+            a = torch.matmul(self.linear_key(feature), torch.tanh(self.linear_query(query)))
+            # a = a / math.sqrt(self.hidden_size)
 
         if mask is not None:
             alpha = F.softmax(a.masked_fill(mask == 0, -1e9), dim=1).unsqueeze(dim=1)  # [batch_size, 1, length]
