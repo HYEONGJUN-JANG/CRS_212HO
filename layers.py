@@ -8,16 +8,16 @@ class AdditiveAttention(nn.Module):
     def __init__(self, feature_dim: int, attention_dim: int):
         super(AdditiveAttention, self).__init__()
         self.hidden_size = feature_dim
-        self.linear_key = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
-        self.linear_query = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
-        self.linear_proj = nn.Linear(in_features=attention_dim, out_features=1, bias=False)
+        self.Wk = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
+        self.Wq = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
+        self.Wp = nn.Linear(in_features=attention_dim, out_features=1, bias=False)
 
     def initialize(self):
-        nn.init.xavier_uniform_(self.linear_key.weight, gain=nn.init.calculate_gain('tanh'))
-        nn.init.zeros_(self.linear_key.bias)
-        nn.init.xavier_uniform_(self.linear_query.weight, gain=nn.init.calculate_gain('tanh'))
-        nn.init.zeros_(self.linear_query.bias)
-        nn.init.xavier_uniform_(self.linear_proj.weight)
+        nn.init.xavier_uniform_(self.Wk.weight, gain=nn.init.calculate_gain('tanh'))
+        nn.init.zeros_(self.Wk.bias)
+        nn.init.xavier_uniform_(self.Wq.weight, gain=nn.init.calculate_gain('tanh'))
+        nn.init.zeros_(self.Wq.bias)
+        nn.init.xavier_uniform_(self.Wp.weight)
 
     # Input
     # feature : [batch_size, length, feature_dim]
@@ -27,16 +27,18 @@ class AdditiveAttention(nn.Module):
     # out     : [batch_size, feature_dim]
     def forward(self, feature, query=None, mask=None):
         if query is None:
-            attention = torch.tanh(self.linear_key(feature))  # [batch_size, length, attention_dim]
-            a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
+            attention = torch.tanh(self.Wk(feature))  # [batch_size, length, attention_dim]
+            a = self.Wp(attention).squeeze(dim=2)  # [batch_size, length]
 
         else:
-            # attention = torch.tanh(
-            #     self.linear_key(feature) + self.linear_query(query).unsqueeze(1))  # [batch_size, length, attention_dim]
-            # a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
-            # query = query
-            a = torch.bmm(self.linear_key(feature), self.linear_query(query).unsqueeze(-1)).squeeze(dim=2)
-            a = a / math.sqrt(self.hidden_size)
+            # query = query.unsqueeze(1)
+            # attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query)))
+            # a = attention.squeeze(dim=2)
+
+            Q = self.Wq(query)  # [B, d]
+            K = self.Wk(feature)  # [B, L, d]
+            attention = torch.matmul(K, Q.unsqueeze(-1)) / math.sqrt(self.hidden_size)
+            a = attention.squeeze(dim=2)
 
         if mask is not None:
             alpha = F.softmax(a.masked_fill(mask == 0, -1e9), dim=1).unsqueeze(dim=1)  # [batch_size, 1, length]
