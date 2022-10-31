@@ -6,22 +6,31 @@ import torch
 class AdditiveAttention(nn.Module):
     def __init__(self, feature_dim: int, attention_dim: int):
         super(AdditiveAttention, self).__init__()
-        self.affine1 = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
-        self.affine2 = nn.Linear(in_features=attention_dim, out_features=1, bias=False)
+        self.linear_key = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
+        self.linear_query = nn.Linear(in_features=feature_dim, out_features=attention_dim, bias=True)
+        self.linear_proj = nn.Linear(in_features=attention_dim, out_features=1, bias=False)
 
     def initialize(self):
-        nn.init.xavier_uniform_(self.affine1.weight, gain=nn.init.calculate_gain('tanh'))
-        nn.init.zeros_(self.affine1.bias)
-        nn.init.xavier_uniform_(self.affine2.weight)
+        nn.init.xavier_uniform_(self.linear_key.weight, gain=nn.init.calculate_gain('tanh'))
+        nn.init.zeros_(self.linear_key.bias)
+        nn.init.xavier_uniform_(self.linear_query.weight, gain=nn.init.calculate_gain('tanh'))
+        nn.init.zeros_(self.linear_query.bias)
+        nn.init.xavier_uniform_(self.linear_proj.weight)
 
     # Input
     # feature : [batch_size, length, feature_dim]
+    # query   : [batch_size, feature_dim]
     # mask    : [batch_size, length]
     # Output
     # out     : [batch_size, feature_dim]
-    def forward(self, feature, mask=None):
-        attention = torch.tanh(self.affine1(feature))  # [batch_size, length, attention_dim]
-        a = self.affine2(attention).squeeze(dim=2)  # [batch_size, length]
+    def forward(self, feature, query=None, mask=None):
+        if query is None:
+            attention = torch.tanh(self.linear_key(feature))  # [batch_size, length, attention_dim]
+        else:
+            attention = torch.tanh(
+                self.linear_key(feature) + self.linear_query(query).unsqueeze(1))  # [batch_size, length, attention_dim]
+
+        a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
         if mask is not None:
             alpha = F.softmax(a.masked_fill(mask == 0, -1e9), dim=1).unsqueeze(dim=1)  # [batch_size, 1, length]
         else:
