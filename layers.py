@@ -35,7 +35,7 @@ class AdditiveAttention(nn.Module):
             #     self.linear_key(feature) + self.linear_query(query).unsqueeze(1))  # [batch_size, length, attention_dim]
             # a = self.linear_proj(attention).squeeze(dim=2)  # [batch_size, length]
             # query = query
-            a = torch.bmm(self.linear_key(feature), self.linear_query(query).unsqueeze(-1))
+            a = torch.bmm(self.linear_key(feature), self.linear_query(query).unsqueeze(-1)).squeeze(dim=2)
             a = a / math.sqrt(self.hidden_size)
 
         if mask is not None:
