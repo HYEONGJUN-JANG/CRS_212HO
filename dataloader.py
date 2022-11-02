@@ -12,14 +12,14 @@ import numpy as np
 
 class ReDialDataLoader:
     def __init__(self, dataset, n_sample, batch_size, entity_truncate=None, word_truncate=None, padding_idx=0):
-        self.dataset = dataset
         self.entity_truncate = entity_truncate
         self.word_truncate = word_truncate
         self.padding_idx = padding_idx
         self.n_sample = n_sample
         self.batch_size = batch_size
+        self.dataset = self.rec_process_fn(dataset)
 
-    def get_data(self, batch_fn, dataset, shuffle=True):
+    def get_data(self, batch_fn, shuffle=True):
         """Collate batch data for system to fit
 
         Args:
@@ -32,7 +32,7 @@ class ReDialDataLoader:
             tuple or dict of torch.Tensor: batch data for system to fit
 
         """
-
+        dataset = self.dataset
         batch_num = ceil(len(dataset) / self.batch_size)
         idx_list = list(range(len(dataset)))
         if shuffle:
@@ -62,7 +62,7 @@ class ReDialDataLoader:
         """
         return self.get_data(self.conv_batchify, batch_size, shuffle, self.conv_process_fn)
 
-    def get_rec_data(self, rec_dataset, shuffle=True):
+    def get_rec_data(self, shuffle=True):
         """get_data wrapper for recommendation.
 
         You can implement your own process_fn in ``rec_process_fn``, batch_fn in ``rec_batchify``.
@@ -75,11 +75,11 @@ class ReDialDataLoader:
             tuple or dict of torch.Tensor: batch data for recommendation.
 
         """
-        return self.get_data(self.rec_batchify, rec_dataset, shuffle)
+        return self.get_data(self.rec_batchify, shuffle)
 
-    def rec_process_fn(self):
+    def rec_process_fn(self, dataset):
         augment_dataset = []
-        for conv_dict in tqdm(self.dataset):
+        for conv_dict in tqdm(dataset):
             if conv_dict['role'] == 'Recommender':
                 for idx, movie in enumerate(conv_dict['items']):
                     augment_conv_dict = deepcopy(conv_dict)
@@ -92,8 +92,8 @@ class ReDialDataLoader:
                     augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
                     augment_dataset.append(augment_conv_dict)
 
-        logger.info('[Finish dataset process before batchify]')
-        logger.info(f'[Dataset size: {len(augment_dataset)}]')
+        logger.info('[Finish dataset process before rec batchify]')
+        logger.info(f'[Rec Dataset size: {len(augment_dataset)}]')
 
         return augment_dataset
 
