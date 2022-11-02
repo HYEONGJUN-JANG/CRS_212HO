@@ -21,7 +21,7 @@ def pretrain(args, model, pretrain_dataloader, path):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        print('Loss:\t%.4f' % total_loss)
+        print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
