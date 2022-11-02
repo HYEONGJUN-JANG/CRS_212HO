@@ -1,3 +1,5 @@
+from math import ceil
+
 import torch
 import numpy as np
 from loguru import logger
@@ -100,6 +102,11 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
     # scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, args.max_train_steps)
+    rec_dataset = train_dataloader.rec_process_fn()
+
+    max_train_steps = args.epoch_ft * (ceil(len(rec_dataset) / args.batch_size))
+    # lr_scheduler
+    lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
     for epoch in range(args.epoch_ft):
         pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
@@ -112,7 +119,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         logger.info(f'[Recommendation epoch {str(epoch)}]')
         logger.info('[Train]')
 
-        for batch in train_dataloader.get_rec_data(args.batch_size):
+        for batch in train_dataloader.get_rec_data(rec_dataset, args.batch_size):
             context_entities, context_tokens, plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items = batch
             scores_ft = model.forward(context_entities, context_tokens)
             loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))

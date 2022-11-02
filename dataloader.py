@@ -19,7 +19,7 @@ class ReDialDataLoader:
         self.n_sample = n_sample
         self.batch_size = batch_size
 
-    def get_data(self, batch_fn, shuffle=True, process_fn=None):
+    def get_data(self, batch_fn, dataset, shuffle=True):
         """Collate batch data for system to fit
 
         Args:
@@ -32,13 +32,6 @@ class ReDialDataLoader:
             tuple or dict of torch.Tensor: batch data for system to fit
 
         """
-
-        dataset = self.dataset
-        if process_fn is not None:
-            dataset = process_fn()
-            logger.info('[Finish dataset process before batchify]')
-
-        logger.info(f'[Dataset size: {len(dataset)}]')
 
         batch_num = ceil(len(dataset) / self.batch_size)
         idx_list = list(range(len(dataset)))
@@ -69,7 +62,7 @@ class ReDialDataLoader:
         """
         return self.get_data(self.conv_batchify, batch_size, shuffle, self.conv_process_fn)
 
-    def get_rec_data(self, shuffle=True):
+    def get_rec_data(self, rec_dataset, shuffle=True):
         """get_data wrapper for recommendation.
 
         You can implement your own process_fn in ``rec_process_fn``, batch_fn in ``rec_batchify``.
@@ -82,7 +75,7 @@ class ReDialDataLoader:
             tuple or dict of torch.Tensor: batch data for recommendation.
 
         """
-        return self.get_data(self.rec_batchify, shuffle, self.rec_process_fn)
+        return self.get_data(self.rec_batchify, rec_dataset, shuffle)
 
     def rec_process_fn(self):
         augment_dataset = []
@@ -98,6 +91,10 @@ class ReDialDataLoader:
                     augment_conv_dict['review'] = conv_dict['review'][idx]
                     augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
                     augment_dataset.append(augment_conv_dict)
+
+        logger.info('[Finish dataset process before batchify]')
+        logger.info(f'[Dataset size: {len(augment_dataset)}]')
+
         return augment_dataset
 
     def rec_batchify(self, batch):
