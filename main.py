@@ -23,7 +23,6 @@ from train import train_recommender
 from pretrain import pretrain
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel
 
-
 ## HJ Branch Test
 from utils import get_time_kst
 
@@ -37,7 +36,8 @@ def createResultFile(args):
     rawFolder_path = os.path.join('./results', rawSubfolder_name)
     if not os.path.exists(rawFolder_path): os.mkdir(rawFolder_path)
 
-    results_file_path = os.path.join(rawFolder_path, f"{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
+    results_file_path = os.path.join(rawFolder_path,
+                                     f"{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
 
     # parameters
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
