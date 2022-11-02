@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument('--max_dialog_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--kg_emb_dim', type=int, default=128)  # 128
     parser.add_argument('--num_bases', type=int, default=8)
-    parser.add_argument('--num_warmup_steps', type=int, default=10000)
+    parser.add_argument('--num_warmup_steps', type=int, default=500)
 
     parser.add_argument('--max_title_len', type=int, default=20)
     parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
