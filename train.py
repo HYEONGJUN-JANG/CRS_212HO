@@ -3,6 +3,7 @@ import numpy as np
 from loguru import logger
 from torch import nn, optim
 from tqdm import tqdm
+from transformers import AdamW, get_linear_schedule_with_warmup
 
 topk = [1, 5, 10, 20, 50]
 
@@ -93,9 +94,12 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     content_hit = [[], [], []]
     eval_metric = [-1]
 
-    optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
+    # optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
+    optimizer = AdamW(model.parameters(), lr=args.lr_ft)
+
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
+    # scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, args.max_train_steps)
 
     for epoch in range(args.epoch_ft):
         pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
