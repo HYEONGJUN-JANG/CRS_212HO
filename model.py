@@ -201,8 +201,9 @@ class MovieExpertCRS(nn.Module):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
-                                                position=self.args.position)  # (bs, entity_dim)
+        # entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
+        #                                         position=self.args.position)  # (bs, entity_dim)
+        max_meta_len = entity_padding_mask.shape[1]
 
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
         if self.args.word_encoder == 0:
@@ -210,15 +211,22 @@ class MovieExpertCRS(nn.Module):
                                                 attention_mask=token_padding_mask.to(
                                                     self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
             token_embedding = self.linear_transformation(token_embedding)
-            token_attn_rep = self.token_attention(token_embedding, mask=token_padding_mask)  # [bs, word_dim]
+            # token_attn_rep = self.token_attention(token_embedding, mask=token_padding_mask)  # [bs, word_dim]
 
         elif self.args.word_encoder == 1:
             token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
-            token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
+            # token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
 
-        # dropout
-        token_attn_rep = self.dropout_ft(token_attn_rep)
-        entity_attn_rep = self.dropout_ft(entity_attn_rep)
+        total_mask = torch.cat([entity_padding_mask, token_padding_mask], dim=1)
+        total_token = torch.cat([entity_representations, token_embedding], dim=1)
+        total_emb = self.multiheadAttention(total_token, total_mask)
+        entity_representations = total_emb[:, :max_meta_len, :]
+        token_embedding = total_emb[:, max_meta_len:, :]
+
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
+        entity_attn_rep = self.dropout_pt(entity_attn_rep)
+        token_attn_rep = self.token_attention(token_embedding, mask=token_padding_mask)  # [B, d] -> [B * N, d]
+        token_attn_rep = self.dropout_pt(token_attn_rep)
 
         # if 'word' in self.args.meta and 'meta' in self.args.meta:
         #     gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
