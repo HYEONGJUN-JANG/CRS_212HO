@@ -181,13 +181,18 @@ class MovieExpertCRS(nn.Module):
         elif 'meta' in self.args.meta:
             user_embedding = entity_attn_rep
 
+        content_emb_norm = content_emb / (torch.norm(content_emb, dim=1, keepdim=True) + 1e-10)  # [B, d]
+        entity_attn_rep_norm = entity_attn_rep / (torch.norm(entity_attn_rep, dim=1, keepdim=True) + 1e-10)  # [B, d]
+        affinity = torch.matmul(content_emb_norm, entity_attn_rep_norm.transpose(1, 0))  # [B, B]
+        label = torch.arange(affinity.shape[0]).to(self.device_id)
+        loss_sf = F.cross_entropy(affinity, label)
         # user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
 
         loss = self.criterion(scores, target_item)
         if compute_score:
             return scores, target_item
-        return loss
+        return loss + loss_sf
 
     def forward(self, context_entities, context_tokens):
 
