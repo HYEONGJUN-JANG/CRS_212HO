@@ -97,7 +97,22 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     eval_metric = [-1]
 
     # optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
-    optimizer = AdamW(model.parameters(), lr=args.lr_ft)
+    # optim & amp
+    modules = [model]
+    no_decay = ["bias", "LayerNorm.weight"]
+    optimizer_grouped_parameters = [
+        {
+            "params": [p for model in modules for n, p in model.named_parameters()
+                       if not any(nd in n for nd in no_decay) and p.requires_grad],
+            "weight_decay": args.weight_decay,
+        },
+        {
+            "params": [p for model in modules for n, p in model.named_parameters()
+                       if any(nd in n for nd in no_decay) and p.requires_grad],
+            "weight_decay": 0.0,
+        },
+    ]
+    optimizer = AdamW(optimizer_grouped_parameters, lr=args.lr_ft)
 
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
