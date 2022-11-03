@@ -149,3 +149,57 @@ class LastQueryAttention(nn.Module):
             return out, attention.squeeze(1)
         else:
             return out
+
+
+class MultiHeadAttention(nn.Module):
+    def __init__(self, h: int, d_model: int):
+        super(MultiHeadAttention, self).__init__()
+        self.head_num = h
+        self.head_dim = d_model // self.head_num
+        self.d_model = d_model
+        self.attention_scalar = math.sqrt(float(self.head_dim))
+        self.W_Q = nn.Linear(in_features=d_model, out_features=d_model, bias=True)
+        self.W_K = nn.Linear(in_features=d_model, out_features=d_model, bias=True)
+        self.W_V = nn.Linear(in_features=d_model, out_features=d_model, bias=True)
+
+    def initialize(self):
+        nn.init.xavier_uniform_(self.W_Q.weight)
+        nn.init.zeros_(self.W_Q.bias)
+        nn.init.xavier_uniform_(self.W_K.weight)
+        nn.init.zeros_(self.W_K.bias)
+        nn.init.xavier_uniform_(self.W_V.weight)
+        nn.init.zeros_(self.W_V.bias)
+
+    # Input
+    # Q    : [batch_size, len_q, d_model]
+    # K    : [batch_size, len_k, d_model]
+    # V    : [batch_size, len_k, d_model]
+    # mask : [batch_size, len_k]
+    # Output
+    # out  : [batch_size, len_q, h * d_v]
+    def forward(self, feature, mask=None):
+        Q, K, V = feature, feature, feature
+        batch_size = Q.size(0)
+        max_len = mask.shape[1]
+
+        Q = self.W_Q(Q).view([batch_size, max_len, self.head_num, self.head_dim])  # [batch_size, len_q, h, d_k]
+        K = self.W_K(K).view([batch_size, max_len, self.head_num, self.head_dim])  # [batch_size, len_k, h, d_k]
+        V = self.W_V(V).view([batch_size, max_len, self.head_num, self.head_dim])  # [batch_size, len_k, h, d_v]
+
+        Q = Q.permute(0, 2, 1, 3).contiguous().view(
+            [batch_size * self.head_num, max_len, self.head_dim])  # [batch_size * h, len_q, d_k]
+        K = K.permute(0, 2, 1, 3).contiguous().view(
+            [batch_size * self.head_num, max_len, self.head_dim])  # [batch_size * h, len_k, d_k]
+        V = V.permute(0, 2, 1, 3).contiguous().view(
+            [batch_size * self.head_num, max_len, self.head_dim])  # [batch_size * h, len_k, d_v]
+        A = torch.bmm(Q, K.permute(0, 2, 1).contiguous()) / self.attention_scalar  # [batch_size * h, len_q, len_k]
+        if mask != None:
+            _mask = mask.repeat([1, self.head_num]).view([batch_size * self.head_num, 1, max_len]).repeat(
+                [1, max_len, 1])  # [batch_size * h, len_q, len_k]
+            alpha = F.softmax(A.masked_fill(_mask == 0, -1e9), dim=2)  # [batch_size * h, len_q, len_k]
+        else:
+            alpha = F.softmax(A, dim=2)  # [batch_size * h, len_q, len_k]
+        out = torch.bmm(alpha, V).view(
+            [batch_size, self.head_num, max_len, self.head_dim])  # [batch_size, h, len_q, d_v]
+        out = out.permute([0, 2, 1, 3]).contiguous().view([batch_size, max_len, -1])  # [batch_size, len_q, h * d_v]
+        return out
