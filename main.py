@@ -128,8 +128,10 @@ def main(args):
     else:
         model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
-    train_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size, word_truncate=args.max_dialog_len)
-    test_dataloader = ReDialDataLoader(test_data, args.n_sample, args.batch_size, word_truncate=args.max_dialog_len)
+    train_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size, word_truncate=args.max_dialog_len,
+                                        mode='Train')
+    test_dataloader = ReDialDataLoader(test_data, args.n_sample, args.batch_size, word_truncate=args.max_dialog_len,
+                                       mode='Test')
 
     content_hit, initial_hit, best_result = train_recommender(args, model, train_dataloader, test_dataloader,
                                                               trained_path, results_file_path,
