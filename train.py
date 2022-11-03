@@ -98,29 +98,29 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     # optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     # optim & amp
-    modules = [model]
-    no_decay = ["bias", "LayerNorm.weight"]
-    optimizer_grouped_parameters = [
-        {
-            "params": [p for model in modules for n, p in model.named_parameters()
-                       if not any(nd in n for nd in no_decay) and p.requires_grad],
-            "weight_decay": args.weight_decay,
-        },
-        {
-            "params": [p for model in modules for n, p in model.named_parameters()
-                       if any(nd in n for nd in no_decay) and p.requires_grad],
-            "weight_decay": 0.0,
-        },
-    ]
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.lr_ft)
+    # modules = [model]
+    # no_decay = ["bias", "LayerNorm.weight"]
+    # optimizer_grouped_parameters = [
+    #     {
+    #         "params": [p for model in modules for n, p in model.named_parameters()
+    #                    if not any(nd in n for nd in no_decay) and p.requires_grad],
+    #         "weight_decay": args.weight_decay,
+    #     },
+    #     {
+    #         "params": [p for model in modules for n, p in model.named_parameters()
+    #                    if any(nd in n for nd in no_decay) and p.requires_grad],
+    #         "weight_decay": 0.0,
+    #     },
+    # ]
+    optimizer = AdamW(model.parameters(), lr=args.lr_ft)
 
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
     # scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, args.max_train_steps)
 
-    max_train_steps = args.epoch_ft * (ceil(len(train_dataloader.dataset) / args.batch_size))
+    # max_train_steps = args.epoch_ft * (ceil(len(train_dataloader.dataset) / args.batch_size))
     # lr_scheduler
-    scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
+    # scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
     for epoch in range(args.epoch_ft):
         pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
@@ -148,7 +148,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            scheduler.step()
+        scheduler.step()
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식

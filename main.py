@@ -112,10 +112,10 @@ def main(args):
     valid_data = crs_dataset.valid_data
     test_data = crs_dataset.test_data
 
-    if args.test:
-        train_data.extend(valid_data)
-    else:
-        test_data = valid_data
+    # if args.test:
+    #     train_data.extend(valid_data)
+    # else:
+    #     test_data = valid_data
 
     movie2ids = crs_dataset.movie2id
     num_movie = len(movie2ids)
