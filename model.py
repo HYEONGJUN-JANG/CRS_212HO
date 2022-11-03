@@ -164,7 +164,7 @@ class MovieExpertCRS(nn.Module):
             text_emb = self.word_encoder(input_ids=text,
                                          attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
             text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            content_emb = self.token_attention(text_emb, mask=mask)  # [B, d] -> [B * N, d]
+            content_emb = self.token_attention(text_emb, entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
 
         elif self.args.word_encoder == 1:
             text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
@@ -203,7 +203,7 @@ class MovieExpertCRS(nn.Module):
                                                 attention_mask=token_padding_mask.to(
                                                     self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
             token_embedding = self.linear_transformation(token_embedding)
-            token_attn_rep = self.token_attention(token_embedding, mask=token_padding_mask)  # [bs, word_dim]
+            token_attn_rep = self.token_attention(token_embedding, entity_attn_rep, mask=token_padding_mask)  # [bs, word_dim]
 
         elif self.args.word_encoder == 1:
             token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
