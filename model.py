@@ -169,16 +169,17 @@ class MovieExpertCRS(nn.Module):
             text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
             # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
-        total_mask = torch.cat([entity_padding_mask, mask], dim=1)  # [B, L+L']
-        total_token = torch.cat([entity_representations, text_emb], dim=1)  # [B, L+L', d]
-        total_emb = self.multiheadAttention(total_token, total_mask)
-        entity_representations = total_emb[:, :max_meta_len, :]
-        text_emb = total_emb[:, max_meta_len:, :]
+        # total_mask = torch.cat([entity_padding_mask, mask], dim=1)  # [B, L+L']
+        # total_token = torch.cat([entity_representations, text_emb], dim=1)  # [B, L+L', d]
+        # total_emb = self.multiheadAttention(total_token, total_mask)
+        # entity_representations = total_emb[:, :max_meta_len, :]
+        # text_emb = total_emb[:, max_meta_len:, :]
 
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
-        entity_attn_rep = self.dropout_pt(entity_attn_rep)
+        entity_representations = self.multiheadAttention(entity_representations, entity_padding_mask)
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B * N, d)
+        entity_attn_rep = self.dropout_pt(entity_attn_rep)  # [B * N, d]
         content_emb = self.token_attention(text_emb, mask=mask)  # [B, d] -> [B * N, d]
-        content_emb = self.dropout_pt(content_emb)
+        content_emb = self.dropout_pt(content_emb)  # [B * N, d]
 
         if 'word' in self.args.meta and 'meta' in self.args.meta:
             gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
@@ -217,12 +218,13 @@ class MovieExpertCRS(nn.Module):
             token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
             # token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
 
-        total_mask = torch.cat([entity_padding_mask, token_padding_mask], dim=1)
-        total_token = torch.cat([entity_representations, token_embedding], dim=1)
-        total_emb = self.multiheadAttention(total_token, total_mask)
-        entity_representations = total_emb[:, :max_meta_len, :]
-        token_embedding = total_emb[:, max_meta_len:, :]
+        # total_mask = torch.cat([entity_padding_mask, token_padding_mask], dim=1)
+        # total_token = torch.cat([entity_representations, token_embedding], dim=1)
+        # total_emb = self.multiheadAttention(total_token, total_mask)
+        # entity_representations = total_emb[:, :max_meta_len, :]
+        # token_embedding = total_emb[:, max_meta_len:, :]
 
+        entity_representations = self.multiheadAttention(entity_representations, entity_padding_mask)
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
         token_attn_rep = self.token_attention(token_embedding, mask=token_padding_mask)  # [B, d] -> [B * N, d]
