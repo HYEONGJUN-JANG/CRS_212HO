@@ -21,7 +21,7 @@ from model import MovieExpertCRS
 from parameters import parse_args
 from train import train_recommender
 from pretrain import pretrain
-from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel
+from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer
 
 ## HJ Branch Test
 from utils import get_time_kst
@@ -97,10 +97,18 @@ def main(args):
     # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
     # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
+    # bart_tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+    # bart = BartModel.from_pretrained('facebook/bart-base')
+    # inputs = tokenizer("Hello, my dog is cute", return_tensors="pt")
+    # outputs = bert_model(**inputs)
+    # encoder_vector = bart.encoder(**inputs)
 
     # BERT model freeze layers
     if args.n_layer != -1:
-        modules = [bert_model.encoder.layer[:args.t_layer - args.n_layer], bert_model.embeddings]  # 2개 남기기
+        if 'bart' in args.bert_name:
+            modules = [bert_model.encoder.layers[:args.t_layer - args.n_layer], bert_model.encoder.embed_tokens]  # 2개 남기기
+        else:
+            modules = [bert_model.encoder.layer[:args.t_layer - args.n_layer], bert_model.embeddings]  # 2개 남기기
         for module in modules:
             for param in module.parameters():
                 param.requires_grad = False

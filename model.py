@@ -35,7 +35,10 @@ class MovieExpertCRS(nn.Module):
         self.token_emb_dim = token_emb_dim
 
         if args.word_encoder == 0:
-            self.word_encoder = bert_model  # bert or transformer
+            self.word_encoder = bert_model  # bert or transformer or bart
+            if 'bart' in args.bert_name:
+                self.word_encoder = bert_model.encoder
+                
         elif args.word_encoder == 1:
             self.token_emb_dim = self.kg_emb_dim
             self.token_embedding = nn.Embedding(self.args.vocab_size, self.token_emb_dim,
