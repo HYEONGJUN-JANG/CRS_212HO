@@ -25,6 +25,8 @@ class MovieExpertCRS(nn.Module):
         self.kg_emb_dim = args.kg_emb_dim
         self.n_relation = entity_kg['n_relation']
         self.kg_encoder = RGCNConv(self.n_entity, self.kg_emb_dim, self.n_relation, num_bases=self.num_bases)
+        self.kg_encoder2 = RGCNConv(self.kg_emb_dim, self.kg_emb_dim, self.n_relation, num_bases=self.num_bases)
+
         self.edge_idx, self.edge_type = edge_to_pyg_format(entity_kg['edge'], 'RGCN')
         self.edge_idx = self.edge_idx.to(self.device_id)
         self.edge_type = self.edge_type.to(self.device_id)
@@ -151,6 +153,8 @@ class MovieExpertCRS(nn.Module):
         target_item = target_item.unsqueeze(1).repeat(1, n_text).view(-1).to(self.device_id)
         # todo: entitiy 활용해서 pre-train
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
+        kg_embedding = self.kg_encoder2(kg_embedding, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
+
         meta = meta.to(self.device_id)  # [B, N, L']
         meta = meta.view(-1, max_meta_len)  # [B * N, L']
         entity_representations = kg_embedding[meta]  # [B * N, L', d]
@@ -200,6 +204,8 @@ class MovieExpertCRS(nn.Module):
     def forward(self, context_entities, context_tokens):
 
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
+        kg_embedding = self.kg_encoder2(kg_embedding, self.edge_idx, self.edge_type)
+
         entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         # entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
