@@ -11,6 +11,28 @@ from tqdm import tqdm
 import os
 
 import numpy as np
+import re
+import html
+
+
+def process_utt(utt, movieid2name, replace_movieId):
+    movie_pattern = re.compile(r'@\d+')
+
+    def convert(match):
+        movieid = match.group(0)[1:]
+        if movieid in movieid2name:
+            movie_name = movieid2name[movieid][1]
+            movie_name = ' '.join(movie_name.split())
+            return movie_name
+        else:
+            return match.group(0)
+
+    if replace_movieId:
+        utt = re.sub(movie_pattern, convert, utt)
+    utt = ' '.join(utt.split())
+    utt = html.unescape(utt)
+
+    return utt
 
 
 class ContentInformation(Dataset):
@@ -23,14 +45,14 @@ class ContentInformation(Dataset):
         self.data_samples = dict()
         self.device = device
         self.entity2id = json.load(
-            open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
-        self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
-        self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
+            open(os.path.join(data_path, 'entity2id_uni.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
+        self.movie2id = json.load(open('data/redial/item_ids.json', 'r', encoding='utf-8'))
+        self.movie2name = json.load(open('data/redial/movie2name_uni.json', 'r', encoding='utf-8'))
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
         self.key_list = list(self.data_samples.keys())  # entity id list
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
-        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
+        f = open(os.path.join(self.data_path, 'content_data_uni.json'), encoding='utf-8')
 
         data = json.load(f)
 
@@ -50,6 +72,7 @@ class ContentInformation(Dataset):
 
             # title = sample['title']
             # _title = title.replace(' ', '_')
+            # "181664": [15679, "Interview with the Vampire"]
 
             if self.movie2name[crs_id][0] == -1:
                 continue
@@ -71,11 +94,13 @@ class ContentInformation(Dataset):
                                              add_special_tokens=False)
 
             for idx, meta in enumerate(reviews_meta):
-                reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                reviews_meta[idx] = [self.entity2id[entity] for entity in meta if entity in self.entity2id][
+                                    :self.args.n_meta]
                 reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))
 
             for idx, meta in enumerate(plots_meta):
-                plots_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                plots_meta[idx] = [self.entity2id[entity] for entity in meta if entity in self.entity2id][
+                                  :self.args.n_meta]
                 plots_meta[idx] = plots_meta[idx] + [0] * (self.args.n_meta - len(meta))
 
             for i in range(min(len(reviews), self.args.n_review)):
@@ -159,15 +184,19 @@ class ContentInformation(Dataset):
 # recommendation mode 와 generation mode에 따라 training sample 이 다르므로, torch.Dataset class 상속 X
 class ReDialDataset:
     def _load_raw_data(self):
+        train_data, valid_data, test_data = [], [], []
         # load train/valid/test data
-        with open(os.path.join(self.data_path, 'train_data.json'), 'r', encoding='utf-8') as f:
-            train_data = json.load(f)
+        with open(os.path.join(self.data_path, 'train_data_dbpedia.jsonl'), 'r', encoding='utf-8') as f:
+            for line in f:
+                train_data.append(json.loads(line))
             logger.debug(f"[Load train data from {os.path.join(self.data_path, 'train_data.json')}]")
-        with open(os.path.join(self.data_path, 'valid_data.json'), 'r', encoding='utf-8') as f:
-            valid_data = json.load(f)
+        with open(os.path.join(self.data_path, 'valid_data_dbpedia.jsonl'), 'r', encoding='utf-8') as f:
+            for line in f:
+                valid_data.append(json.loads(line))
             logger.debug(f"[Load valid data from {os.path.join(self.data_path, 'valid_data.json')}]")
-        with open(os.path.join(self.data_path, 'test_data.json'), 'r', encoding='utf-8') as f:
-            test_data = json.load(f)
+        with open(os.path.join(self.data_path, 'test_data_dbpedia.jsonl'), 'r', encoding='utf-8') as f:
+            for line in f:
+                test_data.append(json.loads(line))
             logger.debug(f"[Load test data from {os.path.join(self.data_path, 'test_data.json')}]")
 
         return train_data, valid_data, test_data
@@ -185,21 +214,21 @@ class ReDialDataset:
         # todo: KG information 분리 시켜야 함
         # dbpedia
         self.entity2id = json.load(
-            open(os.path.join(self.data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
+            open(os.path.join(self.data_path, 'entity2id_uni.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.id2entity = {idx: entity for entity, idx in self.entity2id.items()}
         self.n_entity = max(self.entity2id.values()) + 1
         # {head_entity_id: [(relation_id, tail_entity_id)]}
-        self.entity_kg = json.load(open(os.path.join(self.data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
+        self.entity_kg = json.load(open(os.path.join(self.data_path, 'dbpedia_subkg_uni.json'), 'r', encoding='utf-8'))
         self.entity_kg = self._entity_kg_process()
 
         self.movie2name = json.load(
-            open(os.path.join(self.data_path, 'movie2name.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
+            open(os.path.join(self.data_path, 'movie2name_uni.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
 
         self.movie2id = json.load(
-            open(os.path.join(self.data_path, 'movie_ids.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
+            open(os.path.join(self.data_path, 'item_ids.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
 
         logger.debug(
-            f"[Load entity dictionary and KG from {os.path.join(self.data_path, 'entity2id.json')} and {os.path.join(self.data_path, 'dbpedia_subkg.json')}]")
+            f"[Load entity dictionary and KG from {os.path.join(self.data_path, 'entity2id.json')} and {os.path.join(self.data_path, 'dbpedia_subkg_uni.json')}]")
 
         logger.debug("[Finish entity KG process]")
 
@@ -218,12 +247,12 @@ class ReDialDataset:
         for h, t, r in edge_list:
             relation_cnt[r] += 1
         for h, t, r in edge_list:
-            if relation_cnt[r] > 1000:
-                if r not in relation2id:
-                    relation2id[r] = len(relation2id)
-                edges.add((h, t, relation2id[r]))
-                entities.add(self.id2entity[h])
-                entities.add(self.id2entity[t])
+            # if relation_cnt[r] > 1000:
+            if r not in relation2id:
+                relation2id[r] = len(relation2id)
+            edges.add((h, t, relation2id[r]))
+            entities.add(self.id2entity[h])
+            entities.add(self.id2entity[t])
         return {
             'edge': list(edges),
             'n_relation': len(relation2id),
@@ -241,42 +270,50 @@ class ReDialDataset:
         logger.debug("[Finish valid data process]")
 
     def _raw_data_process(self, raw_data):
-        augmented_convs = [self._merge_conv_data(conversation["dialog"]) for
+        augmented_convs = [self._merge_conv_data(conversation) for
                            conversation in tqdm(raw_data)]  # 연속해서 나온 대화들 하나로 합침 (예) S1, S2, R1 --> S1 + S2, R1
         augmented_conv_dicts = []
         for conv in tqdm(augmented_convs):
             augmented_conv_dicts.extend(self._augment_and_add(conv))  # conversation length 만큼 training sample 생성
         return augmented_conv_dicts
 
-    def _merge_conv_data(self, dialog):
+    def _merge_conv_data(self, conversation):
         augmented_convs = []
         last_role = None
+        dialog = conversation['messages']
+        seekerId, recommenderId = conversation['initiatorWorkerId'], conversation['respondentWorkerId']
 
         for utt in dialog:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
-            for idx, word in enumerate(utt['text']):
-                if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = self.movie2name[word[1:]][1]
+            # for idx, word in enumerate(utt['text']):
+            #     if word[0] == '@' and word[1:].isnumeric():
+            #         utt['text'][idx] = self.movie2name[word[1:]][1]
+            #
+            # text = ' '.join(utt['text'])
+            if utt['senderWorkerId'] == seekerId:
+                current_role = 'Seeker'
+            elif utt['senderWorkerId'] == recommenderId:
+                current_role = 'Recommender'
 
-            text = ' '.join(utt['text'])
+            text = process_utt(utt['text'], self.movie2name, True)
             text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
-            movie_ids = [self.entity2id[movie] for movie in utt['movies'] if
+            movie_ids = [self.entity2id[movie] for movie in utt['movie'] if
                          movie in self.entity2id]  # utterance movie(entity2id) 마다 entity2id 저장
             entity_ids = [self.entity2id[entity] for entity in utt['entity'] if
                           entity in self.entity2id]  # utterance entity(entity2id) 마다 entity2id 저장
 
-            if utt["role"] == last_role:
+            if current_role == last_role:
                 augmented_convs[-1]["text"] += text_token_ids
                 augmented_convs[-1]["movie"] += movie_ids
                 augmented_convs[-1]["entity"] += entity_ids
             else:
                 augmented_convs.append({
-                    "role": utt["role"],
+                    "role": current_role,
                     "text": text_token_ids,
                     "entity": entity_ids,
                     "movie": movie_ids,
                 })
-            last_role = utt["role"]
+            last_role = current_role
 
         return augmented_convs
 
