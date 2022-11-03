@@ -11,13 +11,14 @@ import numpy as np
 
 
 class ReDialDataLoader:
-    def __init__(self, dataset, n_sample, batch_size, entity_truncate=None, word_truncate=None, padding_idx=0):
+    def __init__(self, dataset, n_sample, batch_size, entity_truncate=None, word_truncate=None, padding_idx=0,
+                 mode='Test'):
         self.entity_truncate = entity_truncate
         self.word_truncate = word_truncate
         self.padding_idx = padding_idx
         self.n_sample = n_sample
         self.batch_size = batch_size
-        self.dataset = self.rec_process_fn(dataset)
+        self.dataset = self.rec_process_fn(dataset, mode)
 
     def get_data(self, batch_fn, shuffle=True):
         """Collate batch data for system to fit
@@ -77,10 +78,22 @@ class ReDialDataLoader:
         """
         return self.get_data(self.rec_batchify, shuffle)
 
-    def rec_process_fn(self, dataset):
+    def rec_process_fn(self, dataset, mode):
         augment_dataset = []
         for conv_dict in tqdm(dataset):
-            if conv_dict['role'] == 'Recommender':
+            if mode == 'Test':
+                if conv_dict['role'] == 'Recommender':
+                    for idx, movie in enumerate(conv_dict['items']):
+                        augment_conv_dict = deepcopy(conv_dict)
+                        augment_conv_dict['item'] = movie
+                        augment_conv_dict['plot_meta'] = conv_dict['plot_meta'][idx]
+                        augment_conv_dict['plot'] = conv_dict['plot'][idx]
+                        augment_conv_dict['plot_mask'] = conv_dict['plot_mask'][idx]
+                        augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
+                        augment_conv_dict['review'] = conv_dict['review'][idx]
+                        augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
+                        augment_dataset.append(augment_conv_dict)
+            else:
                 for idx, movie in enumerate(conv_dict['items']):
                     augment_conv_dict = deepcopy(conv_dict)
                     augment_conv_dict['item'] = movie

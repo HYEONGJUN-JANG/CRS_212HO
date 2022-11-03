@@ -174,8 +174,8 @@ class MovieExpertCRS(nn.Module):
         # total_emb = self.multiheadAttention(total_token, total_mask)
         # entity_representations = total_emb[:, :max_meta_len, :]
         # text_emb = total_emb[:, max_meta_len:, :]
+        # entity_representations = self.multiheadAttention(entity_representations, entity_padding_mask)
 
-        entity_representations = self.multiheadAttention(entity_representations, entity_padding_mask)
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B * N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)  # [B * N, d]
         content_emb = self.token_attention(text_emb, mask=mask)  # [B, d] -> [B * N, d]
@@ -223,8 +223,8 @@ class MovieExpertCRS(nn.Module):
         # total_emb = self.multiheadAttention(total_token, total_mask)
         # entity_representations = total_emb[:, :max_meta_len, :]
         # token_embedding = total_emb[:, max_meta_len:, :]
+        # entity_representations = self.multiheadAttention(entity_representations, entity_padding_mask)
 
-        entity_representations = self.multiheadAttention(entity_representations, entity_padding_mask)
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
         token_attn_rep = self.token_attention(token_embedding, mask=token_padding_mask)  # [B, d] -> [B * N, d]
