@@ -43,9 +43,10 @@ def parse_args():
     # BERT
     parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small',
-                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base', 'facebook/bart-base', 'bert-large-uncased'])  # [NEW] add roberta
+                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base', 'facebook/bart-base',
+                                 'bert-large-uncased'])  # [NEW] add roberta
     parser.add_argument('--n_layer', type=int, default=2)
-    parser.add_argument('--t_layer', type=int, default=6)
+    parser.add_argument('--t_layer', type=int, default=-1)
 
     # TransformerEncoder Args
     parser.add_argument('--word_encoder', type=float, default=0, help='0: bert, 1: transformer')
