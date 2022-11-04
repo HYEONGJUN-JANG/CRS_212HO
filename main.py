@@ -108,12 +108,15 @@ def main(args):
         if 'bart' in args.bert_name:
             modules = [bert_model.encoder, bert_model.decoder.embed_tokens,
                        bert_model.decoder.layers[:bert_config.num_hidden_layers - args.n_layer]]  # 2개 남기기
+        elif 't5' in args.bert_name:
+            modules = [bert_model.encoder.block[:bert_config.num_hidden_layers - args.n_layer],
+                       bert_model.encoder.embed_tokens]
         else:
             modules = [bert_model.encoder.layer[:bert_config.num_hidden_layers - args.n_layer],
                        bert_model.embeddings]  # 2개 남기기
-        for module in modules:
-            for param in module.parameters():
-                param.requires_grad = False
+    for module in modules:
+        for param in module.parameters():
+            param.requires_grad = False
 
     content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer)
