@@ -106,7 +106,8 @@ def main(args):
     # BERT model freeze layers
     if args.n_layer != -1:
         if 'bart' in args.bert_name:
-            modules = [bert_model.encoder.layers[:args.t_layer - args.n_layer], bert_model.encoder.embed_tokens]  # 2개 남기기
+            modules = [bert_model.encoder, bert_model.decoder.embed_tokens,
+                       bert_model.decoder.layers[:args.t_layer - args.n_layer]]  # 2개 남기기
         else:
             modules = [bert_model.encoder.layer[:args.t_layer - args.n_layer], bert_model.embeddings]  # 2개 남기기
         for module in modules:
