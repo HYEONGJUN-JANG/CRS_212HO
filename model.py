@@ -156,7 +156,7 @@ class MovieExpertCRS(nn.Module):
         meta = meta.view(-1, max_meta_len)  # [B * N, L']
         entity_representations = kg_embedding[meta]  # [B * N, L', d]
         entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
+        entity_attn_rep = self.w(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
 
         # text: [B * N, L]
@@ -167,7 +167,7 @@ class MovieExpertCRS(nn.Module):
             text_emb = self.word_encoder(input_ids=text,
                                          attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
             text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            content_emb = self.token_attention(text_emb, mask=mask)  # [B, d] -> [B * N, d]
+            content_emb = self.token_attention(text_emb, entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
 
         elif self.args.word_encoder == 1:
             text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
