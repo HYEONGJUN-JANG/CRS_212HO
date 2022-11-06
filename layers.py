@@ -27,18 +27,15 @@ class AdditiveAttention(nn.Module):
     # out     : [batch_size, feature_dim]
     def forward(self, feature, query=None, mask=None):
         if query is None:
-            attention = torch.tanh(self.Wk(feature))  # [batch_size, length, attention_dim]
-            a = self.Wp(attention).squeeze(dim=2)  # [batch_size, length]
-
+            attention = self.Wp(torch.tanh(self.Wk(feature)))
         else:
-            query = query.unsqueeze(1)
-            attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query)))
-            a = attention.squeeze(dim=2)
+            attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query.unsqueeze(1))))
+        a = attention.squeeze(dim=2)
 
-            # Q = self.Wq(query)  # [B, d]
-            # K = self.Wk(feature)  # [B, L, d]
-            # attention = torch.matmul(K, Q.unsqueeze(-1)) / math.sqrt(self.hidden_size)
-            # a = attention.squeeze(dim=2)
+        # Q = self.Wq(query)  # [B, d]
+        # K = self.Wk(feature)  # [B, L, d]
+        # attention = torch.matmul(K, Q.unsqueeze(-1)) / math.sqrt(self.hidden_size)
+        # a = attention.squeeze(dim=2)
 
         if mask is not None:
             alpha = F.softmax(a.masked_fill(mask == 0, -1e9), dim=1).unsqueeze(dim=1)  # [batch_size, 1, length]
