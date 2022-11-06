@@ -156,7 +156,7 @@ class MovieExpertCRS(nn.Module):
         meta = meta.view(-1, max_meta_len)  # [B * N, L']
         entity_representations = kg_embedding[meta]  # [B * N, L', d]
         entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
-        entity_attn_rep = self.w(entity_representations, entity_padding_mask)  # (B *  N, d)
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
 
         # text: [B * N, L]
