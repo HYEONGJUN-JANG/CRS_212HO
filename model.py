@@ -182,7 +182,7 @@ class MovieExpertCRS(nn.Module):
 
             total_token = torch.cat([entity_representations, text_emb], dim=1)
             total_mask = torch.cat([entity_padding_mask, mask], dim=1)
-            user_embedding = self.token_attention(total_token, total_mask)
+            user_embedding = self.token_attention(total_token, mask=total_mask)
         elif 'word' in self.args.meta:
             user_embedding = content_emb
         elif 'meta' in self.args.meta:
@@ -238,7 +238,7 @@ class MovieExpertCRS(nn.Module):
 
         total_token = torch.cat([entity_representations, token_embedding], dim=1)
         total_mask = torch.cat([entity_padding_mask, token_padding_mask], dim=1)
-        user_embedding = self.token_attention(total_token, total_mask)
+        user_embedding = self.token_attention(total_token, mask=total_mask)
 
         # user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
