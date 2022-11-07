@@ -29,9 +29,9 @@ class AdditiveAttention(nn.Module):
         if query is None:
             attention = self.Wp(torch.tanh(self.Wk(feature)))
         else:
-            # attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query.unsqueeze(1))))
+            attention = self.Wp(torch.tanh(self.Wk(feature) + self.Wq(query.unsqueeze(1))))
             # attention = torch.matmul(self.Wk(feature), self.Wq(query).unsqueeze(-1)) / math.sqrt(self.hidden_size)
-            attention = torch.matmul(torch.tanh(self.Wk(feature)), (self.Wp.weight + self.Wq(query)).unsqueeze(-1))
+            # attention = torch.matmul(torch.tanh(self.Wk(feature)), (self.Wp.weight + self.Wq(query)).unsqueeze(-1))
             # a = attention.squeeze(dim=2)
 
         a = attention.squeeze(dim=2)
