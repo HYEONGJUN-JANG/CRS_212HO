@@ -64,11 +64,11 @@ class ContentInformation(Dataset):
 
             tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len, padding='max_length',
                                                truncation=True,
-                                               add_special_tokens=True)
+                                               add_special_tokens=False)
 
             tokenized_plots = self.tokenizer(plots, max_length=max_plot_len, padding='max_length',
                                              truncation=True,
-                                             add_special_tokens=True)
+                                             add_special_tokens=False)
 
             for idx, meta in enumerate(reviews_meta):
                 reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
