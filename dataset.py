@@ -259,20 +259,20 @@ class ReDialDataset:
                     utt['text'][idx] = self.movie2name[word[1:]][1]
 
             text = ' '.join(utt['text'])
-            text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
+            # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
             movie_ids = [self.entity2id[movie] for movie in utt['movies'] if
                          movie in self.entity2id]  # utterance movie(entity2id) 마다 entity2id 저장
             entity_ids = [self.entity2id[entity] for entity in utt['entity'] if
                           entity in self.entity2id]  # utterance entity(entity2id) 마다 entity2id 저장
 
             if utt["role"] == last_role:
-                augmented_convs[-1]["text"] += text_token_ids
+                augmented_convs[-1]["text"] += ' ' + text
                 augmented_convs[-1]["movie"] += movie_ids
                 augmented_convs[-1]["entity"] += entity_ids
             else:
                 augmented_convs.append({
                     "role": utt["role"],
-                    "text": text_token_ids,
+                    "text": f'{utt["role"]}: {text}',  # role + text
                     "entity": entity_ids,
                     "movie": movie_ids,
                 })
@@ -286,6 +286,8 @@ class ReDialDataset:
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
+            text_tokens = text_tokens + self.tokenizer.sep_token
+            text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
                 # if len(movies) > 1:
@@ -301,7 +303,7 @@ class ReDialDataset:
                 conv_dict = {
                     "role": conv['role'],
                     "context_tokens": copy(context_tokens),
-                    "response": text_tokens,
+                    "response": text_token_ids, # text_tokens,
                     "context_entities": copy(context_entities),
                     "context_items": copy(context_items),
                     "items": movies,
@@ -313,8 +315,7 @@ class ReDialDataset:
                     "review_mask": review_mask
                 }
                 augmented_conv_dicts.append(conv_dict)
-
-            context_tokens.append(text_tokens)
+            context_tokens.append(text_token_ids)
             context_items += movies
             for entity in entities + movies:
                 if entity not in entity_set:
