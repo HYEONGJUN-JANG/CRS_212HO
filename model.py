@@ -179,12 +179,12 @@ class MovieExpertCRS(nn.Module):
         content_emb = self.dropout_pt(content_emb)
 
         if 'word' in self.args.meta and 'meta' in self.args.meta:
-            # gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
-            # user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep
+            gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
+            user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep
 
-            total_token = torch.cat([entity_representations, text_emb], dim=1)
-            total_mask = torch.cat([entity_padding_mask, mask], dim=1)
-            user_embedding = self.token_attention(total_token, mask=total_mask)
+            # total_token = torch.cat([entity_representations, text_emb], dim=1)
+            # total_mask = torch.cat([entity_padding_mask, mask], dim=1)
+            # user_embedding = self.token_attention(total_token, mask=total_mask)
         elif 'word' in self.args.meta:
             user_embedding = content_emb
         elif 'meta' in self.args.meta:
@@ -236,12 +236,12 @@ class MovieExpertCRS(nn.Module):
         # elif 'meta' in self.args.meta:
         #     user_embedding = entity_attn_rep
 
-        # gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
-        # user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
+        gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+        user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
 
-        total_token = torch.cat([entity_representations, token_embedding], dim=1)
-        total_mask = torch.cat([entity_padding_mask, token_padding_mask], dim=1)
-        user_embedding = self.token_attention(total_token, mask=total_mask)
+        # total_token = torch.cat([entity_representations, token_embedding], dim=1)
+        # total_mask = torch.cat([entity_padding_mask, token_padding_mask], dim=1)
+        # user_embedding = self.token_attention(total_token, mask=total_mask)
 
         # user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
