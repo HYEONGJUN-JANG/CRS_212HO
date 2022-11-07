@@ -12,7 +12,8 @@ import numpy as np
 
 class ReDialDataLoader:
     def __init__(self, dataset, n_sample, batch_size, entity_truncate=None, word_truncate=None, padding_idx=0,
-                 mode='Test'):
+                 mode='Test', cls_token=101):
+        self.cls_token = cls_token
         self.entity_truncate = entity_truncate
         self.word_truncate = word_truncate
         self.padding_idx = padding_idx
@@ -119,7 +120,7 @@ class ReDialDataLoader:
             batch_context_entities.append(
                 truncate(conv_dict['context_entities'], self.entity_truncate, truncate_tail=False))
             dialog_history_flatten = sum(conv_dict['context_tokens'], [])
-            batch_context_tokens.append(truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False))
+            batch_context_tokens.append([self.cls_token] + truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False))
             batch_item.append(conv_dict['item'])
 
             ### Sampling
