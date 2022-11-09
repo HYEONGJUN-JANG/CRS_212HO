@@ -30,7 +30,6 @@ class MovieExpertCRS(nn.Module):
         self.edge_type = self.edge_type.to(self.device_id)
         self.pad_entity_idx = 0
 
-        self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
         # Dialog
         self.token_emb_dim = token_emb_dim
 
@@ -66,12 +65,8 @@ class MovieExpertCRS(nn.Module):
         self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
         self.entity_proj = nn.Linear(self.kg_emb_dim, self.token_emb_dim)
+        self.entity_attention = SelfDotAttention(self.token_emb_dim, self.token_emb_dim)
 
-        self.token_proj = nn.Sequential(
-            nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
-            nn.ReLU(),
-            nn.Linear(self.token_emb_dim // 2, self.kg_emb_dim)
-        )
         # Gating
         self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
 
