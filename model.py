@@ -62,13 +62,13 @@ class MovieExpertCRS(nn.Module):
                 self.args.n_positions
             )
 
-        self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
-        self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
+        # self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
+        self.linear_transformation = nn.Linear(self.token_emb_dim, self.token_emb_dim)
         self.entity_proj = nn.Linear(self.kg_emb_dim, self.token_emb_dim)
         self.entity_attention = SelfDotAttention(self.token_emb_dim, self.token_emb_dim)
 
         # Gating
-        self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
+        self.gating = nn.Linear(2 * self.token_emb_dim, self.token_emb_dim)
 
         # Prediction
         # self.linear_output = nn.Linear(self.token_emb_dim, self.num_movies)
@@ -176,7 +176,7 @@ class MovieExpertCRS(nn.Module):
         elif self.args.word_encoder == 1:
             text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
             content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
-            # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
+            content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
         content_emb = self.dropout_pt(content_emb)
 
