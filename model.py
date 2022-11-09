@@ -62,8 +62,8 @@ class MovieExpertCRS(nn.Module):
                 self.args.n_positions
             )
 
-        self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
-        self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
+        # self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
+        self.linear_transformation = nn.Linear(self.token_emb_dim, self.token_emb_dim)
         self.entity_proj = nn.Linear(self.kg_emb_dim, self.token_emb_dim)
         self.entity_attention = SelfDotAttention(self.token_emb_dim, self.token_emb_dim)
 
@@ -176,7 +176,7 @@ class MovieExpertCRS(nn.Module):
         elif self.args.word_encoder == 1:
             text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
             content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
-            # content_emb = self.linear_transformation(content_emb)  # [B * N, d']
+            content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
         content_emb = self.dropout_pt(content_emb)
 
@@ -220,7 +220,7 @@ class MovieExpertCRS(nn.Module):
             token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                                 attention_mask=token_padding_mask.to(
                                                     self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
-            # token_embedding = self.linear_transformation(token_embedding)
+            token_embedding = self.linear_transformation(token_embedding)
             token_attn_rep = token_embedding[:, 0, :]
             # token_attn_rep = self.token_attention(token_embedding, query=entity_attn_rep, mask=token_padding_mask)  # [bs, word_dim]
 
