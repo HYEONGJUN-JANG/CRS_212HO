@@ -68,7 +68,7 @@ class MovieExpertCRS(nn.Module):
         self.entity_attention = SelfDotAttention(self.token_emb_dim, self.token_emb_dim)
 
         # Gating
-        self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
+        self.gating = nn.Linear(2 * self.token_emb_dim, self.token_emb_dim)
 
         # Prediction
         # self.linear_output = nn.Linear(self.token_emb_dim, self.num_movies)
@@ -220,7 +220,7 @@ class MovieExpertCRS(nn.Module):
             token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                                 attention_mask=token_padding_mask.to(
                                                     self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
-            token_embedding = self.linear_transformation(token_embedding)
+            # token_embedding = self.linear_transformation(token_embedding)
             token_attn_rep = token_embedding[:, 0, :]
             # token_attn_rep = self.token_attention(token_embedding, query=entity_attn_rep, mask=token_padding_mask)  # [bs, word_dim]
 
