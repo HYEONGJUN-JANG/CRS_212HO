@@ -62,7 +62,7 @@ class MovieExpertCRS(nn.Module):
                 self.args.n_positions
             )
 
-        self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
+        # self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.token_emb_dim)
         self.entity_proj = nn.Linear(self.kg_emb_dim, self.token_emb_dim)
         self.entity_attention = SelfDotAttention(self.token_emb_dim, self.token_emb_dim)
@@ -84,6 +84,7 @@ class MovieExpertCRS(nn.Module):
         # nn.init.xavier_uniform_(self.linear_output.weight)
         nn.init.xavier_uniform_(self.linear_transformation.weight)
         nn.init.xavier_uniform_(self.gating.weight)
+        nn.init.xavier_uniform_(self.entity_proj.weight)
 
         self.entity_attention.initialize()
         self.token_attention.initialize()
