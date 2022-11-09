@@ -68,7 +68,7 @@ class MovieExpertCRS(nn.Module):
         self.entity_attention = SelfDotAttention(self.kg_emb_dim, self.kg_emb_dim)
 
         # Gating
-        self.gating = nn.Linear(2 * self.token_emb_dim, self.token_emb_dim)
+        self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
 
         # Prediction
         # self.linear_output = nn.Linear(self.token_emb_dim, self.num_movies)
