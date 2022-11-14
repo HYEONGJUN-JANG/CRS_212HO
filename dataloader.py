@@ -12,14 +12,17 @@ import numpy as np
 
 class ReDialDataLoader:
     def __init__(self, dataset, n_sample, batch_size, entity_truncate=None, word_truncate=None, padding_idx=0,
-                 mode='Test', cls_token=101):
+                 mode='Test', cls_token=101, task='rec'):
         self.cls_token = cls_token
         self.entity_truncate = entity_truncate
         self.word_truncate = word_truncate
         self.padding_idx = padding_idx
         self.n_sample = n_sample
         self.batch_size = batch_size
-        self.dataset = self.rec_process_fn(dataset, mode)
+        if task == 'rec':
+            self.dataset = self.rec_process_fn(dataset, mode)
+        elif task == 'conv':
+            self.dataset = self.conv_process_fn(dataset)
 
     def get_data(self, batch_fn, shuffle=True):
         """Collate batch data for system to fit
@@ -120,7 +123,8 @@ class ReDialDataLoader:
             batch_context_entities.append(
                 truncate(conv_dict['context_entities'], self.entity_truncate, truncate_tail=False))
             dialog_history_flatten = sum(conv_dict['context_tokens'], [])
-            batch_context_tokens.append([self.cls_token] + truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False))
+            batch_context_tokens.append(
+                [self.cls_token] + truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False))
             batch_item.append(conv_dict['item'])
 
             ### Sampling
@@ -152,27 +156,23 @@ class ReDialDataLoader:
                 torch.tensor(batch_item, dtype=torch.long)
                 )
 
-    # todo: 아래 retain 뭔지 확인해보기
-    def conv_process_fn(self, *args, **kwargs):
-        return self.retain_recommender_target()
+    def conv_process_fn(self, dataset):
+        augment_dataset = []
+        for conv_dict in tqdm(dataset):
+            if conv_dict['role'] == 'Recommender':
+                augment_dataset.append(conv_dict)
+        return augment_dataset
 
     def conv_batchify(self, batch):
         batch_context_tokens = []
-        batch_context_entities = []
-        batch_context_words = []
         batch_response = []
         for conv_dict in batch:
             batch_context_tokens.append(
                 truncate(merge_utt(conv_dict['context_tokens']), self.context_truncate, truncate_tail=False))
-            batch_context_entities.append(
-                truncate(conv_dict['context_entities'], self.entity_truncate, truncate_tail=False))
-            batch_context_words.append(truncate(conv_dict['context_words'], self.word_truncate, truncate_tail=False))
             batch_response.append(
                 add_start_end_token_idx(truncate(conv_dict['response'], self.response_truncate - 2),
                                         start_token_idx=self.start_token_idx,
                                         end_token_idx=self.end_token_idx))
 
         return (padded_tensor(batch_context_tokens, self.pad_token_idx, pad_tail=False),
-                padded_tensor(batch_context_entities, self.pad_entity_idx, pad_tail=False),
-                padded_tensor(batch_context_words, self.pad_word_idx, pad_tail=False),
                 padded_tensor(batch_response, self.pad_token_idx))
