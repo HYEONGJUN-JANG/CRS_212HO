@@ -156,7 +156,7 @@ class ContentInformation(Dataset):
         return len(self.data_samples)
 
 
-# recommendation mode 와 generation mode에 따라 training sample 이 다르므로, torch.Dataset class 상속 X
+# recommendation mode 와 generation model에 따라 training sample 이 다르므로, torch.Dataset class 상속 X
 class ReDialDataset:
     def _load_raw_data(self):
         # load train/valid/test data
