@@ -129,6 +129,7 @@ def main(args):
     gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer.pad_token_id
+    gpt_model.config.max_length = 200
 
     content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer_gpt)
@@ -177,17 +178,17 @@ def main(args):
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt,
-            context_max_length=args.max_dialog_len, resp_max_length=args.max_response_len,
+            context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         conv_valid_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'valid', tokenizer_gpt,
-            context_max_length=args.max_dialog_len, resp_max_length=args.max_response_len,
+            context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         conv_test_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'test', tokenizer_gpt,
-            context_max_length=args.max_dialog_len, resp_max_length=args.max_response_len,
+            context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         # dataloader
@@ -237,7 +238,7 @@ def main(args):
         lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
         evaluator = ConvEvaluator(tokenizer=tokenizer)
-
+        # TODO: pre-train model load
         total_report = []
         # train loop
         for epoch in range(args.conv_epoch_ft):
