@@ -1,14 +1,24 @@
 import torch.nn.functional as F
 from torch import nn
 import torch
+from transformers.file_utils import ModelOutput
+
 from layers import AdditiveAttention, SelfDotAttention, LastQueryAttention
 from torch_geometric.nn import RGCNConv
 from transformer import TransformerEncoder
 from utils import edge_to_pyg_format
+from dataclasses import dataclass
+from typing import Tuple, Optional
+
+
+@dataclass
+class MultiOutput(ModelOutput):
+    conv_loss: Optional[torch.FloatTensor] = None
+    logits: Optional[torch.FloatTensor] = None
 
 
 class MovieExpertCRS(nn.Module):
-    def __init__(self, args, bert_model, token_emb_dim, movie2ids, entity_kg, n_entity, name):
+    def __init__(self, args, bert_model, gpt_model, token_emb_dim, movie2ids, entity_kg, n_entity, name):
         super(MovieExpertCRS, self).__init__()
 
         # Setting
@@ -32,6 +42,10 @@ class MovieExpertCRS(nn.Module):
 
         # Dialog
         self.token_emb_dim = token_emb_dim
+
+        # Conv
+        self.gpt_model = gpt_model
+        self.lm_head = nn.Linear(gpt_model.config.n_embd, gpt_model.config.vocab_size, bias=False)
 
         if args.word_encoder == 0:
             self.word_encoder = bert_model  # bert or transformer or bart
@@ -251,3 +265,20 @@ class MovieExpertCRS(nn.Module):
         # user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
         return scores
+
+    def conv_forward(self, context, response):
+
+        lm_logits = self.gpt_model(input_ids=context.input_ids,
+                                   attention_mask=context.attention_mask).logits
+        if response is not None:
+            # Shift so that tokens < n predict n
+            shift_logits = lm_logits[..., :-1, :].contiguous()
+            shift_labels = response[..., 1:].contiguous()
+            # Flatten the tokens
+            loss_fct = torch.nn.CrossEntropyLoss()
+            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+        return loss
+        # if compute_score:
+        #     return lm_logits
+        # return loss
