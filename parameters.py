@@ -47,9 +47,13 @@ def parse_args():
     parser.add_argument('--conv_batch_size', type=int, default=2)
     parser.add_argument('--conv_lr_pt', type=float, default=1e-4, help='Pre-training Learning rate')
     parser.add_argument('--conv_lr_ft', type=float, default=1e-3, help='Fine-tuning Learning rate')
+    parser.add_argument('--context_max_length', type=int, default=200)
+    parser.add_argument('--resp_max_length', type=int, default=183)
+    parser.add_argument("--entity_max_length", type=int, help="max entity length in dataset.", default=32)
+    parser.add_argument("--max_gen_len", type=int, default=50)
 
     # GPT
-    parser.add_argument('--gpt_name', type=str, default='gpt2',
+    parser.add_argument('--gpt_name', type=str, default='microsoft/DialoGPT-small',
                         choices=['microsoft/DialoGPT-small', 'gpt2'])
 
     # BERT

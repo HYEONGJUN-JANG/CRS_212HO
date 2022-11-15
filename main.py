@@ -1,4 +1,5 @@
 import json
+import math
 from collections import defaultdict
 from itertools import product
 
@@ -15,14 +16,17 @@ from pytz import timezone
 import sys
 import os
 
-from CRS_212HO.dataset_conv import CRSConvDataCollator, CRSConvDataset
+from config import gpt2_special_tokens_dict
+from dataset_conv import CRSConvDataCollator, CRSConvDataset
 from dataloader import ReDialDataLoader
 from dataset import ContentInformation, ReDialDataset
+from evaluate_conv import ConvEvaluator
 from model import MovieExpertCRS
 from parameters import parse_args
 from train_rec import train_recommender
 from pretrain import pretrain
-from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer
+from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
+    get_linear_schedule_with_warmup, AutoModelForCausalLM
 
 ## HJ Branch Test
 from utils import get_time_kst
@@ -121,11 +125,13 @@ def main(args):
 
     # GPT
     tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
-    # tokenizer.add_special_tokens(gpt2_special_tokens_dict)
-    gpt_model = AutoModel.from_pretrained(args.gpt_name)
+    tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
+    gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name)
+    gpt_model.resize_token_embeddings(len(tokenizer_gpt))
+    gpt_model.config.pad_token_id = tokenizer.pad_token_id
 
     content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
-    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer)
+    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer_gpt)
 
     train_data = crs_dataset.train_data
     valid_data = crs_dataset.valid_data
@@ -140,7 +146,7 @@ def main(args):
     num_movie = len(movie2ids)
 
     # todo: language generation part
-    model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
+    model = MovieExpertCRS(args, bert_model, gpt_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
 
     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
@@ -169,70 +175,115 @@ def main(args):
         return content_hit, initial_hit, best_result
     if 'conv' in args.task:
         # data
-        train_dataset = CRSConvDataset(
+        conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt,
             context_max_length=args.max_dialog_len, resp_max_length=args.max_response_len,
-            entity_max_length=args.n_meta
+            entity_max_length=args.entity_max_length
         )
-        valid_dataset = CRSConvDataset(
+        conv_valid_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'valid', tokenizer_gpt,
             context_max_length=args.max_dialog_len, resp_max_length=args.max_response_len,
-            entity_max_length=args.n_meta
+            entity_max_length=args.entity_max_length
         )
-        test_dataset = CRSConvDataset(
+        conv_test_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'test', tokenizer_gpt,
             context_max_length=args.max_dialog_len, resp_max_length=args.max_response_len,
-            entity_max_length=args.n_meta
+            entity_max_length=args.entity_max_length
         )
         # dataloader
         data_collator_teacher = CRSConvDataCollator(
-            tokenizer=tokenizer, device=device, gen=False,
-            ignore_pad_token_for_loss=args.ignore_pad_token_for_loss,
+            tokenizer=tokenizer_gpt, device=args.device_id, gen=False,
             context_max_length=args.context_max_length + args.resp_max_length,
-            entity_max_length=args.entity_max_length, pad_entity_id=0
+            entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
         train_dataloader = DataLoader(
-            train_dataset,
-            batch_size=args.per_device_train_batch_size,
+            conv_train_dataset,
+            batch_size=args.conv_batch_size,
             shuffle=True,
-            num_workers=args.num_workers,
             collate_fn=data_collator_teacher,
         )
-        valid_dataloader = DataLoader(
-            valid_dataset,
-            batch_size=args.per_device_eval_batch_size,
-            num_workers=args.num_workers,
-            collate_fn=data_collator_teacher,
-        )
-        test_dataloader = DataLoader(
-            test_dataset,
-            batch_size=args.per_device_eval_batch_size,
-            num_workers=args.num_workers,
-            collate_fn=data_collator_teacher,
-        )
-        # data_collator_generator = CRSConvDataCollator(
-        #     tokenizer=tokenizer, device=device, gen=True,
-        #     ignore_pad_token_for_loss=args.ignore_pad_token_for_loss,
-        #     context_max_length=args.context_max_length, resp_max_length=args.resp_max_length,
-        #     entity_max_length=args.entity_max_length, pad_entity_id=0
-        # )
-        # valid_gen_dataloader = DataLoader(
-        #     valid_dataset,
+        # valid_dataloader = DataLoader(
+        #     conv_valid_dataset,
         #     batch_size=args.per_device_eval_batch_size,
         #     num_workers=args.num_workers,
-        #     collate_fn=data_collator_generator,
+        #     collate_fn=data_collator_teacher,
         # )
-        # test_gen_dataloader = DataLoader(
-        #     test_dataset,
+        # test_dataloader = DataLoader(
+        #     conv_test_dataset,
         #     batch_size=args.per_device_eval_batch_size,
         #     num_workers=args.num_workers,
-        #     collate_fn=data_collator_generator,
+        #     collate_fn=data_collator_teacher,
         # )
+        data_collator_generator = CRSConvDataCollator(
+            tokenizer=tokenizer_gpt, device=args.device_id, gen=True,
+            context_max_length=args.context_max_length, resp_max_length=args.resp_max_length,
+            entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
+        )
+        valid_gen_dataloader = DataLoader(
+            conv_valid_dataset,
+            batch_size=args.conv_batch_size,
+            collate_fn=data_collator_generator,
+        )
+        test_gen_dataloader = DataLoader(
+            conv_test_dataset,
+            batch_size=args.conv_batch_size,
+            collate_fn=data_collator_generator,
+        )
+        num_update_steps_per_epoch = math.ceil(len(train_dataloader))
 
-        train_conv_dataloader = ReDialDataLoader(train_data, args.n_sample, args.conv_batch_size,
-                                                 word_truncate=args.max_dialog_len, task='conv')
-        test_conv_dataloader = ReDialDataLoader(test_data, args.n_sample, args.conv_batch_size,
-                                                word_truncate=args.max_dialog_len, task='conv')
+        max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
+
+        optimizer = AdamW(model.parameters(), lr=args.conv_lr_ft)
+        lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
+
+        evaluator = ConvEvaluator(tokenizer=tokenizer)
+
+        total_report = []
+        # train loop
+        for epoch in range(args.conv_epoch_ft):
+            total_loss = 0
+
+            for step, batch in enumerate(tqdm(train_dataloader)):
+                loss = model.conv_forward(batch['context'], batch['response'])
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                lr_scheduler.step()
+                total_loss += loss.data.float()
+            print('Loss:\t%.4f' % total_loss)
+
+            for batch in tqdm(test_gen_dataloader):
+                with torch.no_grad():
+                    # scores = model.conv_forward(batch['context'], batch['response'])
+
+                    gen_seqs = model.gpt_model.generate(**batch['context'],
+                                                        max_new_tokens=args.max_gen_len,
+                                                        no_repeat_ngram_size=3)
+                    gen_resp_ids = []
+                    for gen_seq, length in zip(gen_seqs, batch['context_len']):
+                        gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
+                        gen_resp_ids.append(gen_seq[length:])
+                    evaluator.evaluate(gen_resp_ids, batch['response'])
+            # metric
+            report = evaluator.report()
+            test_report = {}
+            for k, v in report.items():
+                test_report[f'test/{k}'] = v
+            # test_loss = np.mean(test_loss)
+            # test_report['test/loss'] = test_loss
+            test_report['epoch'] = epoch
+            logger.info(test_report)
+            total_report.append(test_report)
+            # if run:
+            #     run.log(test_report)
+            evaluator.reset_metric()
+
+        return total_report
+        # evaluator.log_cnt += 1
+        # train_conv_dataloader = ReDialDataLoader(train_data, args.n_sample, args.conv_batch_size,
+        #                                          word_truncate=args.max_dialog_len, task='conv')
+        # test_conv_dataloader = ReDialDataLoader(test_data, args.n_sample, args.conv_batch_size,
+        #                                         word_truncate=args.max_dialog_len, task='conv')
 
     # todo: result 기록하는 부분 --> train_recommender 안에 구현 완료
     # todo: ???

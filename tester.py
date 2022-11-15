@@ -31,7 +31,6 @@ if __name__ == '__main__':
     finalFolder_path = os.path.join('./results', finalSubfolder_name)
     if not os.path.exists(finalFolder_path): os.mkdir(finalFolder_path)
 
-
     # results_file_path = f"./results/Final_{mdhm}_name_{args.name}.txt"
     results_file_path = os.path.join(finalFolder_path, f"Final_{mdhm}_name_{args.name}.txt")
     with open(results_file_path, 'w', encoding='utf-8') as result_f:
