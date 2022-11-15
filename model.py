@@ -267,7 +267,7 @@ class MovieExpertCRS(nn.Module):
         return scores
 
     def conv_forward(self, context, response):
-
+        # TODO: encoder_hidden_state = pre-train 된 word & entity rep. (단: linear transform 으로 768 차원으로 늘리기)
         lm_logits = self.gpt_model(input_ids=context.input_ids,
                                    attention_mask=context.attention_mask).logits
         if response is not None:
