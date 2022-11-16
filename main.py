@@ -277,7 +277,7 @@ def main(args):
                                                   no_repeat_ngram_size=3)
                     gen_resp_ids = []
                     for gen_seq, length in zip(gen_seqs, batch['context_len']):
-                        gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
+                        gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
                         gen_resp_ids.append(gen_seq[length:])  # TODO: 이상!
                     evaluator.evaluate(gen_resp_ids, batch['response'], log=True)
             # metric
