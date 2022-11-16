@@ -273,14 +273,14 @@ def main(args):
         # train loop
         for epoch in range(args.conv_epoch_ft):
             total_loss = 0
-            # for step, batch in enumerate(tqdm(train_dataloader)):
-            #     loss = gpt_model(**batch['context'], labels=batch['response']).loss
-            #
-            #     optimizer.zero_grad()
-            #     loss.backward()
-            #     optimizer.step()
-            #     lr_scheduler.step()
-            #     total_loss += loss.data.float()
+            for step, batch in enumerate(tqdm(train_dataloader)):
+                loss = gpt_model(**batch['context'], labels=batch['response']).loss
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                lr_scheduler.step()
+                total_loss += loss.data.float()
             print('Loss:\t%.4f' % total_loss)
             logger.info("test start")
             for batch in tqdm(test_gen_dataloader):
