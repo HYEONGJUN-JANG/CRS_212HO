@@ -56,7 +56,19 @@ def createResultFile(args):
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
         result_f.write('Hit@1\tHit@5\tHit@10\tHit@20\tHit@50\n')
+
+    with open(conv_result_file_path, 'a', encoding='utf-8') as result_f:
+        result_f.write(
+            '\n=================================================\n')
+        result_f.write(get_time_kst())
+        result_f.write('\n')
+        result_f.write('Argument List:' + str(sys.argv) + '\n')
+        for i, v in vars(args).items():
+            result_f.write(f'{i}:{v} || ')
+        result_f.write('\n')
     return results_file_path, conv_result_file_path
+
+
 
 
 def randomize_model(model):
