@@ -43,6 +43,7 @@ def createResultFile(args):
 
     results_file_path = os.path.join(rawFolder_path,
                                      f"{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
+    conv_result_file_path = os.path.join(rawFolder_path, f"{mdhm}_train_device_{args.device_id}_name_{args.name}_Conv.txt")
 
     # parameters
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
@@ -55,7 +56,7 @@ def createResultFile(args):
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
         result_f.write('Hit@1\tHit@5\tHit@10\tHit@20\tHit@50\n')
-    return results_file_path
+    return results_file_path, conv_result_file_path
 
 
 def randomize_model(model):
@@ -83,7 +84,7 @@ def main(args):
 
     # create result file
     # todo: tester 와 겹치는 부분 없는지?
-    results_file_path = createResultFile(args)
+    results_file_path, conv_results_file_path = createResultFile(args)
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
@@ -91,6 +92,8 @@ def main(args):
     REDIAL_DATASET_PATH = os.path.join(DATA_PATH, 'redial')
     # todo: 삭제??
     content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
+    # Conv reulst path
+
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
@@ -129,7 +132,7 @@ def main(args):
     gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer.pad_token_id
-    gpt_model.config.max_length = 256
+    # gpt_model.config.max_length = 256
 
     content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer_gpt)
@@ -237,22 +240,22 @@ def main(args):
         optimizer = AdamW(model.parameters(), lr=args.conv_lr_ft)
         lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-        evaluator = ConvEvaluator(tokenizer=tokenizer)
+        evaluator = ConvEvaluator(tokenizer=tokenizer, log_file_path=conv_results_file_path)
         # TODO: pre-train model load
         total_report = []
         # train loop
         for epoch in range(args.conv_epoch_ft):
-            total_loss = 0
-
-            for step, batch in enumerate(tqdm(train_dataloader)):
-                loss = model.conv_forward(batch['context'], batch['response'])
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                lr_scheduler.step()
-                total_loss += loss.data.float()
-            print('Loss:\t%.4f' % total_loss)
-
+            # total_loss = 0
+            #
+            # for step, batch in enumerate(tqdm(train_dataloader)):
+            #     loss = model.conv_forward(batch['context'], batch['response'])
+            #     optimizer.zero_grad()
+            #     loss.backward()
+            #     optimizer.step()
+            #     lr_scheduler.step()
+            #     total_loss += loss.data.float()
+            # print('Loss:\t%.4f' % total_loss)
+            logger.info("test start")
             for batch in tqdm(test_gen_dataloader):
                 with torch.no_grad():
                     # scores = model.conv_forward(batch['context'], batch['response'])
