@@ -252,7 +252,7 @@ def main(args):
         optimizer = AdamW(model.parameters(), lr=args.conv_lr_ft)
         lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-        evaluator = ConvEvaluator(tokenizer=tokenizer, log_file_path=conv_results_file_path)
+        evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
         # TODO: pre-train model load
         total_report = []
         # train loop
