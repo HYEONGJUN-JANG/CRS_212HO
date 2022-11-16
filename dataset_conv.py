@@ -128,7 +128,8 @@ class CRSConvDataset(Dataset):
                     # "review": review,
                     # "review_mask": review_mask
                 }
-                augmented_conv_dicts.append(conv_dict)
+                if conv['role'] == 'Recommender':
+                    augmented_conv_dicts.append(conv_dict)
             context_tokens.append(text_token_ids)
             context_items += movies
             for entity in entities + movies:
