@@ -81,7 +81,7 @@ class CRSConvDataset(Dataset):
                           entity in self.entity2id]  # utterance entity(entity2id) 마다 entity2id 저장
 
             if utt["role"] == last_role:
-                augmented_convs[-1]["text"] += ' ' + text # ' '가 [sep]대신 들어간건가?
+                augmented_convs[-1]["text"] += ' ' + text
                 augmented_convs[-1]["movie"] += movie_ids
                 augmented_convs[-1]["entity"] += entity_ids
             else:
