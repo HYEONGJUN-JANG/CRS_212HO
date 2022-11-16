@@ -21,7 +21,7 @@ from dataset_conv import CRSConvDataCollator, CRSConvDataset
 from dataloader import ReDialDataLoader
 from dataset import ContentInformation, ReDialDataset
 from evaluate_conv import ConvEvaluator
-from model import MovieExpertCRS
+from model import MovieExpertCRS, Generator
 from parameters import parse_args
 from train_rec import train_recommender
 from pretrain import pretrain
@@ -43,7 +43,8 @@ def createResultFile(args):
 
     results_file_path = os.path.join(rawFolder_path,
                                      f"{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
-    conv_result_file_path = os.path.join(rawFolder_path, f"{mdhm}_train_device_{args.device_id}_name_{args.name}_Conv.txt")
+    conv_result_file_path = os.path.join(rawFolder_path,
+                                         f"{mdhm}_train_device_{args.device_id}_name_{args.name}_Conv.txt")
 
     # parameters
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
@@ -67,8 +68,6 @@ def createResultFile(args):
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
     return results_file_path, conv_result_file_path
-
-
 
 
 def randomize_model(model):
@@ -105,7 +104,6 @@ def main(args):
     # todo: 삭제??
     content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
     # Conv reulst path
-
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
@@ -145,6 +143,7 @@ def main(args):
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer.pad_token_id
     gpt_model.config.max_length = 256
+    gpt_model = gpt_model.to(args.device_id)
 
     content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
     crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer_gpt)
@@ -164,6 +163,7 @@ def main(args):
     # todo: language generation part
     model = MovieExpertCRS(args, bert_model, gpt_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
+    conv_model = Generator(gpt_model).to(args.device_id)
 
     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
@@ -260,7 +260,7 @@ def main(args):
             total_loss = 0
 
             for step, batch in enumerate(tqdm(train_dataloader)):
-                loss = model.conv_forward(batch['context'], batch['response'])
+                loss = gpt_model(**batch['context'])
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -272,13 +272,13 @@ def main(args):
                 with torch.no_grad():
                     # scores = model.conv_forward(batch['context'], batch['response'])
 
-                    gen_seqs = model.gpt_model.generate(**batch['context'],
-                                                        max_new_tokens=args.max_gen_len,
-                                                        no_repeat_ngram_size=3)
+                    gen_seqs = gpt_model.generate(**batch['context'],
+                                                  max_new_tokens=args.max_gen_len,
+                                                  no_repeat_ngram_size=3)
                     gen_resp_ids = []
                     for gen_seq, length in zip(gen_seqs, batch['context_len']):
                         gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
-                        gen_resp_ids.append(gen_seq[length:])
+                        gen_resp_ids.append(gen_seq[length:])  # TODO: 이상!
                     evaluator.evaluate(gen_resp_ids, batch['response'], log=True)
             # metric
             report = evaluator.report()

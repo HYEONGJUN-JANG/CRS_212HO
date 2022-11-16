@@ -17,6 +17,30 @@ class MultiOutput(ModelOutput):
     logits: Optional[torch.FloatTensor] = None
 
 
+class Generator(nn.Module):
+    def __init__(self, gpt_model):
+        super(Generator, self).__init__()
+
+        # Conv
+        self.gpt_model = gpt_model
+        self.lm_head = nn.Linear(gpt_model.config.n_embd, gpt_model.config.vocab_size, bias=False)
+
+    def forward(self, context, response):
+        # TODO: encoder_hidden_state = pre-train 된 word & entity rep. (단: linear transform 으로 768 차원으로 늘리기)
+        hidden_state = self.gpt_model(input_ids=context.input_ids,
+                                      attention_mask=context.attention_mask).last_hidden_state
+        lm_logits = self.lm_head(hidden_state)
+
+        # Shift so that tokens < n predict n
+        shift_logits = lm_logits[..., :-1, :].contiguous()
+        shift_labels = response[..., 1:].contiguous()
+        # Flatten the tokens
+        loss_fct = torch.nn.CrossEntropyLoss()
+        loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+        return MultiOutput(logits=lm_logits, conv_loss=loss)
+
+
 class MovieExpertCRS(nn.Module):
     def __init__(self, args, bert_model, gpt_model, token_emb_dim, movie2ids, entity_kg, n_entity, name):
         super(MovieExpertCRS, self).__init__()
@@ -42,10 +66,6 @@ class MovieExpertCRS(nn.Module):
 
         # Dialog
         self.token_emb_dim = token_emb_dim
-
-        # Conv
-        self.gpt_model = gpt_model
-        self.lm_head = nn.Linear(gpt_model.config.n_embd, gpt_model.config.vocab_size, bias=False)
 
         if args.word_encoder == 0:
             self.word_encoder = bert_model  # bert or transformer or bart
@@ -265,20 +285,3 @@ class MovieExpertCRS(nn.Module):
         # user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
         return scores
-
-    def conv_forward(self, context, response):
-        # TODO: encoder_hidden_state = pre-train 된 word & entity rep. (단: linear transform 으로 768 차원으로 늘리기)
-        lm_logits = self.gpt_model(input_ids=context.input_ids,
-                                   attention_mask=context.attention_mask).logits
-        if response is not None:
-            # Shift so that tokens < n predict n
-            shift_logits = lm_logits[..., :-1, :].contiguous()
-            shift_labels = response[..., 1:].contiguous()
-            # Flatten the tokens
-            loss_fct = torch.nn.CrossEntropyLoss()
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
-
-        return loss
-        # if compute_score:
-        #     return lm_logits
-        # return loss
