@@ -142,7 +142,7 @@ def main(args):
     gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer.pad_token_id
-    gpt_model.config.max_length = 256 # TODO
+    gpt_model.config.max_length = 256  # TODO
     gpt_model = gpt_model.to(args.device_id)
 
     content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
@@ -249,7 +249,22 @@ def main(args):
 
         max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
 
-        optimizer = AdamW(model.parameters(), lr=args.conv_lr_ft)
+        modules = [gpt_model]
+        no_decay = ["bias", "LayerNorm.weight"]
+        optimizer_grouped_parameters = [
+            {
+                "params": [p for model in modules for n, p in model.named_parameters()
+                           if not any(nd in n for nd in no_decay) and p.requires_grad],
+                "weight_decay": args.weight_decay,
+            },
+            {
+                "params": [p for model in modules for n, p in model.named_parameters()
+                           if any(nd in n for nd in no_decay) and p.requires_grad],
+                "weight_decay": 0.0,
+            },
+        ]
+
+        optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_ft)
         lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
         evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
@@ -258,9 +273,9 @@ def main(args):
         # train loop
         for epoch in range(args.conv_epoch_ft):
             total_loss = 0
-
             for step, batch in enumerate(tqdm(train_dataloader)):
                 loss = gpt_model(**batch['context'], labels=batch['response']).loss
+
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -271,14 +286,13 @@ def main(args):
             for batch in tqdm(test_gen_dataloader):
                 with torch.no_grad():
                     # scores = model.conv_forward(batch['context'], batch['response'])
-
                     gen_seqs = gpt_model.generate(**batch['context'],
                                                   max_new_tokens=args.max_gen_len,
                                                   no_repeat_ngram_size=3)
                     gen_resp_ids = []
                     for gen_seq, length in zip(gen_seqs, batch['context_len']):
                         gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
-                        gen_resp_ids.append(gen_seq[length:])  # TODO: 이상!
+                        gen_resp_ids.append(gen_seq[length:])  # TODO: 이상! 해결?
                     evaluator.evaluate(gen_resp_ids, batch['response'], log=True)
             # metric
             report = evaluator.report()
