@@ -257,16 +257,16 @@ def main(args):
         total_report = []
         # train loop
         for epoch in range(args.conv_epoch_ft):
-            # total_loss = 0
-            #
-            # for step, batch in enumerate(tqdm(train_dataloader)):
-            #     loss = model.conv_forward(batch['context'], batch['response'])
-            #     optimizer.zero_grad()
-            #     loss.backward()
-            #     optimizer.step()
-            #     lr_scheduler.step()
-            #     total_loss += loss.data.float()
-            # print('Loss:\t%.4f' % total_loss)
+            total_loss = 0
+
+            for step, batch in enumerate(tqdm(train_dataloader)):
+                loss = model.conv_forward(batch['context'], batch['response'])
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                lr_scheduler.step()
+                total_loss += loss.data.float()
+            print('Loss:\t%.4f' % total_loss)
             logger.info("test start")
             for batch in tqdm(test_gen_dataloader):
                 with torch.no_grad():
@@ -279,7 +279,7 @@ def main(args):
                     for gen_seq, length in zip(gen_seqs, batch['context_len']):
                         gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
                         gen_resp_ids.append(gen_seq[length:])
-                    evaluator.evaluate(gen_resp_ids, batch['response'])
+                    evaluator.evaluate(gen_resp_ids, batch['response'], log=True)
             # metric
             report = evaluator.report()
             test_report = {}
