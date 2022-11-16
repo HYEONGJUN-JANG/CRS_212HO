@@ -163,7 +163,7 @@ def main(args):
     # todo: language generation part
     model = MovieExpertCRS(args, bert_model, gpt_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name).to(args.device_id)
-    conv_model = Generator(gpt_model).to(args.device_id)
+    # conv_model = Generator(gpt_model).to(args.device_id)
 
     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
