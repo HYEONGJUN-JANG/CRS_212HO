@@ -81,7 +81,7 @@ class CRSConvDataset(Dataset):
                           entity in self.entity2id]  # utterance entity(entity2id) 마다 entity2id 저장
 
             if utt["role"] == last_role:
-                augmented_convs[-1]["text"] += ' ' + text
+                augmented_convs[-1]["text"] += ' ' + text # ' '가 [sep]대신 들어간건가?
                 augmented_convs[-1]["movie"] += movie_ids
                 augmented_convs[-1]["entity"] += entity_ids
             else:
@@ -101,6 +101,8 @@ class CRSConvDataset(Dataset):
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
+            text_tokens = text_tokens + self.tokenizer.eos_token
+
             text_token_ids = self.tokenizer(text_tokens, add_special_tokens=True).input_ids
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
