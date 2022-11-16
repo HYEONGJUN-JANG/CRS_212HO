@@ -293,7 +293,7 @@ def main(args):
                     for gen_seq, length in zip(gen_seqs, batch['context_len']):
                         gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
                         gen_resp_ids.append(gen_seq[length:])  # TODO: 이상! 해결?
-                    evaluator.evaluate(gen_resp_ids, batch['response'], log=True)
+                    evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], log=True)
             # metric
             report = evaluator.report()
             test_report = {}
