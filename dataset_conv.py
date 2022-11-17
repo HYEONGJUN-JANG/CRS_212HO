@@ -103,7 +103,9 @@ class CRSConvDataset(Dataset):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
             text_tokens = text_tokens + self.tokenizer.eos_token
 
-            text_token_ids = self.tokenizer(text_tokens, add_special_tokens=True).input_ids
+            text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
+            text_token_ids = text_token_ids[-self.context_max_length:]
+
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
                 # if len(movies) > 1:
