@@ -104,7 +104,6 @@ class CRSConvDataset(Dataset):
             text_tokens = text_tokens + self.tokenizer.eos_token
 
             text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
-            text_token_ids = text_token_ids[-self.context_max_length:]
 
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
@@ -120,8 +119,8 @@ class CRSConvDataset(Dataset):
 
                 conv_dict = {
                     "role": conv['role'],
-                    "context_tokens": copy(context_tokens),
-                    "response": text_token_ids,  # text_tokens,
+                    "context_tokens": copy(context_tokens[-self.context_max_length:]),
+                    "response": text_token_ids[-self.resp_max_length:],  # text_tokens,
                     "context_entities": copy(context_entities)
                     # "context_items": copy(context_items),
                     # "items": movies
