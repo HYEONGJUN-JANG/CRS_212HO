@@ -119,8 +119,8 @@ class CRSConvDataset(Dataset):
 
                 conv_dict = {
                     "role": conv['role'],
-                    "context_tokens": copy(context_tokens[-self.context_max_length:]),
-                    "response": text_token_ids[-self.resp_max_length:],  # text_tokens,
+                    "context_tokens": copy(context_tokens),
+                    "response": text_token_ids,  # text_tokens,
                     "context_entities": copy(context_entities)
                     # "context_items": copy(context_items),
                     # "items": movies
