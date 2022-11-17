@@ -142,12 +142,12 @@ def main(args):
     tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
     gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
-    gpt_model.config.pad_token_id = tokenizer.pad_token_id
+    gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
     gpt_model.config.max_length = 256  # TODO
     gpt_model = gpt_model.to(args.device_id)
 
     content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
-    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer_gpt)
+    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer)
 
     train_data = crs_dataset.train_data
     valid_data = crs_dataset.valid_data
