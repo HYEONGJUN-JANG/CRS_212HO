@@ -42,7 +42,7 @@ class Generator(nn.Module):
 
 
 class MovieExpertCRS(nn.Module):
-    def __init__(self, args, bert_model, gpt_model, token_emb_dim, movie2ids, entity_kg, n_entity, name):
+    def __init__(self, args, bert_model, token_emb_dim, movie2ids, entity_kg, n_entity, name, n_prefix_rec=10):
         super(MovieExpertCRS, self).__init__()
 
         # Setting
@@ -67,11 +67,38 @@ class MovieExpertCRS(nn.Module):
         # Dialog
         self.token_emb_dim = token_emb_dim
 
+        # if self.n_prefix_conv is not None:
+        #     self.conv_prefix_embeds = nn.Parameter(torch.empty(n_prefix_conv, hidden_size))
+        #     nn.init.normal_(self.conv_prefix_embeds)
+        #     self.conv_prefix_proj = nn.Sequential(
+        #         nn.Linear(hidden_size, hidden_size // 2),
+        #         nn.ReLU(),
+        #         nn.Linear(hidden_size // 2, hidden_size)
+        #     )
+
         if args.word_encoder == 0:
             self.word_encoder = bert_model  # bert or transformer or bart
             if 'bart' in args.bert_name:
                 self.word_encoder = bert_model.encoder
+        elif args.word_encoder == 2:
+            self.word_encoder = bert_model  # bert or transformer or bart
+            self.n_layer = self.word_encoder.config.n_layer
+            self.n_block = 2
+            self.rec_prefix_embeds = nn.Parameter(torch.empty(n_prefix_rec, self.token_emb_dim))
+            nn.init.normal_(self.rec_prefix_embeds)
+            self.rec_prefix_proj = nn.Sequential(
+                nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
+                nn.ReLU(),
+                nn.Linear(self.token_emb_dim // 2, self.token_emb_dim)
+            )
 
+            self.prompt_proj1 = nn.Sequential(
+                nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
+                nn.ReLU(),
+                nn.Linear(self.token_emb_dim // 2, self.token_emb_dim),
+            )
+
+            self.prompt_proj2 = nn.Linear(self.token_emb_dim, self.n_layer * self.n_block * self.token_emb_dim)
         elif args.word_encoder == 1:
             self.token_emb_dim = self.kg_emb_dim
             self.token_embedding = nn.Embedding(self.args.vocab_size, self.token_emb_dim,
@@ -213,6 +240,39 @@ class MovieExpertCRS(nn.Module):
             content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
             content_emb = self.linear_transformation(content_emb)  # [B * N, d']
 
+        elif self.args.word_encoder == 2:
+
+            # prefix_embeds = self.rec_prefix_proj(
+            #     self.rec_prefix_embeds) + self.rec_prefix_embeds  # [K, d]
+            # prefix_embeds = prefix_embeds.expand(batch_size, -1, -1)  # [B, K, d]
+            # prompt_len = prefix_embeds.shape[1]
+
+            prompt_embeds = self.prompt_proj1(self.rec_prefix_embeds) + self.rec_prefix_embeds
+            prompt_embeds = self.prompt_proj2(prompt_embeds)
+            prompt_embeds = prompt_embeds.expand(text.shape[0], -1, -1)  # [B, K, d]
+
+            prompt_len = prompt_embeds.shape[1]
+
+            n_head = self.word_encoder.config.n_head
+            head_dim = self.word_encoder.config.n_embd // n_head
+            prefix_embeds = prompt_embeds.reshape(
+                text.shape[0], prompt_len, self.n_layer, self.n_block, n_head, head_dim
+            ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
+
+            transformer_outputs = self.word_encoder.transformer(
+                input_ids=text,
+                prompt_embeds=prefix_embeds,  # (layer_num, n_block, batch_size, head_num, prompt_len, head_dim)
+                attention_mask=mask,
+            )
+            text_emb = transformer_outputs[0]
+
+            # text_emb = self.word_encoder(input_ids=text,
+            #                              attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
+            text_emb = self.linear_transformation(text_emb)  # [B * N, d']
+            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
+            sequence_len = torch.sum(mask, dim=1) - 1
+            content_emb = text_emb[torch.arange(text.shape[0]), sequence_len]
+
         content_emb = self.dropout_pt(content_emb)
 
         if 'word' in self.args.meta and 'meta' in self.args.meta:
@@ -262,6 +322,38 @@ class MovieExpertCRS(nn.Module):
         elif self.args.word_encoder == 1:
             token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
             token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
+
+        elif self.arge.word_encoder == 2:
+            # prefix_embeds = self.rec_prefix_proj(
+            #     self.rec_prefix_embeds) + self.rec_prefix_embeds  # [K, d]
+            # prefix_embeds = prefix_embeds.expand(batch_size, -1, -1)  # [B, K, d]
+            # prompt_len = prefix_embeds.shape[1]
+
+            prompt_embeds = self.prompt_proj1(self.rec_prefix_embeds) + self.rec_prefix_embeds
+            prompt_embeds = self.prompt_proj2(prompt_embeds)
+            prompt_embeds = prompt_embeds.expand(context_tokens.shape[0], -1, -1)  # [B, K, d]
+
+            prompt_len = prompt_embeds.shape[1]
+
+            n_head = self.word_encoder.config.n_head
+            head_dim = self.word_encoder.config.n_embd // n_head
+            prefix_embeds = prompt_embeds.reshape(
+                context_tokens.shape[0], prompt_len, self.n_layer, self.n_block, n_head, head_dim
+            ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
+
+            transformer_outputs = self.word_encoder.transformer(
+                input_ids=context_tokens,
+                prompt_embeds=prefix_embeds,  # (layer_num, n_block, batch_size, head_num, prompt_len, head_dim)
+                attention_mask=token_padding_mask,
+            )
+            text_emb = transformer_outputs[0]
+
+            # text_emb = self.word_encoder(input_ids=text,
+            #                              attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
+            text_emb = self.linear_transformation(text_emb)  # [B * N, d']
+            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
+            sequence_len = torch.sum(token_padding_mask, dim=1) - 1
+            token_attn_rep = text_emb[torch.arange(context_tokens.shape[0]), sequence_len]
 
         # dropout
         token_attn_rep = self.dropout_ft(token_attn_rep)

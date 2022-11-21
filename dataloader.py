@@ -123,8 +123,11 @@ class ReDialDataLoader:
             batch_context_entities.append(
                 truncate(conv_dict['context_entities'], self.entity_truncate, truncate_tail=False))
             dialog_history_flatten = sum(conv_dict['context_tokens'], [])
-            batch_context_tokens.append(
-                [self.cls_token] + truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False))
+            context_tokens = truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False)
+            if self.cls_token is not None:
+                context_tokens = [self.cls_token] + context_tokens
+
+            batch_context_tokens.append(context_tokens)
             batch_item.append(conv_dict['item'])
 
             ### Sampling

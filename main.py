@@ -23,6 +23,7 @@ from dataloader import ReDialDataLoader
 from dataset import ContentInformation, ReDialDataset
 from evaluate_conv import ConvEvaluator
 from model import MovieExpertCRS, Generator
+from model_gpt2 import PromptGPT2forCRS
 from parameters import parse_args
 from train_rec import train_recommender
 from pretrain import pretrain
@@ -114,7 +115,10 @@ def main(args):
     if args.t_layer != -1:
         bert_config.num_hidden_layers = args.t_layer
     # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
-    bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
+    if 'gpt' in args.bert_name.lower():
+        bert_model = PromptGPT2forCRS.from_pretrained(args.gpt_name)
+    else:
+        bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
     # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
     # bart_tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     # bart = BartModel.from_pretrained('facebook/bart-base')
@@ -130,6 +134,9 @@ def main(args):
         elif 't5' in args.bert_name:
             modules = [bert_model.encoder.block[:bert_config.num_hidden_layers - args.n_layer],
                        bert_model.encoder.embed_tokens]
+        elif 'gpt' in args.bert_name.lower():
+            modules = [bert_model.transformer.h[:bert_config.num_hidden_layers - args.n_layer],
+                       bert_model.transformer.wte, bert_model.transformer.wpe]  # 2개 남기기
         else:
             modules = [bert_model.encoder.layer[:bert_config.num_hidden_layers - args.n_layer],
                        bert_model.embeddings]  # 2개 남기기
@@ -140,14 +147,21 @@ def main(args):
     # GPT
     tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
     tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
-    gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name)
+    gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
-    gpt_model.config.max_length = 256  # TODO
+    gpt_model.config.max_length = 256  # TODO 알아내야 함... max_new_tokens 랑 왜 호환안됨?... input length랑은 무슨 상관??
     gpt_model = gpt_model.to(args.device_id)
 
-    content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
-    crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer)
+    if 'gpt' in args.bert_name.lower():
+        tokenizer.add_special_tokens(gpt2_special_tokens_dict)
+        bert_model.resize_token_embeddings(len(tokenizer))
+        content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
+        crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer, tokenizer.eos_token)
+        args.word_encoder = 2
+    else:
+        content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
+        crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer, tokenizer.sep_token)
 
     train_data = crs_dataset.train_data
     valid_data = crs_dataset.valid_data
@@ -162,8 +176,8 @@ def main(args):
     num_movie = len(movie2ids)
 
     # todo: language generation part
-    model = MovieExpertCRS(args, bert_model, gpt_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
-                           crs_dataset.n_entity, args.name).to(args.device_id)
+    model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
+                           crs_dataset.n_entity, args.name, n_prefix_rec=10).to(args.device_id)
     # conv_model = Generator(gpt_model).to(args.device_id)
 
     pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
@@ -292,7 +306,7 @@ def main(args):
                     gen_resp_ids = []
                     for gen_seq, length in zip(gen_seqs, batch['context_len']):
                         gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
-                        gen_resp_ids.append(gen_seq[length:])  # TODO: 이상! 해결?
+                        gen_resp_ids.append(gen_seq[length:])
                     evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], log=True)
             # metric
             report = evaluator.report()
