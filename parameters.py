@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--kg_emb_dim', type=int, default=128)  # 128
     parser.add_argument('--num_bases', type=int, default=8)
     parser.add_argument('--head_num', type=int, default=8)
-    parser.add_argument('--task', type=str, default='conv')
+    parser.add_argument('--task', type=str, default='rec')
     parser.add_argument('--max_title_len', type=int, default=20)
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
@@ -57,9 +57,9 @@ def parse_args():
                         choices=['microsoft/DialoGPT-small', 'gpt2'])
 
     # BERT
-    parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
+    parser.add_argument('--bert_name', type=str, default='microsoft/DialoGPT-small',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small',
-                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base', 'facebook/bart-base',
+                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base', 'facebook/bart-base', 'microsoft/DialoGPT-small'
                                  'bert-large-uncased', 't5-base'])  # [NEW] add roberta
     parser.add_argument('--n_layer', type=int, default=2)
     parser.add_argument('--t_layer', type=int, default=-1)

@@ -102,7 +102,6 @@ class CRSConvDataset(Dataset):
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
             text_tokens = text_tokens + self.tokenizer.eos_token
-
             text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
 
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []

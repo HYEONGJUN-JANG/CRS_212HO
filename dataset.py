@@ -172,12 +172,13 @@ class ReDialDataset:
 
         return train_data, valid_data, test_data
 
-    def __init__(self, args, data_path, content_dataset, tokenizer):
+    def __init__(self, args, data_path, content_dataset, tokenizer, sep_token):
         super(ReDialDataset, self).__init__()
         self.args = args
         self.data_path = data_path
         self.content_dataset = content_dataset
         self.tokenizer = tokenizer
+        self.sep_token = sep_token
         self._load_other_data()
         self._load_data()
 
@@ -286,8 +287,8 @@ class ReDialDataset:
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
-            # text_tokens = text_tokens + self.tokenizer.sep_token
-            text_token_ids = self.tokenizer(text_tokens, add_special_tokens=True).input_ids[1:]
+            text_tokens = text_tokens + self.sep_token
+            text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
                 # if len(movies) > 1:
@@ -303,7 +304,7 @@ class ReDialDataset:
                 conv_dict = {
                     "role": conv['role'],
                     "context_tokens": copy(context_tokens),
-                    "response": text_token_ids, # text_tokens,
+                    "response": text_token_ids,  # text_tokens,
                     "context_entities": copy(context_entities),
                     "context_items": copy(context_items),
                     "items": movies,
