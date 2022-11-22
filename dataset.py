@@ -38,7 +38,7 @@ class ContentInformation(Dataset):
         #     open(os.path.join('data/redial/', 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         # id2entity = {idx: entity for entity, idx in entity2id.items()}
         # all_entities_name = entity2id.keys()
-        for sample in tqdm(data):
+        for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             review_list, plot_list = [], []
             review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
@@ -243,7 +243,8 @@ class ReDialDataset:
 
     def _raw_data_process(self, raw_data):
         augmented_convs = [self._merge_conv_data(conversation["dialog"]) for
-                           conversation in tqdm(raw_data)]  # 연속해서 나온 대화들 하나로 합침 (예) S1, S2, R1 --> S1 + S2, R1
+                           conversation in tqdm(raw_data,
+                                                bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')]  # 연속해서 나온 대화들 하나로 합침 (예) S1, S2, R1 --> S1 + S2, R1
         augmented_conv_dicts = []
         for conv in tqdm(augmented_convs):
             augmented_conv_dicts.extend(self._augment_and_add(conv))  # conversation length 만큼 training sample 생성

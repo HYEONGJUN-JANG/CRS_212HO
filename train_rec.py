@@ -15,7 +15,8 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
     hit_pt = [[], [], [], [], []]
 
     # Pre-training Test
-    for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(pretrain_dataloader):
+    for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(
+            pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token,
                                               review_mask, movie_id, compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
@@ -123,8 +124,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     # scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
     for epoch in range(args.epoch_ft):
-        # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        # finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+        pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
 
         # TRAIN
         model.train()

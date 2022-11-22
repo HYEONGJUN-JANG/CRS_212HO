@@ -57,9 +57,10 @@ class CRSConvDataset(Dataset):
 
     def _raw_data_process(self, raw_data):
         augmented_convs = [self._merge_conv_data(conversation["dialog"]) for
-                           conversation in tqdm(raw_data)]  # 연속해서 나온 대화들 하나로 합침 (예) S1, S2, R1 --> S1 + S2, R1
+                           conversation in tqdm(raw_data,
+                                                bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')]  # 연속해서 나온 대화들 하나로 합침 (예) S1, S2, R1 --> S1 + S2, R1
         augmented_conv_dicts = []
-        for conv in tqdm(augmented_convs):
+        for conv in tqdm(augmented_convs, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             augmented_conv_dicts.extend(self._augment_and_add(conv))  # conversation length 만큼 training sample 생성
         return augmented_conv_dicts
 

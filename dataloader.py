@@ -43,7 +43,7 @@ class ReDialDataLoader:
         if shuffle:
             random.shuffle(idx_list)
 
-        for start_idx in tqdm(range(batch_num)):
+        for start_idx in tqdm(range(batch_num), bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             batch_idx = idx_list[start_idx * self.batch_size: (start_idx + 1) * self.batch_size]
             batch = [dataset[idx] for idx in batch_idx]
             batch = batch_fn(batch)
@@ -84,7 +84,7 @@ class ReDialDataLoader:
 
     def rec_process_fn(self, dataset, mode):
         augment_dataset = []
-        for conv_dict in tqdm(dataset):
+        for conv_dict in tqdm(dataset, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             if mode == 'Test':
                 if conv_dict['role'] == 'Recommender':
                     for idx, movie in enumerate(conv_dict['items']):
@@ -161,7 +161,7 @@ class ReDialDataLoader:
 
     def conv_process_fn(self, dataset):
         augment_dataset = []
-        for conv_dict in tqdm(dataset):
+        for conv_dict in tqdm(dataset, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             if conv_dict['role'] == 'Recommender':
                 augment_dataset.append(conv_dict)
         return augment_dataset

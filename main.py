@@ -288,7 +288,7 @@ def main(args):
         # train loop
         for epoch in range(args.conv_epoch_ft):
             total_loss = 0
-            for step, batch in enumerate(tqdm(train_dataloader)):
+            for step, batch in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
                 loss = gpt_model(**batch['context'], labels=batch['response']).loss
                 optimizer.zero_grad()
                 loss.backward()
@@ -297,7 +297,7 @@ def main(args):
                 total_loss += loss.data.float()
             print('Loss:\t%.4f' % total_loss)
             logger.info("test start")
-            for batch in tqdm(test_gen_dataloader):
+            for batch in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
                 with torch.no_grad():
                     # scores = model.conv_forward(batch['context'], batch['response'])
                     gen_seqs = gpt_model.generate(**batch['context'],
