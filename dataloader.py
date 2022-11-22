@@ -85,19 +85,7 @@ class ReDialDataLoader:
     def rec_process_fn(self, dataset, mode):
         augment_dataset = []
         for conv_dict in tqdm(dataset, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            if mode == 'Test':
-                if conv_dict['role'] == 'Recommender':
-                    for idx, movie in enumerate(conv_dict['items']):
-                        augment_conv_dict = deepcopy(conv_dict)
-                        augment_conv_dict['item'] = movie
-                        augment_conv_dict['plot_meta'] = conv_dict['plot_meta'][idx]
-                        augment_conv_dict['plot'] = conv_dict['plot'][idx]
-                        augment_conv_dict['plot_mask'] = conv_dict['plot_mask'][idx]
-                        augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
-                        augment_conv_dict['review'] = conv_dict['review'][idx]
-                        augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
-                        augment_dataset.append(augment_conv_dict)
-            else:
+            if conv_dict['role'] == 'Recommender':
                 for idx, movie in enumerate(conv_dict['items']):
                     augment_conv_dict = deepcopy(conv_dict)
                     augment_conv_dict['item'] = movie
@@ -107,6 +95,7 @@ class ReDialDataLoader:
                     augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
                     augment_conv_dict['review'] = conv_dict['review'][idx]
                     augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
+                    augment_conv_dict['mask_label'] = conv_dict['mask_label'][idx]
                     augment_dataset.append(augment_conv_dict)
 
         logger.info('[Finish dataset process before rec batchify]')
@@ -119,6 +108,8 @@ class ReDialDataLoader:
         batch_context_tokens = []
         batch_plot, batch_plot_mask, batch_review, batch_plot_meta, batch_review_meta, batch_review_mask = [], [], [], [], [], []
         batch_item = []
+        batch_mask_label = []
+
         for conv_dict in batch:
             batch_context_entities.append(
                 truncate(conv_dict['context_entities'], self.entity_truncate, truncate_tail=False))
@@ -129,7 +120,7 @@ class ReDialDataLoader:
 
             batch_context_tokens.append(context_tokens)
             batch_item.append(conv_dict['item'])
-
+            batch_mask_label.append(conv_dict['mask_label'])
             ### Sampling
             plot_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['plot_mask']), dim=1))
             review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
@@ -156,7 +147,8 @@ class ReDialDataLoader:
                 torch.tensor(batch_review_meta, dtype=torch.long),
                 torch.tensor(batch_review, dtype=torch.long),
                 torch.tensor(batch_review_mask, dtype=torch.long),
-                torch.tensor(batch_item, dtype=torch.long)
+                torch.tensor(batch_item, dtype=torch.long),
+                torch.tensor(batch_mask_label, dtype=torch.long)
                 )
 
     def conv_process_fn(self, dataset):
