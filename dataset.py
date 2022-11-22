@@ -62,13 +62,16 @@ class ContentInformation(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
-            prefix = title + tokenizer.sep_token
-            tokenized_reviews = self.tokenizer([prefix + review for review in reviews], max_length=max_review_len,
+            # prefix = title + tokenizer.sep_token
+            review_prefix = f"The review of {title}" + tokenizer.sep_token
+            plot_prefix = f"The plot of {title}" + tokenizer.sep_token
+
+            tokenized_reviews = self.tokenizer([review_prefix + review for review in reviews], max_length=max_review_len,
                                                padding='max_length',
                                                truncation=True,
                                                add_special_tokens=True)
 
-            tokenized_plots = self.tokenizer([prefix + plot for plot in plots], max_length=max_plot_len,
+            tokenized_plots = self.tokenizer([plot_prefix + plot for plot in plots], max_length=max_plot_len,
                                              padding='max_length',
                                              truncation=True,
                                              add_special_tokens=True)
