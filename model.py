@@ -323,7 +323,7 @@ class MovieExpertCRS(nn.Module):
             token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
             token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
 
-        elif self.arge.word_encoder == 2:
+        elif self.args.word_encoder == 2:
             # prefix_embeds = self.rec_prefix_proj(
             #     self.rec_prefix_embeds) + self.rec_prefix_embeds  # [K, d]
             # prefix_embeds = prefix_embeds.expand(batch_size, -1, -1)  # [B, K, d]
