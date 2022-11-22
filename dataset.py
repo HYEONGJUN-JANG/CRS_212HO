@@ -63,15 +63,20 @@ class ContentInformation(Dataset):
                 plots_meta = [[]]
 
             # prefix = title + tokenizer.sep_token
-            review_prefix = f"The review of {title}" + tokenizer.sep_token
-            plot_prefix = f"The plot of {title}" + tokenizer.sep_token
+            # masked_title =
+            tokenized_title = self.tokenizer(title, add_special_tokens=False).input_ids
+            masked_prefix = self.tokenizer.mask_token * len(tokenized_title) + self.tokenizer.sep_token
+            prefixed_reviews = [masked_prefix + review for review in reviews]
+            prefixed_plots = [masked_prefix + plot for plot in plots]
+            mask_label = [-100] * max_review_len
+            mask_label[1:1 + len(tokenized_title)] = tokenized_title
 
-            tokenized_reviews = self.tokenizer([review_prefix + review for review in reviews], max_length=max_review_len,
+            tokenized_reviews = self.tokenizer(prefixed_reviews, max_length=max_review_len,
                                                padding='max_length',
                                                truncation=True,
                                                add_special_tokens=True)
 
-            tokenized_plots = self.tokenizer([plot_prefix + plot for plot in plots], max_length=max_plot_len,
+            tokenized_plots = self.tokenizer(prefixed_plots, max_length=max_plot_len,
                                              padding='max_length',
                                              truncation=True,
                                              add_special_tokens=True)
@@ -108,7 +113,9 @@ class ContentInformation(Dataset):
                                                              "review": review_list,
                                                              "review_mask": review_mask_list,
                                                              "review_meta": reviews_meta_list,
-                                                             "plot_meta": plots_meta_list}
+                                                             "plot_meta": plots_meta_list,
+                                                             "mask_label": mask_label
+                                                             }
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
@@ -120,7 +127,7 @@ class ContentInformation(Dataset):
         review_mask = self.data_samples[idx]['review_mask']
         review_meta = self.data_samples[idx]['review_meta']
         plot_meta = self.data_samples[idx]['plot_meta']
-
+        mask_label = self.data_samples[idx]['mask_label']
         # ### Sampling
         # if len(meta) > 0:
         #     sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
@@ -155,8 +162,9 @@ class ContentInformation(Dataset):
         review_token = torch.LongTensor(review_token)
         review_mask = torch.LongTensor(review_mask)
         review_meta = torch.LongTensor(review_meta)
+        mask_label = torch.LongTensor(mask_label)
 
-        return idx, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask
+        return idx, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label
 
     def __len__(self):
         return len(self.data_samples)
@@ -296,7 +304,7 @@ class ReDialDataset:
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
             text_tokens = text_tokens + self.sep_token
             text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
-            plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
+            plot_meta, plot, plot_mask, review_meta, review, review_mask, mask_label = [], [], [], [], [], [], []
             if len(context_tokens) > 0:
                 # if len(movies) > 1:
                 #     print()
@@ -307,6 +315,7 @@ class ReDialDataset:
                     review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
                     review.append(self.content_dataset.data_samples[movie]['review'])
                     review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
+                    mask_label.append(self.content_dataset.data_samples[movie]['mask_label'])
 
                 conv_dict = {
                     "role": conv['role'],
@@ -320,7 +329,9 @@ class ReDialDataset:
                     "plot_mask": plot_mask,
                     "review_meta": review_meta,
                     "review": review,
-                    "review_mask": review_mask
+                    "review_mask": review_mask,
+                    "mask_label": mask_label
+
                 }
                 augmented_conv_dicts.append(conv_dict)
             context_tokens.append(text_token_ids)

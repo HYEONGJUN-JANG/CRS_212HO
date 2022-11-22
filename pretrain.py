@@ -11,17 +11,21 @@ def pretrain(args, model, pretrain_dataloader, path):
     for epoch in range(args.epoch_pt):
         model.train()
         total_loss = 0
-
-        for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(
+        total_loss_lm = 0
+        for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label in tqdm(
                 pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            loss = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, movie_id)
+            loss, masked_lm_loss = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token,
+                                                     review_mask, movie_id,
+                                                     mask_label)
             # scores = scores[:, torch.LongTensor(model.movie2ids)]
             # loss = model.criterion(scores, movie_id)
+            joint_loss = loss + masked_lm_loss
             total_loss += loss.data.float()
+            total_loss_lm += masked_lm_loss.data.float()
             optimizer.zero_grad()
-            loss.backward()
+            joint_loss.backward()
             optimizer.step()
-        print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
+        print('[Epoch%d]\tLoss:\t%.4f\tLoss_LM:\t%.4f' % (epoch, total_loss, total_loss_lm))
 
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
@@ -29,10 +33,10 @@ def pretrain(args, model, pretrain_dataloader, path):
     topk = [1, 5, 10, 20]
     hit = [[], [], [], []]
 
-    for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(
+    for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask,
-                                              movie_id,
+                                              movie_id, mask_label,
                                               compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 

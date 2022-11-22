@@ -119,6 +119,7 @@ def main(args):
         bert_model = PromptGPT2forCRS.from_pretrained(args.gpt_name)
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
+
     # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
     # bart_tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
     # bart = BartModel.from_pretrained('facebook/bart-base')
@@ -176,7 +177,7 @@ def main(args):
     num_movie = len(movie2ids)
 
     # todo: language generation part
-    model = MovieExpertCRS(args, bert_model, bert_config.hidden_size, movie2ids, crs_dataset.entity_kg,
+    model = MovieExpertCRS(args, bert_model, bert_config, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name, n_prefix_rec=10).to(args.device_id)
     # conv_model = Generator(gpt_model).to(args.device_id)
 

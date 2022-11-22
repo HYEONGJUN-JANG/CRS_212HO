@@ -1,7 +1,9 @@
 import torch.nn.functional as F
 from torch import nn
 import torch
+from torch.nn import CrossEntropyLoss
 from transformers.file_utils import ModelOutput
+from transformers.models.bert.modeling_bert import BertOnlyMLMHead
 
 from layers import AdditiveAttention, SelfDotAttention, LastQueryAttention
 from torch_geometric.nn import RGCNConv
@@ -42,7 +44,7 @@ class Generator(nn.Module):
 
 
 class MovieExpertCRS(nn.Module):
-    def __init__(self, args, bert_model, token_emb_dim, movie2ids, entity_kg, n_entity, name, n_prefix_rec=10):
+    def __init__(self, args, bert_model, bert_config, movie2ids, entity_kg, n_entity, name, n_prefix_rec=10):
         super(MovieExpertCRS, self).__init__()
 
         # Setting
@@ -65,8 +67,8 @@ class MovieExpertCRS(nn.Module):
         self.pad_entity_idx = 0
 
         # Dialog
-        self.token_emb_dim = token_emb_dim
-
+        self.token_emb_dim = bert_config.hidden_size
+        self.bert_config = bert_config
         # if self.n_prefix_conv is not None:
         #     self.conv_prefix_embeds = nn.Parameter(torch.empty(n_prefix_conv, hidden_size))
         #     nn.init.normal_(self.conv_prefix_embeds)
@@ -78,8 +80,11 @@ class MovieExpertCRS(nn.Module):
 
         if args.word_encoder == 0:
             self.word_encoder = bert_model  # bert or transformer or bart
+            self.cls = BertOnlyMLMHead(bert_config)
+
             if 'bart' in args.bert_name:
                 self.word_encoder = bert_model.encoder
+
         elif args.word_encoder == 1:
             self.token_emb_dim = self.kg_emb_dim
             self.token_embedding = nn.Embedding(self.args.vocab_size, self.token_emb_dim,
@@ -156,6 +161,7 @@ class MovieExpertCRS(nn.Module):
     # plot_meta    :   [batch_size, n_plot, n_meta]
     # target_item   :   [batch_size]
     def pre_forward(self, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, target_item,
+                    mask_label,
                     compute_score=False):
         # text = torch.cat([meta_token, plot_token], dim=1)
         # mask = torch.cat([meta_mask, plot_mask], dim=1)
@@ -211,8 +217,11 @@ class MovieExpertCRS(nn.Module):
         text = text.to(self.device_id)
         mask = mask.to(self.device_id)
 
-        # [1, B] -> [N, B] -> [N X B]
+        # [B, 1] -> [N, B] -> [N X B]
         target_item = target_item.unsqueeze(1).repeat(1, n_text).view(-1).to(self.device_id)
+        # [B, L]
+        mask_label = mask_label.repeat(1, n_text).view(-1, max_plot_len).to(self.device_id)
+
         # todo: entitiy 활용해서 pre-train
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         # kg_embedding = self.entity_proj(kg_embedding)
@@ -231,9 +240,15 @@ class MovieExpertCRS(nn.Module):
         if self.args.word_encoder == 0:
             text_emb = self.word_encoder(input_ids=text,
                                          attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
-            text_emb = self.linear_transformation(text_emb)  # [B * N, d']
+            proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
             # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
-            content_emb = text_emb[:, 0, :]
+            content_emb = proj_text_emb[:, 0, :]
+
+            prediction_scores = self.cls(text_emb)  # [B * N, L, V]
+            masked_lm_loss = None
+            if mask_label is not None:
+                loss_fct = CrossEntropyLoss()  # -100 index = padding token
+                masked_lm_loss = loss_fct(prediction_scores.view(-1, self.bert_config.vocab_size), mask_label.view(-1))
 
         elif self.args.word_encoder == 1:
             text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
@@ -298,7 +313,7 @@ class MovieExpertCRS(nn.Module):
         loss = self.criterion(scores, target_item)
         if compute_score:
             return scores, target_item
-        return loss
+        return loss, masked_lm_loss
 
     def forward(self, context_entities, context_tokens):
 
