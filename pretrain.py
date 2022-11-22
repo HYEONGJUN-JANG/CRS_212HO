@@ -23,7 +23,7 @@ def pretrain(args, model, pretrain_dataloader, path):
             total_loss += loss.data.float()
             total_loss_lm += masked_lm_loss.data.float()
             optimizer.zero_grad()
-            joint_loss.backward()
+            loss.backward()
             optimizer.step()
         print('[Epoch%d]\tLoss:\t%.4f\tLoss_LM:\t%.4f' % (epoch, total_loss, total_loss_lm))
 

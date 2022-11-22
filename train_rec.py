@@ -140,9 +140,10 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
             loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
 
             if 'none' not in args.name:
-                loss_pt = model.pre_forward(plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items,
-                                            mask_label)
-                loss = loss_ft + (loss_pt * args.loss_lambda)
+                loss_pt, loss_pt_lm = model.pre_forward(plot_meta, plot, plot_mask, review_meta, review, review_mask,
+                                                        target_items,
+                                                        mask_label)
+                loss = loss_ft + ((loss_pt) * args.loss_lambda)
             else:
                 loss = loss_ft
 
