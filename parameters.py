@@ -57,9 +57,10 @@ def parse_args():
                         choices=['microsoft/DialoGPT-small', 'gpt2'])
 
     # BERT
-    parser.add_argument('--bert_name', type=str, default='microsoft/DialoGPT-small',
+    parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
                         choices=['bert-base-uncased', 'albert-base-v2', 'prajjwal1/bert-small',
-                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base', 'facebook/bart-base', 'microsoft/DialoGPT-small'
+                                 'prajjwal1/bert-mini', 'prajjwal1/bert-tiny', 'roberta-base', 'facebook/bart-base',
+                                 'microsoft/DialoGPT-small'
                                  'bert-large-uncased', 't5-base'])  # [NEW] add roberta
     parser.add_argument('--n_layer', type=int, default=2)
     parser.add_argument('--t_layer', type=int, default=-1)

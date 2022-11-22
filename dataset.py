@@ -47,7 +47,7 @@ class ContentInformation(Dataset):
             plots = sample['plots']
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
-
+            title = "%s %s" % (sample['title'], sample['year'])
             # title = sample['title']
             # _title = title.replace(' ', '_')
 
@@ -62,11 +62,14 @@ class ContentInformation(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
-            tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len, padding='max_length',
+            prefix = title + tokenizer.sep_token
+            tokenized_reviews = self.tokenizer([prefix + review for review in reviews], max_length=max_review_len,
+                                               padding='max_length',
                                                truncation=True,
                                                add_special_tokens=True)
 
-            tokenized_plots = self.tokenizer(plots, max_length=max_plot_len, padding='max_length',
+            tokenized_plots = self.tokenizer([prefix + plot for plot in plots], max_length=max_plot_len,
+                                             padding='max_length',
                                              truncation=True,
                                              add_special_tokens=True)
 
