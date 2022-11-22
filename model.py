@@ -80,25 +80,6 @@ class MovieExpertCRS(nn.Module):
             self.word_encoder = bert_model  # bert or transformer or bart
             if 'bart' in args.bert_name:
                 self.word_encoder = bert_model.encoder
-        elif args.word_encoder == 2:
-            self.word_encoder = bert_model  # bert or transformer or bart
-            self.n_layer = self.word_encoder.config.n_layer
-            self.n_block = 2
-            self.rec_prefix_embeds = nn.Parameter(torch.empty(n_prefix_rec, self.token_emb_dim))
-            nn.init.normal_(self.rec_prefix_embeds)
-            self.rec_prefix_proj = nn.Sequential(
-                nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
-                nn.ReLU(),
-                nn.Linear(self.token_emb_dim // 2, self.token_emb_dim)
-            )
-
-            self.prompt_proj1 = nn.Sequential(
-                nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
-                nn.ReLU(),
-                nn.Linear(self.token_emb_dim // 2, self.token_emb_dim),
-            )
-
-            self.prompt_proj2 = nn.Linear(self.token_emb_dim, self.n_layer * self.n_block * self.token_emb_dim)
         elif args.word_encoder == 1:
             self.token_emb_dim = self.kg_emb_dim
             self.token_embedding = nn.Embedding(self.args.vocab_size, self.token_emb_dim,
@@ -122,6 +103,25 @@ class MovieExpertCRS(nn.Module):
                 self.args.reduction,
                 self.args.n_positions
             )
+        elif args.word_encoder == 2:
+            self.word_encoder = bert_model  # bert or transformer or bart
+            self.n_layer = self.word_encoder.config.n_layer
+            self.n_block = 2
+            self.rec_prefix_embeds = nn.Parameter(torch.empty(n_prefix_rec, self.token_emb_dim))
+            nn.init.normal_(self.rec_prefix_embeds)
+            self.rec_prefix_proj = nn.Sequential(
+                nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
+                nn.ReLU(),
+                nn.Linear(self.token_emb_dim // 2, self.token_emb_dim)
+            )
+
+            self.prompt_proj1 = nn.Sequential(
+                nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
+                nn.ReLU(),
+                nn.Linear(self.token_emb_dim // 2, self.token_emb_dim),
+            )
+
+            self.prompt_proj2 = nn.Linear(self.token_emb_dim, self.n_layer * self.n_block * self.token_emb_dim)
 
         self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
@@ -342,7 +342,7 @@ class MovieExpertCRS(nn.Module):
             ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
 
             transformer_outputs = self.word_encoder.transformer(
-                input_ids=context_tokens,
+                input_ids=context_tokens.to(self.device_id),
                 prompt_embeds=prefix_embeds,  # (layer_num, n_block, batch_size, head_num, prompt_len, head_dim)
                 attention_mask=token_padding_mask,
             )
