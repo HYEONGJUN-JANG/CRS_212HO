@@ -6,7 +6,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # common
     parser.add_argument('--name', type=str,
-                        default='plot-review-serial')  # plot-serial or review-serial or plot-review or plot-review-serial or none
+                        default='plot-review-serial-none')  # plot-serial or review-serial or plot-review or plot-review-serial or none
     parser.add_argument('--n_review', type=int, default=9)  # 1 or 2 or 3 or 20
     parser.add_argument('--n_plot', type=int, default=9)  # 1 or 2 or 3 or 9
     parser.add_argument('--n_meta', type=int, default=5)  # 1 or 2 or 3 or 9
@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--kg_emb_dim', type=int, default=128)  # 128
     parser.add_argument('--num_bases', type=int, default=8)
     parser.add_argument('--head_num', type=int, default=8)
-    parser.add_argument('--task', type=str, default='rec')
+    parser.add_argument('--task', type=str, default='conv')
     parser.add_argument('--max_title_len', type=int, default=20)
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
