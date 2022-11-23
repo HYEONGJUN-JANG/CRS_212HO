@@ -315,60 +315,32 @@ class MovieExpertCRS(nn.Module):
             return scores, target_item
         return loss, masked_lm_loss
 
-    def forward(self, context_entities, context_tokens):
-
+    def get_representations(self, context_entities, context_tokens):
+        context_tokens = torch.tensor(context_tokens.input_ids)
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
-        # kg_embedding = self.entity_proj(kg_embedding)
+        # entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
         entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+        token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
+                                            attention_mask=token_padding_mask.to(
+                                                self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
+        return entity_representations, kg_embedding, token_embedding, token_padding_mask
+
+    def forward(self, context_entities, context_tokens):
+
+        # kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        # token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
+
+        entity_representations, kg_embedding, token_embedding, token_padding_mask = self.get_representations(
+            context_entities,
+            context_tokens)
+
+        token_embedding = self.linear_transformation(token_embedding)
+        token_attn_rep = token_embedding[:, 0, :]
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
                                                 position=self.args.position)  # (bs, entity_dim)
-
-        token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
-        if self.args.word_encoder == 0:
-            token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
-                                                attention_mask=token_padding_mask.to(
-                                                    self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
-            token_embedding = self.linear_transformation(token_embedding)
-            token_attn_rep = token_embedding[:, 0, :]
-            # token_attn_rep = self.token_attention(token_embedding, query=entity_attn_rep, mask=token_padding_mask)  # [bs, word_dim]
-
-        elif self.args.word_encoder == 1:
-            token_embedding, _ = self.word_encoder(context_tokens.to(self.device_id))  # [bs, token_len, word_dim]
-            token_attn_rep = self.token_attention(token_embedding, token_padding_mask)  # [bs, word_dim]
-
-        elif self.args.word_encoder == 2:
-            # prefix_embeds = self.rec_prefix_proj(
-            #     self.rec_prefix_embeds) + self.rec_prefix_embeds  # [K, d]
-            # prefix_embeds = prefix_embeds.expand(batch_size, -1, -1)  # [B, K, d]
-            # prompt_len = prefix_embeds.shape[1]
-
-            prompt_embeds = self.prompt_proj1(self.rec_prefix_embeds) + self.rec_prefix_embeds
-            prompt_embeds = self.prompt_proj2(prompt_embeds)
-            prompt_embeds = prompt_embeds.expand(context_tokens.shape[0], -1, -1)  # [B, K, d]
-
-            prompt_len = prompt_embeds.shape[1]
-
-            n_head = self.word_encoder.config.n_head
-            head_dim = self.word_encoder.config.n_embd // n_head
-            prefix_embeds = prompt_embeds.reshape(
-                context_tokens.shape[0], prompt_len, self.n_layer, self.n_block, n_head, head_dim
-            ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
-
-            transformer_outputs = self.word_encoder.transformer(
-                input_ids=context_tokens.to(self.device_id),
-                prompt_embeds=prefix_embeds,  # (layer_num, n_block, batch_size, head_num, prompt_len, head_dim)
-                attention_mask=token_padding_mask,
-            )
-            text_emb = transformer_outputs[0]
-
-            # text_emb = self.word_encoder(input_ids=text,
-            #                              attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
-            text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
-            sequence_len = torch.sum(token_padding_mask, dim=1) - 1
-            token_attn_rep = text_emb[torch.arange(context_tokens.shape[0]), sequence_len]
 
         # dropout
         token_attn_rep = self.dropout_ft(token_attn_rep)

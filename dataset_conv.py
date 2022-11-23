@@ -14,11 +14,12 @@ from utils import padded_tensor
 
 class CRSConvDataset(Dataset):
     def __init__(
-            self, path, split, tokenizer, debug=False,
+            self, path, split, tokenizer, tokenizer_bert, debug=False,
             context_max_length=None, resp_max_length=None, entity_max_length=None
     ):
         super(CRSConvDataset, self).__init__()
         self.tokenizer = tokenizer
+        self.tokenizer_bert = tokenizer_bert
         # self.prompt_tokenizer = prompt_tokenizer
         self.debug = debug
         self.movie2name = json.load(
@@ -99,11 +100,13 @@ class CRSConvDataset(Dataset):
     def _augment_and_add(self, raw_conv_dict):
         augmented_conv_dicts = []
         context_tokens, context_entities, context_items = [], [], []
+        context_tokens_bert = []
         entity_set, word_set = set(), set()
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
             text_tokens = text_tokens + self.tokenizer.eos_token
             text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
+            text_token_ids_bert = self.tokenizer_bert(text_tokens, add_special_tokens=False).input_ids
 
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
@@ -120,6 +123,7 @@ class CRSConvDataset(Dataset):
                 conv_dict = {
                     "role": conv['role'],
                     "context_tokens": copy(context_tokens),
+                    "context_tokens_bert": copy(context_tokens_bert),
                     "response": text_token_ids,  # text_tokens,
                     "context_entities": copy(context_entities)
                     # "context_items": copy(context_items),
@@ -134,6 +138,8 @@ class CRSConvDataset(Dataset):
                 if conv['role'] == 'Recommender':
                     augmented_conv_dicts.append(conv_dict)
             context_tokens.append(text_token_ids)
+            context_tokens_bert.append(text_token_ids_bert)
+
             context_items += movies
             for entity in entities + movies:
                 if entity not in entity_set:
@@ -181,10 +187,10 @@ class CRSConvDataCollator:
             self, tokenizer, device, pad_entity_id, gen=False, use_amp=False, debug=False,
             ignore_pad_token_for_loss=True,
             context_max_length=None, resp_max_length=None, entity_max_length=None,
-            prompt_tokenizer=None, prompt_max_length=None
+            tokenizer_bert=None, prompt_max_length=None
     ):
         self.tokenizer = tokenizer
-        # self.prompt_tokenizer = prompt_tokenizer
+        self.tokenizer_bert = tokenizer_bert
         self.device = device
         self.use_amp = use_amp
         self.ignore_pad_token_for_loss = ignore_pad_token_for_loss
@@ -216,8 +222,10 @@ class CRSConvDataCollator:
 
     def __call__(self, data_batch):
         context_batch = defaultdict(list)
+        context_batch_bert = defaultdict(list)
+
         # prompt_batch = defaultdict(list)
-        # entity_batch = []
+        entity_batch = []
         resp_batch = []
         context_len_batch = []
 
@@ -227,27 +235,40 @@ class CRSConvDataCollator:
                 context_ids = sum(data['context_tokens'], [])
                 context_ids = context_ids[-self.context_max_length:]
                 context_len_batch.append(len(context_ids))
+
                 # context_ids += self.generate_prompt_ids
                 context_batch['input_ids'].append(context_ids)
 
+                input_ids_bert = sum(data['context_tokens_bert'], [])
+                input_ids_bert = input_ids_bert[-self.context_max_length:]
+                context_batch_bert['input_ids'].append(input_ids_bert)
+
                 # prompt_batch['input_ids'].append(data['prompt'])
                 resp_batch.append(data['response'])
-                # entity_batch.append(data['context_entities'])
+                entity_batch.append(data['context_entities'])
         else:
             self.tokenizer.padding_side = 'right'
 
             for data in data_batch:
                 input_ids = sum(data['context_tokens'], []) + data['response']
                 input_ids = input_ids[-self.context_max_length:]
+                input_ids_bert = sum(data['context_tokens_bert'], [])
+                input_ids_bert = input_ids_bert[-self.context_max_length:]
+
                 context_batch['input_ids'].append(input_ids)
+                context_batch_bert['input_ids'].append(input_ids_bert)
 
                 # prompt_batch['input_ids'].append(data['prompt'])
-                # entity_batch.append(data['context_entities'])
+                entity_batch.append(data['context_entities'])
 
         input_batch = {}
 
         context_batch = self.tokenizer.pad(
             context_batch, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of)
+
+        context_batch_bert = self.tokenizer_bert.pad(
+            context_batch_bert, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of)
+
         if not self.gen:
             resp_batch = context_batch['input_ids']
             resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for resp
@@ -260,6 +281,7 @@ class CRSConvDataCollator:
             if not isinstance(v, torch.Tensor):
                 context_batch[k] = torch.as_tensor(v, device=self.device)
         input_batch['context'] = context_batch
+        input_batch['context_bert'] = context_batch_bert
 
         # prompt_batch = self.prompt_tokenizer.pad(
         #     prompt_batch, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of,
@@ -270,10 +292,9 @@ class CRSConvDataCollator:
         #         prompt_batch[k] = torch.as_tensor(v, device=self.device)
         # input_batch['prompt'] = prompt_batch
 
-        # entity_batch = padded_tensor(
-        #     entity_batch, pad_idx=self.pad_entity_id, pad_tail=True, device=self.device,
-        #     use_amp=self.use_amp, debug=self.debug, max_len=self.entity_max_length
-        # )
-        # input_batch['entity'] = entity_batch
+        entity_batch = padded_tensor(
+            entity_batch, max_len=self.entity_max_length
+        )
+        input_batch['context_entities'] = entity_batch
 
         return input_batch
