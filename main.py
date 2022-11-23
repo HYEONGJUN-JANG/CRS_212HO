@@ -151,7 +151,7 @@ def main(args):
     gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
-    gpt_model.config.max_length = 256  # TODO 알아내야 함... max_new_tokens 랑 왜 호환안됨?... input length랑은 무슨 상관??
+    # gpt_model.config.max_length = 256  # TODO 알아내야 함... max_new_tokens 랑 왜 호환안됨?... input length랑은 무슨 상관??
     gpt_model = gpt_model.to(args.device_id)
 
     if 'gpt' in args.bert_name.lower():

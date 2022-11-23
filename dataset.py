@@ -66,15 +66,16 @@ class ContentInformation(Dataset):
             # masked_title =
             tokenized_title = self.tokenizer(title, add_special_tokens=False).input_ids
 
-            masked_review_prefix = "The review of " + self.tokenizer.mask_token * len(
-                tokenized_title) + self.tokenizer.sep_token
-            masked_plot_prefix = "The plot of " + self.tokenizer.mask_token * len(
-                tokenized_title) + self.tokenizer.sep_token
+            masked_prefix = self.tokenizer.mask_token * len(tokenized_title) + self.tokenizer.sep_token
+            # masked_review_prefix = "The review of " + self.tokenizer.mask_token * len(
+            #     tokenized_title) + self.tokenizer.sep_token
+            # masked_plot_prefix = "The plot of " + self.tokenizer.mask_token * len(
+            #     tokenized_title) + self.tokenizer.sep_token
 
-            prefixed_reviews = [masked_review_prefix + review for review in reviews]
-            prefixed_plots = [masked_plot_prefix + plot for plot in plots]
+            prefixed_reviews = [masked_prefix + review for review in reviews]
+            prefixed_plots = [masked_prefix + plot for plot in plots]
             mask_label = [-100] * max_review_len
-            mask_label[4:4 + len(tokenized_title)] = tokenized_title
+            mask_label[1:1 + len(tokenized_title)] = tokenized_title
 
             tokenized_reviews = self.tokenizer(prefixed_reviews, max_length=max_review_len,
                                                padding='max_length',
