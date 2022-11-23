@@ -47,26 +47,31 @@ if __name__ == '__main__':
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
 
-    for t in range(NUM_TRIAL):
-        content_hit, initial_hit, best_result = main(args)
-        content_hits.append(content_hit)
-        initial_hits.append(initial_hit)
-        best_results.append(best_result)
+    if 'rec' in args.task:
+        for t in range(NUM_TRIAL):
+            content_hit, initial_hit, best_result = main(args)
+            content_hits.append(content_hit)
+            initial_hits.append(initial_hit)
+            best_results.append(best_result)
+            with open(results_file_path, 'a', encoding='utf-8') as result_f:
+                result_f.write('#TRIAL:\t%d\n' % t)
+                result_f.write('content_hits:\t' + '\t'.join(format(x, ".2f") for x in content_hit) + '\n')
+                result_f.write('initial_hits:\t' + '\t'.join(format(x, ".2f") for x in initial_hit) + '\n')
+                result_f.write('best_hits:\t' + '\t'.join(format(x, ".2f") for x in best_result) + '\n')
+
+        # print(content_hits)
+
+        avg_content_hits = np.mean(np.array(content_hits), axis=0)
+        avg_initial_hits = np.mean(np.array(initial_hits), axis=0)
+        avg_best_results = np.mean(np.array(best_results), axis=0)
+
+        # parameters
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
-            result_f.write('#TRIAL:\t%d\n' % t)
-            result_f.write('content_hits:\t' + '\t'.join(format(x, ".2f") for x in content_hit) + '\n')
-            result_f.write('initial_hits:\t' + '\t'.join(format(x, ".2f") for x in initial_hit) + '\n')
-            result_f.write('best_hits:\t' + '\t'.join(format(x, ".2f") for x in best_result) + '\n')
-
-    # print(content_hits)
-
-    avg_content_hits = np.mean(np.array(content_hits), axis=0)
-    avg_initial_hits = np.mean(np.array(initial_hits), axis=0)
-    avg_best_results = np.mean(np.array(best_results), axis=0)
-
-    # parameters
-    with open(results_file_path, 'a', encoding='utf-8') as result_f:
-        result_f.write('[AVERAGE]\n')
-        result_f.write('content_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_content_hits) + '\n')
-        result_f.write('initial_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_initial_hits) + '\n')
-        result_f.write('best_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_best_results) + '\n')
+            result_f.write('[AVERAGE]\n')
+            result_f.write('content_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_content_hits) + '\n')
+            result_f.write('initial_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_initial_hits) + '\n')
+            result_f.write('best_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_best_results) + '\n')
+    elif 'conv' in args.task:
+        for t in range(NUM_TRIAL):
+            total_report = main(args)
+            # TODO: result 적을지 말지

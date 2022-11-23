@@ -326,7 +326,7 @@ def main(args):
             #     run.log(test_report)
             evaluator.reset_metric()
 
-        return total_report
+        # return total_report, None, None
         # evaluator.log_cnt += 1
         # train_conv_dataloader = ReDialDataLoader(train_data, args.n_sample, args.conv_batch_size,
         #                                          word_truncate=args.max_dialog_len, task='conv')
