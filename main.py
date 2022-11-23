@@ -17,7 +17,7 @@ from pytz import timezone
 import sys
 import os
 
-from config import gpt2_special_tokens_dict
+from config import gpt2_special_tokens_dict, bert_special_tokens_dict
 from dataset_conv import CRSConvDataCollator, CRSConvDataset
 from dataloader import ReDialDataLoader
 from dataset import ContentInformation, ReDialDataset
@@ -109,16 +109,19 @@ def main(args):
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
-    args.vocab_size = tokenizer.vocab_size
-    bert_config = AutoConfig.from_pretrained(args.bert_name)
+    tokenizer.add_special_tokens(bert_special_tokens_dict)
 
+    bert_config = AutoConfig.from_pretrained(args.bert_name)
+    bert_config.vocab_size = len(tokenizer)
+    args.vocab_size = tokenizer.vocab_size
     if args.t_layer != -1:
         bert_config.num_hidden_layers = args.t_layer
     # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     if 'gpt' in args.bert_name.lower():
         bert_model = PromptGPT2forCRS.from_pretrained(args.gpt_name)
     else:
-        bert_model = AutoModel.from_pretrained(args.bert_name, config=bert_config)
+        bert_model = AutoModel.from_pretrained(args.bert_name)
+        bert_model.resize_token_embeddings(len(tokenizer))
 
     # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
     # bart_tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
