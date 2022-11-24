@@ -109,10 +109,10 @@ def main(args):
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
-    tokenizer.add_special_tokens(bert_special_tokens_dict)
+    # tokenizer.add_special_tokens(bert_special_tokens_dict)
 
     bert_config = AutoConfig.from_pretrained(args.bert_name)
-    bert_config.vocab_size = len(tokenizer)
+    # bert_config.vocab_size = len(tokenizer)
     args.vocab_size = tokenizer.vocab_size
     if args.t_layer != -1:
         bert_config.num_hidden_layers = args.t_layer
@@ -121,7 +121,7 @@ def main(args):
         bert_model = PromptGPT2forCRS.from_pretrained(args.gpt_name)
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name)
-        bert_model.resize_token_embeddings(len(tokenizer))
+        # bert_model.resize_token_embeddings(len(tokenizer))
 
     # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
     # bart_tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
@@ -151,9 +151,13 @@ def main(args):
     # GPT
     tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
     tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
-    gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name)
+    gpt_config = AutoConfig.from_pretrained(args.gpt_name)
+    gpt_config.add_cross_attention = True
+
+    gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name, config=gpt_config)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
+    gpt_model.config.add_cross_attention = True
     # gpt_model.config.max_length = 256  # TODO 알아내야 함... max_new_tokens 랑 왜 호환안됨?... input length랑은 무슨 상관??
     gpt_model = gpt_model.to(args.device_id)
 
@@ -211,23 +215,23 @@ def main(args):
     if 'conv' in args.task:
         # data
         conv_train_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'train', tokenizer_gpt,
+            REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
             context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         conv_valid_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'valid', tokenizer_gpt,
+            REDIAL_DATASET_PATH, 'valid', tokenizer_gpt, tokenizer,
             context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         conv_test_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'test', tokenizer_gpt,
+            REDIAL_DATASET_PATH, 'test', tokenizer_gpt, tokenizer,
             context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         # dataloader
         data_collator_teacher = CRSConvDataCollator(
-            tokenizer=tokenizer_gpt, device=args.device_id, gen=False,
+            tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=False,
             context_max_length=args.context_max_length + args.resp_max_length,
             entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
@@ -250,7 +254,7 @@ def main(args):
         #     collate_fn=data_collator_teacher,
         # )
         data_collator_generator = CRSConvDataCollator(
-            tokenizer=tokenizer_gpt, device=args.device_id, gen=True,
+            tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=True,
             context_max_length=args.context_max_length, resp_max_length=args.resp_max_length,
             entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
@@ -293,7 +297,12 @@ def main(args):
         for epoch in range(args.conv_epoch_ft):
             total_loss = 0
             for step, batch in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
-                loss = gpt_model(**batch['context'], labels=batch['response']).loss
+                with torch.no_grad():
+                    entity_representations, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                        batch['context_entities'], batch['context_bert'])
+                    # encoding_state = torch.cat([entity_representations, token_embedding])
+                loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=token_embedding,
+                                 encoder_attention_mask=token_padding_mask).loss
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -303,8 +312,11 @@ def main(args):
             logger.info("test start")
             for batch in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
                 with torch.no_grad():
+                    entity_representations, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                        batch['context_entities'], batch['context_bert'])
                     # scores = model.conv_forward(batch['context'], batch['response'])
-                    gen_seqs = gpt_model.generate(**batch['context'],
+                    gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
+                                                  encoder_attention_mask=token_padding_mask,
                                                   max_new_tokens=args.max_gen_len,
                                                   no_repeat_ngram_size=3)
                     gen_resp_ids = []
