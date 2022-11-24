@@ -70,6 +70,7 @@ class CRSConvDataset(Dataset):
     def _merge_conv_data(self, dialog):
         augmented_convs = []
         last_role = None
+        append_role = None
 
         for utt in dialog:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
@@ -84,6 +85,11 @@ class CRSConvDataset(Dataset):
             entity_ids = [self.entity2id[entity] for entity in utt['entity'] if
                           entity in self.entity2id]  # utterance entity(entity2id) 마다 entity2id 저장
 
+            if utt["role"] == 'Recommender':
+                append_role = 'Seeker'
+            elif utt["role"] == 'Seeker':
+                append_role = 'User'
+
             if utt["role"] == last_role:
                 augmented_convs[-1]["text"] += ' ' + text
                 augmented_convs[-1]["movie"] += movie_ids
@@ -91,7 +97,7 @@ class CRSConvDataset(Dataset):
             else:
                 augmented_convs.append({
                     "role": utt["role"],
-                    "text": f'{utt["role"]}: {text}',  # role + text
+                    "text": f'{append_role}: {text}',  # role + text
                     "entity": entity_ids,
                     "movie": movie_ids,
                 })
