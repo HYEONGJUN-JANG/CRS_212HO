@@ -303,8 +303,8 @@ def main(args):
                     entity_representations, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                         batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
                     # encoding_state = torch.cat([entity_representations, token_embedding])
-                loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=token_embedding,
-                                 encoder_attention_mask=token_padding_mask).loss
+                loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=None,
+                                 encoder_attention_mask=None).loss
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -317,8 +317,8 @@ def main(args):
                     entity_representations, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                         batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
                     # scores = model.conv_forward(batch['context'], batch['response'])
-                    gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
-                                                  encoder_attention_mask=token_padding_mask,
+                    gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=None,
+                                                  encoder_attention_mask=None,
                                                   max_new_tokens=args.max_gen_len,
                                                   no_repeat_ngram_size=3)
                     gen_resp_ids = []
