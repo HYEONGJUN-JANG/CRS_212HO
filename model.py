@@ -237,56 +237,17 @@ class MovieExpertCRS(nn.Module):
         text = text.view(-1, max_len)
         mask = mask.view(-1, max_len)
 
-        if self.args.word_encoder == 0:
-            text_emb = self.word_encoder(input_ids=text,
-                                         attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
-            proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
-            content_emb = proj_text_emb[:, 0, :]
+        text_emb = self.word_encoder(input_ids=text,
+                                     attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
+        proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
+        # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
+        content_emb = proj_text_emb[:, 0, :]
 
-            prediction_scores = self.cls(text_emb)  # [B * N, L, V]
-            masked_lm_loss = None
-            if mask_label is not None:
-                loss_fct = CrossEntropyLoss()  # -100 index = padding token
-                masked_lm_loss = loss_fct(prediction_scores.view(-1, self.bert_config.vocab_size), mask_label.view(-1))
-
-        elif self.args.word_encoder == 1:
-            text_emb, _ = self.word_encoder(text)  # [B * N , L, d]
-            content_emb = self.token_attention(text_emb, mask)  # [B, d] -> [B * N, d]
-            content_emb = self.linear_transformation(content_emb)  # [B * N, d']
-
-        elif self.args.word_encoder == 2:
-
-            # prefix_embeds = self.rec_prefix_proj(
-            #     self.rec_prefix_embeds) + self.rec_prefix_embeds  # [K, d]
-            # prefix_embeds = prefix_embeds.expand(batch_size, -1, -1)  # [B, K, d]
-            # prompt_len = prefix_embeds.shape[1]
-
-            prompt_embeds = self.prompt_proj1(self.rec_prefix_embeds) + self.rec_prefix_embeds
-            prompt_embeds = self.prompt_proj2(prompt_embeds)
-            prompt_embeds = prompt_embeds.expand(text.shape[0], -1, -1)  # [B, K, d]
-
-            prompt_len = prompt_embeds.shape[1]
-
-            n_head = self.word_encoder.config.n_head
-            head_dim = self.word_encoder.config.n_embd // n_head
-            prefix_embeds = prompt_embeds.reshape(
-                text.shape[0], prompt_len, self.n_layer, self.n_block, n_head, head_dim
-            ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
-
-            transformer_outputs = self.word_encoder.transformer(
-                input_ids=text,
-                prompt_embeds=prefix_embeds,  # (layer_num, n_block, batch_size, head_num, prompt_len, head_dim)
-                attention_mask=mask,
-            )
-            text_emb = transformer_outputs[0]
-
-            # text_emb = self.word_encoder(input_ids=text,
-            #                              attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
-            text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
-            sequence_len = torch.sum(mask, dim=1) - 1
-            content_emb = text_emb[torch.arange(text.shape[0]), sequence_len]
+        prediction_scores = self.cls(text_emb)  # [B * N, L, V]
+        masked_lm_loss = None
+        if mask_label is not None:
+            loss_fct = CrossEntropyLoss()  # -100 index = padding token
+            masked_lm_loss = loss_fct(prediction_scores.view(-1, self.bert_config.vocab_size), mask_label.view(-1))
 
         content_emb = self.dropout_pt(content_emb)
 
@@ -312,11 +273,11 @@ class MovieExpertCRS(nn.Module):
 
         loss = self.criterion(scores, target_item)
         if compute_score:
+            prediction_scores
             return scores, target_item
         return loss, masked_lm_loss
 
     def get_representations(self, context_entities, context_tokens):
-        context_tokens = torch.tensor(context_tokens.input_ids)
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
         # entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
