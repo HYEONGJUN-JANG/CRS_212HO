@@ -2,6 +2,7 @@ import torch.nn.functional as F
 from torch import nn
 import torch
 from torch.nn import CrossEntropyLoss
+from transformers import AutoTokenizer
 from transformers.file_utils import ModelOutput
 from transformers.models.bert.modeling_bert import BertOnlyMLMHead
 
@@ -243,6 +244,8 @@ class MovieExpertCRS(nn.Module):
         # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
         content_emb = proj_text_emb[:, 0, :]
 
+        tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+
         prediction_scores = self.cls(text_emb)  # [B * N, L, V]
         masked_lm_loss = None
         if mask_label is not None:
@@ -273,7 +276,8 @@ class MovieExpertCRS(nn.Module):
 
         loss = self.criterion(scores, target_item)
         if compute_score:
-            prediction_scores
+            predicted = tokenizer.batch_decode()
+            mask_movie = mask_label>0
             return scores, target_item
         return loss, masked_lm_loss
 
