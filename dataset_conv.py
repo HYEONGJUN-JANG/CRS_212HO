@@ -268,6 +268,7 @@ class CRSConvDataCollator:
                 context_ids = sum(data['context_tokens'], [])
                 context_ids = context_ids[-(self.context_max_length - len(self.generate_prompt_ids)):]
                 context_len_batch.append(len(context_ids))
+                context_ids += self.generate_prompt_ids
 
                 # context_ids += self.generate_prompt_ids
                 context_batch['input_ids'].append(context_ids)
