@@ -62,6 +62,9 @@ class ContentInformation(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
+            # filter out movie name in plots, reviews
+            reviews = [review.replace(sample['title'], self.tokenizer.mask_token) for review in reviews]
+            plots = [plot.replace(sample['title'], self.tokenizer.mask_token) for plot in plots]
             # prefix = title + tokenizer.sep_token
             # masked_title =
             tokenized_title = self.tokenizer(title, add_special_tokens=False).input_ids

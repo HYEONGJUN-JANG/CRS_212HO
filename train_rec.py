@@ -143,7 +143,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
                 loss_pt, loss_pt_lm = model.pre_forward(plot_meta, plot, plot_mask, review_meta, review, review_mask,
                                                         target_items,
                                                         mask_label)
-                loss = loss_ft + ((loss_pt_lm) * args.loss_lambda)
+                loss = loss_ft + ((loss_pt + loss_pt_lm) * args.loss_lambda)
             else:
                 loss = loss_ft
 
