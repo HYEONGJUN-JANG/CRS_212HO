@@ -25,7 +25,7 @@ def pretrain(args, model, pretrain_dataloader, path):
             total_loss += loss.data.float()
             total_loss_lm += masked_lm_loss.data.float()
             optimizer.zero_grad()
-            masked_lm_loss.backward()
+            joint_loss.backward()
             optimizer.step()
         print('[Epoch%d]\tLoss:\t%.4f\tLoss_LM:\t%.4f' % (epoch, total_loss, total_loss_lm))
 
@@ -73,8 +73,8 @@ def pretrain(args, model, pretrain_dataloader, path):
         hit_score = np.mean(hit[k])
         print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
 
-    movie_name_path = f"{path.split('.')[1].split('/')[-1]}_movie_name_pred_result.txt"
+    movie_name_path = f"./results/{path.split('.')[1].split('/')[-1]}_movie_name_pred_result.txt"
 
     with open(movie_name_path, 'w', encoding='utf-8') as result_f:
         for ref, gen in zip(ref_resps, gen_resps):
-            result_f.write(f"{ref}\t{gen}\n")
+            result_f.write(f"REF:\t{ref}\t/\tGEN:\t{gen}\n")
