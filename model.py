@@ -244,8 +244,6 @@ class MovieExpertCRS(nn.Module):
         # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
         content_emb = proj_text_emb[:, 0, :]
 
-        tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-
         prediction_scores = self.cls(text_emb)  # [B * N, L, V]
         masked_lm_loss = None
         if mask_label is not None:
@@ -276,9 +274,7 @@ class MovieExpertCRS(nn.Module):
 
         loss = self.criterion(scores, target_item)
         if compute_score:
-            predicted = tokenizer.batch_decode()
-            mask_movie = mask_label>0
-            return scores, target_item
+            return scores, target_item, (prediction_scores, mask_label)
         return loss, masked_lm_loss
 
     def get_representations(self, context_entities, context_tokens):
