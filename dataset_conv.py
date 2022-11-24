@@ -86,7 +86,7 @@ class CRSConvDataset(Dataset):
                           entity in self.entity2id]  # utterance entity(entity2id) 마다 entity2id 저장
 
             if utt["role"] == 'Recommender':
-                append_role = 'Seeker'
+                append_role = 'System'
             elif utt["role"] == 'Seeker':
                 append_role = 'User'
 
