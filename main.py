@@ -214,7 +214,7 @@ def main(args):
         return content_hit, initial_hit, best_result
     if 'conv' in args.task:
         # load rec fine-tuned model
-        model.load_state_dict(torch.load(trained_path))
+        # model.load_state_dict(torch.load(trained_path))
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
