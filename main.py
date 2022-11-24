@@ -297,21 +297,22 @@ def main(args):
         total_report = []
         # train loop
         for epoch in range(args.conv_epoch_ft):
-            total_loss = 0
-            for step, batch in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
-                with torch.no_grad():
-                    entity_representations, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                        batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
-                    # encoding_state = torch.cat([entity_representations, token_embedding])
-                loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=None,
-                                 encoder_attention_mask=None).loss
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                lr_scheduler.step()
-                total_loss += loss.data.float()
-            print('Loss:\t%.4f' % total_loss)
-            logger.info("test start")
+            # total_loss = 0
+            # for step, batch in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
+            #     with torch.no_grad():
+            #         entity_representations, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+            #             batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
+            #         # encoding_state = torch.cat([entity_representations, token_embedding])
+            #     loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=None,
+            #                      encoder_attention_mask=None).loss
+            #     optimizer.zero_grad()
+            #     loss.backward()
+            #     optimizer.step()
+            #     lr_scheduler.step()
+            #     total_loss += loss.data.float()
+            # print('Loss:\t%.4f' % total_loss)
+            # logger.info("test start")
+            evaluator.log_file.write(f'\n*** test-{epoch+1} ***\n\n')
             for batch in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
                 with torch.no_grad():
                     entity_representations, kg_embedding, token_embedding, token_padding_mask = model.get_representations(

@@ -251,7 +251,7 @@ class CRSConvDataCollator:
 
         self.pad_entity_id = pad_entity_id
 
-        # self.generate_prompt_ids = self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize('System:'))
+        self.generate_prompt_ids = self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize('System:'))
 
     def __call__(self, data_batch):
         context_batch = defaultdict(list)
@@ -266,7 +266,7 @@ class CRSConvDataCollator:
             self.tokenizer.padding_side = 'left'
             for data in data_batch:
                 context_ids = sum(data['context_tokens'], [])
-                context_ids = context_ids[-self.context_max_length:]
+                context_ids = context_ids[-(self.context_max_length - len(self.generate_prompt_ids)):]
                 context_len_batch.append(len(context_ids))
 
                 # context_ids += self.generate_prompt_ids
@@ -297,7 +297,8 @@ class CRSConvDataCollator:
         input_batch = {}
 
         context_batch = self.tokenizer.pad(
-            context_batch, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of)
+            context_batch, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of,
+            max_length=self.context_max_length)
 
         context_batch_bert = self.tokenizer_bert.pad(
             context_batch_bert, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of)
