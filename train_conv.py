@@ -1,6 +1,6 @@
 from loguru import logger
 
-from CRS_212HO.evaluate_conv import ConvEvaluator
+from evaluate_conv import ConvEvaluator
 
 
 def train_conversation(args, model, train_dataloader, test_dataloader, path, results_file_path):

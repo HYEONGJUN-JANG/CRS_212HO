@@ -17,8 +17,8 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
     # Pre-training Test
     for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token,
-                                              review_mask, movie_id, mask_label, compute_score=True)
+        scores, target_id, gen_resp_ids = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token,
+                                                            review_mask, movie_id, mask_label, compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
@@ -124,8 +124,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     # scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
     for epoch in range(args.epoch_ft):
-        # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        # finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+        pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
 
         # TRAIN
         model.train()

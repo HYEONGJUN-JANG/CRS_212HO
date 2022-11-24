@@ -3,10 +3,12 @@ import numpy as np
 from loguru import logger
 from torch import nn, optim
 from tqdm import tqdm
+from transformers import AutoTokenizer
 
 
 def pretrain(args, model, pretrain_dataloader, path):
     optimizer = optim.Adam(model.parameters(), lr=args.lr_pt)
+    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
     for epoch in range(args.epoch_pt):
         model.train()
@@ -32,12 +34,27 @@ def pretrain(args, model, pretrain_dataloader, path):
     model.eval()
     topk = [1, 5, 10, 20]
     hit = [[], [], [], []]
+    gen_resps = []
+    ref_resps = []
 
     for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask,
-                                              movie_id, mask_label,
-                                              compute_score=True)
+        scores, target_id, (prediction_scores, dup_mask_label) = model.pre_forward(plot_meta, plot_token, plot_mask,
+                                                                                   review_meta, review_token,
+                                                                                   review_mask,
+                                                                                   movie_id, mask_label,
+                                                                                   compute_score=True)
+        predicted_token_ids = torch.argmax(prediction_scores[:, 1:, :], dim=2)
+        context_len = torch.sum(dup_mask_label > 0, dim=1)
+
+        gen_resps.extend([tokenizer.decode(ids[:length]) for ids, length in zip(predicted_token_ids, context_len)])
+        ref_resps.extend([tokenizer.decode(ids[1:length + 1]) for ids, length in zip(dup_mask_label, context_len)])
+
+        # for ref_seq, gen_seq, length in zip(dup_mask_label, gen_seqs, context_len):
+        #     gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
+        #     gen_resps.append(gen_seq[:length])
+        #     ref_resps.append(ref_seq[1:length + 1])
+
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
@@ -55,3 +72,9 @@ def pretrain(args, model, pretrain_dataloader, path):
     for k in range(len(topk)):
         hit_score = np.mean(hit[k])
         print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
+
+    movie_name_path = f"{path.split('.')[1].split('/')[-1]}_movie_name_pred_result.txt"
+
+    with open(movie_name_path, 'w', encoding='utf-8') as result_f:
+        for ref, gen in zip(ref_resps, gen_resps):
+            result_f.write(f"{ref}\t{gen}\n")

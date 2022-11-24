@@ -2,6 +2,7 @@ import torch.nn.functional as F
 from torch import nn
 import torch
 from torch.nn import CrossEntropyLoss
+from transformers import AutoTokenizer
 from transformers.file_utils import ModelOutput
 from transformers.models.bert.modeling_bert import BertOnlyMLMHead
 
@@ -273,8 +274,7 @@ class MovieExpertCRS(nn.Module):
 
         loss = self.criterion(scores, target_item)
         if compute_score:
-            prediction_scores
-            return scores, target_item
+            return scores, target_item, (prediction_scores, mask_label)
         return loss, masked_lm_loss
 
     def get_representations(self, context_entities, context_tokens):
