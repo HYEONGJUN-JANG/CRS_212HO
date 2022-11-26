@@ -88,6 +88,7 @@ def main(args):
     # 22.10.13: path of saved model
     pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
     trained_path = f'./saved_model/trained_model_{args.name}.pt'
+    bestrec_path = './saved_model/trained_model_bestrec.pt'
 
     # CUDA device check
     # todo: multi-GPU
@@ -214,7 +215,7 @@ def main(args):
         return content_hit, initial_hit, best_result
     if 'conv' in args.task:
         # load rec fine-tuned model
-        model.load_state_dict(torch.load(trained_path))
+        model.load_state_dict(torch.load(bestrec_path))
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
@@ -315,7 +316,7 @@ def main(args):
                 total_loss += loss.data.float()
             print('Loss:\t%.4f' % total_loss)
             logger.info('[Test]')
-            evaluator.log_file.write(f'\n*** test-{epoch+1} ***\n\n')
+            evaluator.log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
             for batch in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
                 with torch.no_grad():
                     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
