@@ -21,11 +21,11 @@ def pretrain(args, model, pretrain_dataloader, path):
                                                      mask_label)
             # scores = scores[:, torch.LongTensor(model.movie2ids)]
             # loss = model.criterion(scores, movie_id)
-            joint_loss = loss + masked_lm_loss
+            # joint_loss = loss + masked_lm_loss
             total_loss += loss.data.float()
             total_loss_lm += masked_lm_loss.data.float()
             optimizer.zero_grad()
-            joint_loss.backward()
+            loss.backward()
             optimizer.step()
         print('[Epoch%d]\tLoss:\t%.4f\tLoss_LM:\t%.4f' % (epoch, total_loss, total_loss_lm))
 
@@ -44,11 +44,12 @@ def pretrain(args, model, pretrain_dataloader, path):
                                                                                    review_mask,
                                                                                    movie_id, mask_label,
                                                                                    compute_score=True)
-        predicted_token_ids = torch.argmax(prediction_scores[:, 1:, :], dim=2)
-        context_len = torch.sum(dup_mask_label > 0, dim=1)
 
-        gen_resps.extend([tokenizer.decode(ids[:length]) for ids, length in zip(predicted_token_ids, context_len)])
-        ref_resps.extend([tokenizer.decode(ids[1:length + 1]) for ids, length in zip(dup_mask_label, context_len)])
+        # Moive name 예측 결과 디코딩
+        # predicted_token_ids = torch.argmax(prediction_scores[:, 1:, :], dim=2)
+        # context_len = torch.sum(dup_mask_label > 0, dim=1)
+        # gen_resps.extend([tokenizer.decode(ids[:length]) for ids, length in zip(predicted_token_ids, context_len)])
+        # ref_resps.extend([tokenizer.decode(ids[1:length + 1]) for ids, length in zip(dup_mask_label, context_len)])
 
         # for ref_seq, gen_seq, length in zip(dup_mask_label, gen_seqs, context_len):
         #     gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
@@ -73,8 +74,8 @@ def pretrain(args, model, pretrain_dataloader, path):
         hit_score = np.mean(hit[k])
         print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
 
-    movie_name_path = f"./results/{path.split('.')[1].split('/')[-1]}_movie_name_pred_result.txt"
-
-    with open(movie_name_path, 'w', encoding='utf-8') as result_f:
-        for ref, gen in zip(ref_resps, gen_resps):
-            result_f.write(f"REF:\t{ref}\t/\tGEN:\t{gen}\n")
+    # Movie name 예측 결과 작성
+    # movie_name_path = f"./results/{path.split('.')[1].split('/')[-1]}_movie_name_pred_result.txt"
+    # with open(movie_name_path, 'w', encoding='utf-8') as result_f:
+    #     for ref, gen in zip(ref_resps, gen_resps):
+    #         result_f.write(f"REF:\t{ref}\t/\tGEN:\t{gen}\n")

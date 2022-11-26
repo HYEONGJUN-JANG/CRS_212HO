@@ -62,9 +62,10 @@ class ContentInformation(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
-            # filter out movie name in plots, reviews
-            reviews = [review.replace(sample['title'], self.tokenizer.mask_token) for review in reviews]
-            plots = [plot.replace(sample['title'], self.tokenizer.mask_token) for plot in plots]
+            # Filter out movie name in plots, reviews
+            # reviews = [review.replace(sample['title'], self.tokenizer.mask_token) for review in reviews]
+            # plots = [plot.replace(sample['title'], self.tokenizer.mask_token) for plot in plots]
+
             # prefix = title + tokenizer.sep_token
             # masked_title =
             tokenized_title = self.tokenizer(title, add_special_tokens=False).input_ids
@@ -295,9 +296,15 @@ class ReDialDataset:
                 augmented_convs[-1]["movie"] += movie_ids
                 augmented_convs[-1]["entity"] += entity_ids
             else:
+
+                if utt["role"] == 'Recommender':
+                    role_name = 'System'
+                else:
+                    role_name = 'User'
+
                 augmented_convs.append({
                     "role": utt["role"],
-                    "text": f'{utt["role"]}: {text}',  # role + text
+                    "text": f'{role_name}: {text}',  # role + text
                     "entity": entity_ids,
                     "movie": movie_ids,
                 })
