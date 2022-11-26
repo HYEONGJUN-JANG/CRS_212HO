@@ -279,22 +279,22 @@ class MovieExpertCRS(nn.Module):
 
     def get_representations(self, context_entities, context_tokens):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
-        # entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
         entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                             attention_mask=token_padding_mask.to(
                                                 self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
-        return entity_representations, kg_embedding, token_embedding, token_padding_mask
+        return entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask
 
     def forward(self, context_entities, context_tokens):
 
         # kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
-        entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        # entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         # token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
-        entity_representations, kg_embedding, token_embedding, token_padding_mask = self.get_representations(
+        entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = self.get_representations(
             context_entities,
             context_tokens)
 
