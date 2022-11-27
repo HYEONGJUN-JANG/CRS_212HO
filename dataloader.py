@@ -12,13 +12,14 @@ import numpy as np
 
 class ReDialDataLoader:
     def __init__(self, dataset, n_sample, batch_size, entity_truncate=None, word_truncate=None, padding_idx=0,
-                 mode='Test', cls_token=101, task='rec'):
+                 mode='Test', cls_token=101, type='bert', task='rec'):
         self.cls_token = cls_token
         self.entity_truncate = entity_truncate
         self.word_truncate = word_truncate
         self.padding_idx = padding_idx
         self.n_sample = n_sample
         self.batch_size = batch_size
+        self.type = type
         if task == 'rec':
             self.dataset = self.rec_process_fn(dataset, mode)
         elif task == 'conv':
@@ -116,7 +117,10 @@ class ReDialDataLoader:
             dialog_history_flatten = sum(conv_dict['context_tokens'], [])
             context_tokens = truncate(dialog_history_flatten, self.word_truncate, truncate_tail=False)
             if self.cls_token is not None:
-                context_tokens = [self.cls_token] + context_tokens
+                if self.type == 'bert':
+                    context_tokens = [self.cls_token] + context_tokens
+                elif self.type == 'gpt':
+                    context_tokens = context_tokens + [self.cls_token]
 
             batch_context_tokens.append(context_tokens)
             batch_item.append(conv_dict['item'])

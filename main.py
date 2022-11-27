@@ -110,8 +110,6 @@ def main(args):
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
-    # tokenizer.add_special_tokens(bert_special_tokens_dict)
-
     bert_config = AutoConfig.from_pretrained(args.bert_name)
     # bert_config.vocab_size = len(tokenizer)
     args.vocab_size = tokenizer.vocab_size
@@ -119,7 +117,7 @@ def main(args):
         bert_config.num_hidden_layers = args.t_layer
     # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     if 'gpt' in args.bert_name.lower():
-        bert_model = PromptGPT2forCRS.from_pretrained(args.gpt_name)
+        bert_model = AutoModel.from_pretrained(args.gpt_name)
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name)
         # bert_model.resize_token_embeddings(len(tokenizer))
@@ -140,8 +138,8 @@ def main(args):
             modules = [bert_model.encoder.block[:bert_config.num_hidden_layers - args.n_layer],
                        bert_model.encoder.embed_tokens]
         elif 'gpt' in args.bert_name.lower():
-            modules = [bert_model.transformer.h[:bert_config.num_hidden_layers - args.n_layer],
-                       bert_model.transformer.wte, bert_model.transformer.wpe]  # 2개 남기기
+            modules = [bert_model.h[:bert_config.num_hidden_layers - args.n_layer],
+                       bert_model.wte, bert_model.wpe]  # 2개 남기기
         else:
             modules = [bert_model.encoder.layer[:bert_config.num_hidden_layers - args.n_layer],
                        bert_model.embeddings]  # 2개 남기기
@@ -200,12 +198,16 @@ def main(args):
         model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
     if 'rec' in args.task:
+        if args.word_encoder == 2:
+            type = 'gpt'
+        else:
+            type = 'bert'
         train_rec_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size,
                                                 word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
-                                                task='rec')
+                                                task='rec', type=type)
         test_rec_dataloader = ReDialDataLoader(test_data, args.n_sample, args.batch_size,
                                                word_truncate=args.max_dialog_len,
-                                               cls_token=tokenizer.cls_token_id, task='rec')
+                                               cls_token=tokenizer.cls_token_id, task='rec', type=type)
 
         content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
                                                                   test_rec_dataloader,

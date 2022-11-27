@@ -68,28 +68,36 @@ class ContentInformation(Dataset):
 
             # prefix = title + tokenizer.sep_token
             # masked_title =
-            tokenized_title = self.tokenizer(title, add_special_tokens=False).input_ids
-
-            masked_prefix = self.tokenizer.mask_token * len(tokenized_title) + self.tokenizer.sep_token
+            # tokenized_title = self.tokenizer(title, add_special_tokens=False).input_ids
+            # masked_prefix = self.tokenizer.mask_token * len(tokenized_title) + self.tokenizer.sep_token
             # masked_review_prefix = "The review of " + self.tokenizer.mask_token * len(
             #     tokenized_title) + self.tokenizer.sep_token
             # masked_plot_prefix = "The plot of " + self.tokenizer.mask_token * len(
             #     tokenized_title) + self.tokenizer.sep_token
 
-            prefixed_reviews = [masked_prefix + review for review in reviews]
-            prefixed_plots = [masked_prefix + plot for plot in plots]
+            # prefixed_reviews = [masked_prefix + review for review in reviews]
+            # prefixed_plots = [masked_prefix + plot for plot in plots]
             mask_label = [-100] * max_review_len
-            mask_label[1:1 + len(tokenized_title)] = tokenized_title
+            # mask_label[1:1 + len(tokenized_title)] = tokenized_title
 
-            tokenized_reviews = self.tokenizer(prefixed_reviews, max_length=max_review_len,
+            tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len,
                                                padding='max_length',
                                                truncation=True,
                                                add_special_tokens=True)
-
-            tokenized_plots = self.tokenizer(prefixed_plots, max_length=max_plot_len,
+            tokenized_plots = self.tokenizer(plots, max_length=max_plot_len,
                                              padding='max_length',
                                              truncation=True,
                                              add_special_tokens=True)
+
+            if self.args.word_encoder == 2:
+                review_lens = [sum(mask) for mask in tokenized_reviews.attention_mask]
+                for tokenized_review, last_idx in zip(tokenized_reviews.input_ids, review_lens):
+                    tokenized_review[last_idx - 1] = tokenizer.cls_token_id
+
+                plot_lens = [sum(mask) for mask in tokenized_plots.attention_mask]
+                for tokenized_plot, last_idx in zip(tokenized_plots.input_ids, plot_lens):
+                    tokenized_plot[last_idx - 1] = tokenizer.cls_token_id
+
 
             for idx, meta in enumerate(reviews_meta):
                 reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
