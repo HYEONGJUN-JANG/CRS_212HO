@@ -238,17 +238,27 @@ class MovieExpertCRS(nn.Module):
         text = text.view(-1, max_len)
         mask = mask.view(-1, max_len)
 
-        text_emb = self.word_encoder(input_ids=text,
-                                     attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
-        proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-        # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
-        content_emb = proj_text_emb[:, 0, :]
+        if self.args.word_encoder == 0:
+            text_emb = self.word_encoder(input_ids=text,
+                                         attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
+            proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
+            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
+            content_emb = proj_text_emb[:, 0, :]
+        elif self.args.word_encoder == 2:
 
-        prediction_scores = self.cls(text_emb)  # [B * N, L, V]
-        masked_lm_loss = None
-        if mask_label is not None:
-            loss_fct = CrossEntropyLoss()  # -100 index = padding token
-            masked_lm_loss = loss_fct(prediction_scores.view(-1, self.bert_config.vocab_size), mask_label.view(-1))
+            text_emb = self.word_encoder(input_ids=text,
+                                         attention_mask=mask)[0]  # [B, L, d] -> [B * N, L, d]
+
+            text_emb = self.linear_transformation(text_emb)  # [B * N, d']
+            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
+            sequence_len = torch.sum(mask, dim=1) - 1
+            content_emb = text_emb[torch.arange(text.shape[0]), sequence_len]
+
+        # prediction_scores = self.cls(text_emb)  # [B * N, L, V]
+        # masked_lm_loss = None
+        # if mask_label is not None:
+        #     loss_fct = CrossEntropyLoss()  # -100 index = padding token
+        #     masked_lm_loss = loss_fct(prediction_scores.view(-1, self.bert_config.vocab_size), mask_label.view(-1))
 
         content_emb = self.dropout_pt(content_emb)
 
@@ -274,8 +284,8 @@ class MovieExpertCRS(nn.Module):
 
         loss = self.criterion(scores, target_item)
         if compute_score:
-            return scores, target_item, (prediction_scores, mask_label)
-        return loss, masked_lm_loss
+            return scores, target_item
+        return loss
 
     def get_representations(self, context_entities, context_tokens):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
@@ -299,7 +309,12 @@ class MovieExpertCRS(nn.Module):
             context_tokens)
 
         token_embedding = self.linear_transformation(token_embedding)
-        token_attn_rep = token_embedding[:, 0, :]
+        if self.args.word_encoder == 0:
+            token_attn_rep = token_embedding[:, 0, :]
+        elif self.args.word_encoder == 2:
+            sequence_len = torch.sum(token_padding_mask, dim=1) - 1
+            token_attn_rep = token_embedding[torch.arange(context_tokens.shape[0]), sequence_len]
+
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
                                                 position=self.args.position)  # (bs, entity_dim)
 
