@@ -88,7 +88,7 @@ def main(args):
     # 22.10.13: path of saved model
     pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
     trained_path = f'./saved_model/trained_model_{args.name}.pt'
-    bestrec_path = './saved_model/trained_model_bestrec.pt'
+    bestrec_path = f'./saved_model/trained_model_{args.name}.pt'
 
     # CUDA device check
     # todo: multi-GPU
