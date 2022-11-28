@@ -74,9 +74,9 @@ class CRSConvDataset(Dataset):
 
         for utt in dialog:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
-            # for idx, word in enumerate(utt['text']):
-            #     if word[0] == '@' and word[1:].isnumeric():
-            #         utt['text'][idx] = self.movie2name[word[1:]][1]
+            for idx, word in enumerate(utt['text']):
+                if word[0] == '@' and word[1:].isnumeric():
+                    utt['text'][idx] = self.movie2name[word[1:]][1]
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
@@ -113,7 +113,7 @@ class CRSConvDataset(Dataset):
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
             text_tokens = text_tokens + self.tokenizer.eos_token
-            # text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
+            text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
             text_token_ids_bert = self.tokenizer_bert(text_tokens, add_special_tokens=False).input_ids
 
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
@@ -127,16 +127,16 @@ class CRSConvDataset(Dataset):
                 # review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
                 # review.append(self.content_dataset.data_samples[movie]['review'])
                 # review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
-                mask_text_token = self.process_utt(text_tokens, self.movie2name, replace_movieId=True,
-                                                   remove_movie=True)
-                context_tokens[-1] = self.process_utt(context_tokens[-1], self.movie2name, replace_movieId=True,
-                                                      remove_movie=False)
+                # mask_text_token = self.process_utt(text_tokens, self.movie2name, replace_movieId=True,
+                #                                    remove_movie=True)
+                # context_tokens[-1] = self.process_utt(context_tokens[-1], self.movie2name, replace_movieId=True,
+                #                                       remove_movie=False)
 
                 conv_dict = {
                     "role": conv['role'],
-                    "context_tokens": self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids, # copy(context_tokens),
+                    "context_tokens": copy(context_tokens), # self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
                     "context_tokens_bert": copy(context_tokens_bert),
-                    "response": self.tokenizer(mask_text_token, add_special_tokens=False).input_ids,  # text_tokens,
+                    "response": text_tokens, # self.tokenizer(mask_text_token, add_special_tokens=False).input_ids,
                     "context_entities": copy(context_entities)
                     # "context_items": copy(context_items),
                     # "items": movies
@@ -149,7 +149,7 @@ class CRSConvDataset(Dataset):
                 }
                 if conv['role'] == 'Recommender':
                     augmented_conv_dicts.append(conv_dict)
-            context_tokens.append(text_tokens)
+            context_tokens.append(text_token_ids)
             context_tokens_bert.append(text_token_ids_bert)
 
             context_items += movies
