@@ -134,9 +134,10 @@ class CRSConvDataset(Dataset):
 
                 conv_dict = {
                     "role": conv['role'],
-                    "context_tokens": self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids, # copy(context_tokens),
+                    "context_tokens": self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
+                    # copy(context_tokens),
                     "context_tokens_bert": copy(context_tokens_bert),
-                    "response": self.tokenizer(mask_text_token, add_special_tokens=False).input_ids, # text_token_ids,
+                    "response": self.tokenizer(mask_text_token, add_special_tokens=False).input_ids,  # text_tokens,
                     "context_entities": copy(context_entities)
                     # "context_items": copy(context_items),
                     # "items": movies
@@ -149,7 +150,7 @@ class CRSConvDataset(Dataset):
                 }
                 if conv['role'] == 'Recommender':
                     augmented_conv_dicts.append(conv_dict)
-            # context_tokens.append(text_token)
+            context_tokens.append(text_tokens)
             context_tokens_bert.append(text_token_ids_bert)
 
             context_items += movies
