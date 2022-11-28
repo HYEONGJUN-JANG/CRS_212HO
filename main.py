@@ -219,7 +219,8 @@ def main(args):
         return content_hit, initial_hit, best_result
     if 'conv' in args.task:
         # load rec fine-tuned model
-        # model.load_state_dict(torch.load(bestrec_path))
+        logger.info(f'Load pretrained file\t{bestrec_path}')
+        model.load_state_dict(torch.load(bestrec_path))
         content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, args.device_id)
         pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True)
         pretrain_conv(args, gpt_model, pretrain_conv_dataloader)
