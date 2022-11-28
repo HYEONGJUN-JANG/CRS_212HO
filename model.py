@@ -20,28 +20,31 @@ class MultiOutput(ModelOutput):
     logits: Optional[torch.FloatTensor] = None
 
 
-class Generator(nn.Module):
-    def __init__(self, gpt_model):
-        super(Generator, self).__init__()
+class Projector(nn.Module):
+    def __init__(self, token_dim_size, entity_dim_size):
+        super(Projector, self).__init__()
+        self.token_dim_size = token_dim_size
+        self.entity_dim_size = entity_dim_size
 
-        # Conv
-        self.gpt_model = gpt_model
-        self.lm_head = nn.Linear(gpt_model.config.n_embd, gpt_model.config.vocab_size, bias=False)
+        self.token_proj = nn.Sequential(
+            nn.Linear(self.token_dim_size, self.token_dim_size // 2),
+            nn.ReLU(),
+            nn.Linear(self.token_dim_size // 2, self.token_dim_size)
+        )
 
-    def forward(self, context, response):
-        # TODO: encoder_hidden_state = pre-train 된 word & entity rep. (단: linear transform 으로 768 차원으로 늘리기)
-        hidden_state = self.gpt_model(input_ids=context.input_ids,
-                                      attention_mask=context.attention_mask).last_hidden_state
-        lm_logits = self.lm_head(hidden_state)
+        self.entity_proj = nn.Sequential(
+            nn.Linear(self.entity_dim_size, self.token_dim_size // 2),
+            nn.ReLU(),
+            nn.Linear(self.token_dim_size // 2, self.token_dim_size)
+        )
 
-        # Shift so that tokens < n predict n
-        shift_logits = lm_logits[..., :-1, :].contiguous()
-        shift_labels = response[..., 1:].contiguous()
-        # Flatten the tokens
-        loss_fct = torch.nn.CrossEntropyLoss()
-        loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+    def forward(self, token_emb, token_mask, entity_emb, entity_mask):
+        token_emb = self.token_proj(token_emb)
+        entity_emb = self.entity_proj(entity_emb)
 
-        return MultiOutput(logits=lm_logits, conv_loss=loss)
+        encode_state = torch.cat([token_emb, entity_emb], dim=1)
+        encoder_mask = torch.cat([token_mask, entity_mask], dim=1)
+        return encode_state, encoder_mask
 
 
 class MovieExpertCRS(nn.Module):

@@ -22,7 +22,7 @@ from dataset_conv import CRSConvDataCollator, CRSConvDataset
 from dataloader import ReDialDataLoader
 from dataset import ContentInformation, ReDialDataset
 from evaluate_conv import ConvEvaluator
-from model import MovieExpertCRS, Generator
+from model import MovieExpertCRS, Projector
 from model_gpt2 import PromptGPT2forCRS
 from parameters import parse_args
 from train_rec import train_recommender
@@ -217,7 +217,7 @@ def main(args):
         return content_hit, initial_hit, best_result
     if 'conv' in args.task:
         # load rec fine-tuned model
-        model.load_state_dict(torch.load(bestrec_path))
+        # model.load_state_dict(torch.load(bestrec_path))
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
@@ -277,6 +277,8 @@ def main(args):
 
         max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
 
+        projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
+
         modules = [gpt_model]
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
@@ -290,6 +292,10 @@ def main(args):
                            if any(nd in n for nd in no_decay) and p.requires_grad],
                 "weight_decay": 0.0,
             },
+            {
+                "params": projector.parameters()
+            }
+
         ]
 
         optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_ft)
@@ -303,14 +309,18 @@ def main(args):
             total_loss = 0
             logger.info(f'[Conversation epoch {str(epoch)}]')
             logger.info('[Train]')
+            projector.train()
             for step, batch in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
                 with torch.no_grad():
                     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                         batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
                     # encoding_state = torch.cat([entity_representations, token_embedding])
                     # encoding_mask = torch.cat([entity_padding_mask, token_padding_mask])
-                loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=token_embedding,
-                                 encoder_attention_mask=token_padding_mask).loss
+                encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                       entity_padding_mask)
+
+                loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
+                                 encoder_attention_mask=encoder_mask).loss
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
