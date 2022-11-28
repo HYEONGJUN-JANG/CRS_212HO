@@ -18,15 +18,17 @@ import sys
 import os
 
 from config import gpt2_special_tokens_dict, bert_special_tokens_dict
-from dataset_conv import CRSConvDataCollator, CRSConvDataset
+from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv
 from dataloader import ReDialDataLoader
 from dataset import ContentInformation, ReDialDataset
 from evaluate_conv import ConvEvaluator
 from model import MovieExpertCRS, Projector
 from model_gpt2 import PromptGPT2forCRS
 from parameters import parse_args
+from pretrain_conv import pretrain_conv
 from train_rec import train_recommender
 from pretrain import pretrain
+
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
     get_linear_schedule_with_warmup, AutoModelForCausalLM
 
@@ -217,9 +219,10 @@ def main(args):
         return content_hit, initial_hit, best_result
     if 'conv' in args.task:
         # load rec fine-tuned model
-        model.load_state_dict(torch.load(bestrec_path))
-        # content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
-
+        # model.load_state_dict(torch.load(bestrec_path))
+        content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, args.device_id)
+        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True)
+        pretrain_conv(args, gpt_model, pretrain_conv_dataloader)
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
@@ -316,8 +319,7 @@ def main(args):
                 with torch.no_grad():
                     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                         batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
-                    # encoding_state = torch.cat([entity_representations, token_embedding])
-                    # encoding_mask = torch.cat([entity_padding_mask, token_padding_mask])
+
                 encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                        entity_padding_mask)
 
