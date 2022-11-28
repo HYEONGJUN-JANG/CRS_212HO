@@ -4,6 +4,7 @@ import os
 import re
 from collections import defaultdict
 from copy import copy
+from random import random
 
 import torch
 from loguru import logger
@@ -22,13 +23,11 @@ class ContentInformationConv(Dataset):
         self.args = args
         self.data_path = data_path
         self.tokenizer = tokenizer
-        # self.data_samples = []
-        self.data_samples = dict()
+        self.data_samples = []
         self.device = device
         self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
         self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
-        self.key_list = list(self.data_samples.keys())  # entity id list
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
         f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
@@ -36,14 +35,10 @@ class ContentInformationConv(Dataset):
         data = json.load(f)
 
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            review_list, plot_list = [], []
-            review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
             crs_id = sample['crs_id']
             reviews = sample['reviews']
             plots = sample['plots']
-            plots_meta = sample['plots_meta']
-            reviews_meta = sample['reviews_meta']
             title = "%s (%s)" % (sample['title'], sample['year'])
 
             if self.movie2name[crs_id][0] == -1:
@@ -54,13 +49,12 @@ class ContentInformationConv(Dataset):
             if len(plots) == 0:
                 plots = ['']
 
-            # Filter out movie name in plots, reviews
-            # reviews = [review.replace(sample['title'], self.tokenizer.mask_token) for review in reviews]
-            # plots = [plot.replace(sample['title'], self.tokenizer.mask_token) for plot in plots]
+            review_prefix = "The review of " + title + self.tokenizer.eos_token
+            plot_prefix = "The plot of " + title + self.tokenizer.eos_token
 
-            prefix = title + tokenizer.sep_token
-            titled_reviews = [prefix + review for review in reviews]
-            titled_plots = [prefix + plot for plot in plots]
+            # prefix = title + tokenizer.eos_token
+            titled_reviews = [review_prefix + review + tokenizer.eos_token for review in reviews]
+            titled_plots = [plot_prefix + plot + tokenizer.eos_token for plot in plots]
 
             tokenized_reviews = self.tokenizer(titled_reviews, max_length=max_review_len,
                                                padding='max_length',
@@ -72,79 +66,26 @@ class ContentInformationConv(Dataset):
                                              add_special_tokens=True)
 
             for i in range(min(len(reviews), self.args.n_review)):
-                review_list.append(tokenized_reviews.input_ids[i])
-                review_mask_list.append(tokenized_reviews.attention_mask[i])
-
-            for i in range(self.args.n_review - len(reviews)):
-                zero_vector = [0] * max_review_len
-                review_list.append(zero_vector)
-                review_mask_list.append(zero_vector)
+                self.data_samples.append(
+                    {"text": tokenized_reviews.input_ids[i], "mask": tokenized_reviews.attention_mask[i]})
 
             for i in range(min(len(plots), self.args.n_plot)):
-                plot_list.append(tokenized_plots.input_ids[i])
-                plot_mask_list.append(tokenized_plots.attention_mask[i])
-
-            for i in range(self.args.n_plot - len(plots)):
-                zero_vector = [0] * max_plot_len
-                plot_list.append(zero_vector)
-                plot_mask_list.append(zero_vector)
-
-            self.data_samples[self.movie2name[crs_id][0]] = {"plot": plot_list, "plot_mask": plot_mask_list,
-                                                             "review": review_list, "review_mask": review_mask_list}
+                self.data_samples.append(
+                    {"text": tokenized_plots.input_ids[i], "mask": tokenized_plots.attention_mask[i]})
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
+    def __getitem__(self, idx):
+        text = self.data_samples[idx]['text']
+        mask = self.data_samples[idx]['mask']
 
-def __getitem__(self, item):
-    idx = self.key_list[item]  # dbpedia id
-    plot_token = self.data_samples[idx]['plot']
-    plot_mask = self.data_samples[idx]['plot_mask']
-    review_token = self.data_samples[idx]['review']
-    review_mask = self.data_samples[idx]['review_mask']
-    review_meta = self.data_samples[idx]['review_meta']
-    plot_meta = self.data_samples[idx]['plot_meta']
-    mask_label = self.data_samples[idx]['mask_label']
-    # ### Sampling
-    # if len(meta) > 0:
-    #     sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
-    #     entities = [meta[k] for k in sample_idx]
-    # else:
-    #     entities = [0] * self.args.n_sample
+        text = torch.LongTensor(text)
+        mask = torch.LongTensor(mask)
 
-    plot_exist_num = np.count_nonzero(np.sum(np.array(plot_mask), axis=1))
-    review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
+        return text, mask
 
-    # 221013. 기존코드는 plot 혹은 review가 0이라면, 둘 다 1로 설정; plot 은 0인데 , review 는 10개라면?
-    if plot_exist_num == 0:
-        plot_exist_num = 1
-    if review_exist_num == 0:
-        review_exist_num = 1
-
-    plot_sample_idx = [random.randint(0, plot_exist_num - 1) for _ in range(self.args.n_sample)]
-    review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.args.n_sample)]
-
-    plot_token = [plot_token[k] for k in plot_sample_idx]
-    plot_mask = [plot_mask[k] for k in plot_sample_idx]
-    plot_meta = [plot_meta[k] for k in plot_sample_idx]
-
-    review_token = [review_token[k] for k in review_sample_idx]
-    review_mask = [review_mask[k] for k in review_sample_idx]
-    review_meta = [review_meta[k] for k in review_sample_idx]
-
-    idx = torch.tensor(idx)
-    plot_token = torch.LongTensor(plot_token)
-    plot_mask = torch.LongTensor(plot_mask)
-    plot_meta = torch.LongTensor(plot_meta)
-    review_token = torch.LongTensor(review_token)
-    review_mask = torch.LongTensor(review_mask)
-    review_meta = torch.LongTensor(review_meta)
-    mask_label = torch.LongTensor(mask_label)
-
-    return idx, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label
-
-
-def __len__(self):
-    return len(self.data_samples)
+    def __len__(self):
+        return len(self.data_samples)
 
 
 class CRSConvDataset(Dataset):
