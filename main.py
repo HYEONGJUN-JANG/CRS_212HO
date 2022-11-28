@@ -217,7 +217,9 @@ def main(args):
         return content_hit, initial_hit, best_result
     if 'conv' in args.task:
         # load rec fine-tuned model
-        # model.load_state_dict(torch.load(bestrec_path))
+        model.load_state_dict(torch.load(bestrec_path))
+        # content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
+
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
@@ -321,6 +323,8 @@ def main(args):
 
                 loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
                                  encoder_attention_mask=encoder_mask).loss
+                # loss = gpt_model(**batch['context'], labels=batch['response']).loss
+
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
