@@ -149,7 +149,7 @@ class CRSConvDataset(Dataset):
                 }
                 if conv['role'] == 'Recommender':
                     augmented_conv_dicts.append(conv_dict)
-            # context_tokens.append(text_token)
+            context_tokens.append(text_tokens)
             context_tokens_bert.append(text_token_ids_bert)
 
             context_items += movies
