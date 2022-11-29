@@ -246,7 +246,7 @@ def main(args):
         # pretrain
         content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, args.device_id)
         pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True)
-        pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_conv_dataloader, pre_conv_result_file_path)
+        # pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_conv_dataloader, pre_conv_result_file_path)
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
