@@ -55,6 +55,8 @@ def parse_args():
     # GPT
     parser.add_argument('--gpt_name', type=str, default='microsoft/DialoGPT-small',
                         choices=['microsoft/DialoGPT-small', 'gpt2'])
+    parser.add_argument('--gpt_n_layer', type=int, default=-1)
+
 
     # BERT
     parser.add_argument('--bert_name', type=str, default='bert-base-uncased',
