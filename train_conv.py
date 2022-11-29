@@ -1,33 +1,110 @@
-from loguru import logger
+import math
 
+import torch
+from loguru import logger
+from tqdm import tqdm
+
+from CRS_212HO.model import Projector
 from evaluate_conv import ConvEvaluator
 
+from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
+    get_linear_schedule_with_warmup, AutoModelForCausalLM
 
-def train_conversation(args, model, train_dataloader, test_dataloader, path, results_file_path):
-    # if os.environ["CUDA_VISIBLE_DEVICES"] == '-1':
-    #     self.model.freeze_parameters()
-    # else:
-    #     self.model.module.freeze_parameters()
-    # self.init_optim(self.conv_optim_opt, self.model.parameters())
 
-    for epoch in range(args.conv_epoch):
+def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+                        total_report):
+    evaluator.log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
+    for batch in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        with torch.no_grad():
+            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
+            # scores = model.conv_forward(batch['context'], batch['response'])
+            # encoding_state = torch.cat([entity_representations, token_embedding])
+            # encoding_mask = torch.cat([entity_padding_mask, token_padding_mask])
+            encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                   entity_padding_mask)
+
+            gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encode_state,
+                                          encoder_attention_mask=encoder_mask,
+                                          max_new_tokens=args.max_gen_len,
+                                          no_repeat_ngram_size=3)
+            gen_resp_ids = []
+            for gen_seq, length in zip(gen_seqs, batch['context_len']):
+                gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
+                gen_resp_ids.append(gen_seq[length:])
+            evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], log=True)
+    # metric
+    report = evaluator.report()
+    test_report = {}
+    for k, v in report.items():
+        test_report[f'test/{k}'] = v
+    # test_loss = np.mean(test_loss)
+    # test_report['test/loss'] = test_loss
+    test_report['epoch'] = epoch
+    logger.info(test_report)
+    total_report.append(test_report)
+    # if run:
+    #     run.log(test_report)
+    evaluator.reset_metric()
+
+
+def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
+                       conv_results_file_path):
+    num_update_steps_per_epoch = math.ceil(len(train_dataloader))
+    max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
+    projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
+
+    modules = [gpt_model]
+    no_decay = ["bias", "LayerNorm.weight"]
+    optimizer_grouped_parameters = [
+        {
+            "params": [p for model in modules for n, p in model.named_parameters()
+                       if not any(nd in n for nd in no_decay) and p.requires_grad],
+            "weight_decay": args.weight_decay,
+        },
+        {
+            "params": [p for model in modules for n, p in model.named_parameters()
+                       if any(nd in n for nd in no_decay) and p.requires_grad],
+            "weight_decay": 0.0,
+        },
+        {
+            "params": projector.parameters()
+        }
+
+    ]
+
+    optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_ft)
+    lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
+
+    evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
+    # TODO: pre-train model load
+    total_report = []
+    # train loop
+    for epoch in range(args.conv_epoch_ft):
+        finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+                            total_report)
+        total_loss = 0
         logger.info(f'[Conversation epoch {str(epoch)}]')
         logger.info('[Train]')
-        for batch in train_dataloader.get_conv_data(batch_size=args.conv_batch_size, shuffle=False):
-            context_tokens, response = batch
-            scores_ft = model.forward(context_entities, context_tokens)
-            loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
+        projector.train()
+        for step, batch in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
+            with torch.no_grad():
+                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                    batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
 
-            if 'none' not in args.name:
-                loss_pt = model.pre_forward(plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items)
-                loss = loss_ft + (loss_pt * args.loss_lambda)
-            else:
-                loss = loss_ft
+            encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                   entity_padding_mask)
 
-            total_loss += loss.data.float()
+            loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
+                             encoder_attention_mask=encoder_mask).loss
+            # loss = gpt_model(**batch['context'], labels=batch['response']).loss
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        scheduler.step()
-    # test
-    evaluator = ConvEvaluator(tokenizer=tokenizer, log_file_path=gen_file_path)
+            lr_scheduler.step()
+            total_loss += loss.data.float()
+        print('Loss:\t%.4f' % total_loss)
+        logger.info('[Test]')
+        finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+                            total_report)
