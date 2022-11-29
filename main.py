@@ -343,8 +343,11 @@ def main(args):
                     # scores = model.conv_forward(batch['context'], batch['response'])
                     # encoding_state = torch.cat([entity_representations, token_embedding])
                     # encoding_mask = torch.cat([entity_padding_mask, token_padding_mask])
-                    gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
-                                                  encoder_attention_mask=token_padding_mask,
+                    encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                           entity_padding_mask)
+
+                    gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encode_state,
+                                                  encoder_attention_mask=encoder_mask,
                                                   max_new_tokens=args.max_gen_len,
                                                   no_repeat_ngram_size=3)
                     gen_resp_ids = []
