@@ -17,6 +17,7 @@ from pytz import timezone
 import sys
 import os
 
+from CRS_212HO.train_conv import train_conversation
 from config import gpt2_special_tokens_dict, bert_special_tokens_dict
 from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv
 from dataloader import ReDialDataLoader
@@ -49,6 +50,8 @@ def createResultFile(args):
                                      f"{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
     conv_result_file_path = os.path.join(rawFolder_path,
                                          f"{mdhm}_train_device_{args.device_id}_name_{args.name}_Conv.txt")
+    pre_conv_result_file_path = os.path.join(rawFolder_path,
+                                             f"{mdhm}_train_device_{args.device_id}_name_{args.name}_PreConv.txt")
 
     # parameters
     with open(results_file_path, 'a', encoding='utf-8') as result_f:
@@ -71,7 +74,17 @@ def createResultFile(args):
         for i, v in vars(args).items():
             result_f.write(f'{i}:{v} || ')
         result_f.write('\n')
-    return results_file_path, conv_result_file_path
+
+    with open(pre_conv_result_file_path, 'a', encoding='utf-8') as result_f:
+        result_f.write(
+            '\n=================================================\n')
+        result_f.write(get_time_kst())
+        result_f.write('\n')
+        result_f.write('Argument List:' + str(sys.argv) + '\n')
+        for i, v in vars(args).items():
+            result_f.write(f'{i}:{v} || ')
+        result_f.write('\n')
+    return results_file_path, conv_result_file_path, pre_conv_result_file_path
 
 
 def randomize_model(model):
@@ -100,7 +113,7 @@ def main(args):
 
     # create result file
     # todo: tester 와 겹치는 부분 없는지?
-    results_file_path, conv_results_file_path = createResultFile(args)
+    results_file_path, conv_results_file_path, pre_conv_result_file_path = createResultFile(args)
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
@@ -233,7 +246,7 @@ def main(args):
         # pretrain
         content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, args.device_id)
         pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True)
-        pretrain_conv(args, gpt_model, pretrain_conv_dataloader)
+        pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_conv_dataloader, pre_conv_result_file_path)
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
@@ -289,102 +302,8 @@ def main(args):
             batch_size=args.conv_batch_size,
             collate_fn=data_collator_generator,
         )
-        num_update_steps_per_epoch = math.ceil(len(train_dataloader))
-
-        max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
-
-        projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
-
-        modules = [gpt_model]
-        no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-            {
-                "params": [p for model in modules for n, p in model.named_parameters()
-                           if not any(nd in n for nd in no_decay) and p.requires_grad],
-                "weight_decay": args.weight_decay,
-            },
-            {
-                "params": [p for model in modules for n, p in model.named_parameters()
-                           if any(nd in n for nd in no_decay) and p.requires_grad],
-                "weight_decay": 0.0,
-            },
-            {
-                "params": projector.parameters()
-            }
-
-        ]
-
-        optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_ft)
-        lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
-
-        evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
-        # TODO: pre-train model load
-        total_report = []
-        # train loop
-        for epoch in range(args.conv_epoch_ft):
-            total_loss = 0
-            logger.info(f'[Conversation epoch {str(epoch)}]')
-            logger.info('[Train]')
-            projector.train()
-            for step, batch in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
-                with torch.no_grad():
-                    entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                        batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
-
-                encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                       entity_padding_mask)
-
-                loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
-                                 encoder_attention_mask=encoder_mask).loss
-                # loss = gpt_model(**batch['context'], labels=batch['response']).loss
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                lr_scheduler.step()
-                total_loss += loss.data.float()
-            print('Loss:\t%.4f' % total_loss)
-            logger.info('[Test]')
-            evaluator.log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
-            for batch in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-                with torch.no_grad():
-                    entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                        batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
-                    # scores = model.conv_forward(batch['context'], batch['response'])
-                    # encoding_state = torch.cat([entity_representations, token_embedding])
-                    # encoding_mask = torch.cat([entity_padding_mask, token_padding_mask])
-                    encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                           entity_padding_mask)
-
-                    gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encode_state,
-                                                  encoder_attention_mask=encoder_mask,
-                                                  max_new_tokens=args.max_gen_len,
-                                                  no_repeat_ngram_size=3)
-                    gen_resp_ids = []
-                    for gen_seq, length in zip(gen_seqs, batch['context_len']):
-                        gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
-                        gen_resp_ids.append(gen_seq[length:])
-                    evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], log=True)
-            # metric
-            report = evaluator.report()
-            test_report = {}
-            for k, v in report.items():
-                test_report[f'test/{k}'] = v
-            # test_loss = np.mean(test_loss)
-            # test_report['test/loss'] = test_loss
-            test_report['epoch'] = epoch
-            logger.info(test_report)
-            total_report.append(test_report)
-            # if run:
-            #     run.log(test_report)
-            evaluator.reset_metric()
-
-        # return total_report, None, None
-        # evaluator.log_cnt += 1
-        # train_conv_dataloader = ReDialDataLoader(train_data, args.n_sample, args.conv_batch_size,
-        #                                          word_truncate=args.max_dialog_len, task='conv')
-        # test_conv_dataloader = ReDialDataLoader(test_data, args.n_sample, args.conv_batch_size,
-        #                                         word_truncate=args.max_dialog_len, task='conv')
+        train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
+                           conv_results_file_path)
 
     # todo: result 기록하는 부분 --> train_recommender 안에 구현 완료
     # todo: ???

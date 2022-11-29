@@ -28,7 +28,7 @@ def parse_args():
 
     # rec
     parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
-    parser.add_argument('--epoch_ft', type=int, default=10)  # [NEW] # eprochs if fine-tuning
+    parser.add_argument('--epoch_ft', type=int, default=10)  # [NEW] # epochs if fine-tuning
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--lr_pt', type=float, default=1e-4, help='Pre-training Learning rate')
     parser.add_argument('--lr_ft', type=float, default=1e-3, help='Fine-tuning Learning rate')
