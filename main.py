@@ -162,6 +162,15 @@ def main(args):
     # gpt_model.config.max_length = 256  # TODO 알아내야 함... max_new_tokens 랑 왜 호환안됨?... input length랑은 무슨 상관??
     gpt_model = gpt_model.to(args.device_id)
 
+    # GPT model freeze layers
+    if args.gpt_n_layer != -1:
+        if 'gpt' in args.gpt_model:
+            modules = [gpt_model.h[:gpt_config.num_hidden_layers - args.n_layer],
+                       gpt_model.wte, gpt_model.wpe]  # 2개 남기기
+    for module in modules:
+        for param in module.parameters():
+            param.requires_grad = False
+
     if 'gpt' in args.bert_name.lower():
         tokenizer.add_special_tokens(gpt2_special_tokens_dict)
         bert_model.resize_token_embeddings(len(tokenizer))
@@ -221,6 +230,7 @@ def main(args):
         # load rec fine-tuned model
         logger.info(f'Load pretrained file\t{bestrec_path}')
         model.load_state_dict(torch.load(bestrec_path))
+        # pretrain
         content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, args.device_id)
         pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True)
         pretrain_conv(args, gpt_model, pretrain_conv_dataloader)
