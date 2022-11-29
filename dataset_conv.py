@@ -49,13 +49,14 @@ class ContentInformationConv(Dataset):
             if len(plots) == 0:
                 plots = ['']
 
-            review_prefix = "The review of " + title + self.tokenizer.eos_token
-            plot_prefix = "The plot of " + title + self.tokenizer.eos_token
+            review_prefix = title + self.tokenizer.eos_token
+            plot_prefix = title + self.tokenizer.eos_token
 
             # prefix = title + tokenizer.eos_token
             titled_reviews = [review_prefix + review + tokenizer.eos_token for review in reviews]
             titled_plots = [plot_prefix + plot + tokenizer.eos_token for plot in plots]
 
+            tokenized_title = self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(title))
             tokenized_reviews = self.tokenizer(titled_reviews, max_length=max_review_len,
                                                padding='max_length',
                                                truncation=True,
