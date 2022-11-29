@@ -30,7 +30,7 @@ def pretrain_conv(args, gpt_model, pretrain_dataloader, path=None):
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_ft)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-    for epoch in range(args.epoch_pt):
+    for epoch in range(args.conv_epoch_pt):
         gpt_model.train()
         total_loss = 0
         for text, mask in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
