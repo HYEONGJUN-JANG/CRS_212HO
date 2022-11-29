@@ -18,11 +18,12 @@ import numpy as np
 
 
 class ContentInformationConv(Dataset):
-    def __init__(self, args, data_path, tokenizer, device):
+    def __init__(self, args, data_path, tokenizer, device, mode='train'):
         super(Dataset, self).__init__()
         self.args = args
         self.data_path = data_path
         self.tokenizer = tokenizer
+
         self.data_samples = []
         self.device = device
         self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
@@ -49,44 +50,96 @@ class ContentInformationConv(Dataset):
             if len(plots) == 0:
                 plots = ['']
 
-            review_prefix = title + self.tokenizer.eos_token
-            plot_prefix = title + self.tokenizer.eos_token
-
+            # review_prefix = title + self.tokenizer.eos_token
+            # plot_prefix = title + self.tokenizer.eos_token
+            title += self.tokenizer.eos_token
             # prefix = title + tokenizer.eos_token
-            titled_reviews = [review_prefix + review + tokenizer.eos_token for review in reviews]
-            titled_plots = [plot_prefix + plot + tokenizer.eos_token for plot in plots]
+            reviews = [review + tokenizer.eos_token for review in reviews]
+            plots = [plot + tokenizer.eos_token for plot in plots]
 
-            tokenized_title = self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize(title))
-            tokenized_reviews = self.tokenizer(titled_reviews, max_length=max_review_len,
-                                               padding='max_length',
-                                               truncation=True,
-                                               add_special_tokens=True)
-            tokenized_plots = self.tokenizer(titled_plots, max_length=max_plot_len,
-                                             padding='max_length',
-                                             truncation=True,
-                                             add_special_tokens=True)
+            tokenized_title = self.tokenizer(title).input_ids
+            tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len, truncation=True).input_ids
+            tokenized_plots = self.tokenizer(plots, max_length=max_plot_len, truncation=True).input_ids
+            # tokenized_reviews = self.tokenizer(titled_reviews, max_length=max_review_len,
+            #                                    padding='max_length',
+            #                                    truncation=True,
+            #                                    add_special_tokens=True)
+            # tokenized_plots = self.tokenizer(titled_plots, max_length=max_plot_len,
+            #                                  padding='max_length',
+            #                                  truncation=True,
+            #                                  add_special_tokens=True)
 
             for i in range(min(len(reviews), self.args.n_review)):
                 self.data_samples.append(
-                    {"text": tokenized_reviews.input_ids[i], "mask": tokenized_reviews.attention_mask[i]})
+                    {"text": tokenized_reviews[i], "title": tokenized_title})
 
             for i in range(min(len(plots), self.args.n_plot)):
                 self.data_samples.append(
-                    {"text": tokenized_plots.input_ids[i], "mask": tokenized_plots.attention_mask[i]})
+                    {"text": tokenized_plots[i], "title": tokenized_title})
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, idx):
         text = self.data_samples[idx]['text']
-        mask = self.data_samples[idx]['mask']
+        title = self.data_samples[idx]['title']
 
-        text = torch.LongTensor(text)
-        mask = torch.LongTensor(mask)
+        # text = torch.LongTensor(text)
+        # mask = torch.LongTensor(mask)
+        # title = torch.LongTensor(title)
 
-        return text, mask
+        # input_ids, mask, label
+        return text, title
 
     def __len__(self):
         return len(self.data_samples)
+
+
+class ContentConvCollator:
+    def __init__(self, mode, args, tokenizer):
+        self.mode = mode
+        self.args = args
+        self.device = args.device_id
+        self.tokenizer = tokenizer
+
+    def __call__(self, data_batch):
+        context_batch = defaultdict(list)
+        resp_batch = []
+        context_len_batch = []
+
+        for text, title in data_batch:
+            if self.mode == 'train':
+                self.tokenizer.padding_side = 'right'
+                input_ids = text + title
+                input_ids = input_ids[-self.args.max_plot_len:]
+
+                context_batch['input_ids'].append(input_ids)
+
+            elif self.mode == 'test':
+                self.tokenizer.padding_side = 'left'
+                context_ids = title
+                context_len_batch.append(len(context_ids))
+                context_batch['input_ids'].append(context_ids)
+                resp_batch.append(text)
+
+        input_batch = {}
+
+        context_batch = self.tokenizer.pad(context_batch, padding="max_length", max_length=self.args.max_review_len)
+
+        if self.mode == 'train':
+            resp_batch = context_batch['input_ids']
+            resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for resp
+                          in resp_batch]
+            input_batch['response'] = torch.as_tensor(resp_batch, device=self.device)
+        else:
+            input_batch['response'] = resp_batch
+            input_batch['context_len'] = context_len_batch
+
+        for k, v in context_batch.items():
+            if not isinstance(v, torch.Tensor):
+                context_batch[k] = torch.as_tensor(v, device=self.device)
+        input_batch['context'] = context_batch
+
+        return input_batch
 
 
 class CRSConvDataset(Dataset):

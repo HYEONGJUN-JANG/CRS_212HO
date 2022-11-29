@@ -19,7 +19,7 @@ import os
 
 from train_conv import train_conversation
 from config import gpt2_special_tokens_dict, bert_special_tokens_dict
-from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv
+from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv, ContentConvCollator
 from dataloader import ReDialDataLoader
 from dataset import ContentInformation, ReDialDataset
 from evaluate_conv import ConvEvaluator
@@ -241,12 +241,19 @@ def main(args):
         return content_hit, initial_hit, best_result
     if 'conv' in args.task:
         # load rec fine-tuned model
-        # logger.info(f'Load pretrained file\t{bestrec_path}')
-        # model.load_state_dict(torch.load(bestrec_path))
+        logger.info(f'Load pretrained file\t{bestrec_path}')
+        model.load_state_dict(torch.load(bestrec_path))
         # pretrain
         content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, args.device_id)
-        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True)
-        pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_conv_dataloader, pre_conv_result_file_path)
+        content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt)
+        content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt)
+        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
+                                              collate_fn=content_conv_train_collator)
+        pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
+                                                   collate_fn=content_conv_test_collator)
+
+        pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_conv_dataloader, pretrain_conv_dataloader_test,
+                      pre_conv_result_file_path)
         # data
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
