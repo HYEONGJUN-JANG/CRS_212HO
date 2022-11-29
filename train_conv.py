@@ -4,7 +4,7 @@ import torch
 from loguru import logger
 from tqdm import tqdm
 
-from CRS_212HO.model import Projector
+from model import Projector
 from evaluate_conv import ConvEvaluator
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \

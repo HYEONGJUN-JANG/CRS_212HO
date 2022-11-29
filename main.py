@@ -17,7 +17,7 @@ from pytz import timezone
 import sys
 import os
 
-from CRS_212HO.train_conv import train_conversation
+from train_conv import train_conversation
 from config import gpt2_special_tokens_dict, bert_special_tokens_dict
 from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv
 from dataloader import ReDialDataLoader
