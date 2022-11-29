@@ -164,7 +164,7 @@ def main(args):
 
     # GPT model freeze layers
     if args.gpt_n_layer != -1:
-        if 'gpt' in args.gpt_model:
+        if 'gpt' in args.gpt_name:
             modules = [gpt_model.h[:gpt_config.num_hidden_layers - args.n_layer],
                        gpt_model.wte, gpt_model.wpe]  # 2개 남기기
     for module in modules:
