@@ -4,7 +4,7 @@ import os
 import re
 from collections import defaultdict
 from copy import copy
-from random import random
+import random as rand
 
 import torch
 from loguru import logger
@@ -144,7 +144,7 @@ class ContentConvCollator:
 
 class CRSConvDataset(Dataset):
     def __init__(
-            self, path, split, tokenizer, tokenizer_bert, debug=False,
+            self, path, split, tokenizer, tokenizer_bert, content_conv_dataset, debug=False,
             context_max_length=None, resp_max_length=None, entity_max_length=None
     ):
         super(CRSConvDataset, self).__init__()
@@ -164,6 +164,7 @@ class CRSConvDataset(Dataset):
         # {head_entity_id: [(relation_id, tail_entity_id)]}
         self.entity_kg = json.load(open(os.path.join(path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
         self.entity_kg = self._entity_kg_process()
+        self.split = split
 
         self.context_max_length = context_max_length
         if self.context_max_length is None:
@@ -184,7 +185,7 @@ class CRSConvDataset(Dataset):
         self.data = []
         process_data_file = self._raw_data_process(raw_data_file)
         self.data = process_data_file
-        self.split = split
+        self.content_conv_dataset = content_conv_dataset
         # self.prepare_data(process_data_file)
 
     def _raw_data_process(self, raw_data):
@@ -340,7 +341,16 @@ class CRSConvDataset(Dataset):
         return utt
 
     def __getitem__(self, item):
-        return self.data[item]
+        idx = rand.randint(0, len(self.content_conv_dataset) - 1)
+        text = self.content_conv_dataset[idx][0]
+        title = self.content_conv_dataset[idx][1]
+
+        # text = torch.LongTensor(text)
+        # mask = torch.LongTensor(mask)
+        # title = torch.LongTensor(title)
+
+        # input_ids, mask, label
+        return text, title, self.data[item]
 
     def __len__(self):
         return len(self.data)
@@ -348,7 +358,7 @@ class CRSConvDataset(Dataset):
 
 class CRSConvDataCollator:
     def __init__(
-            self, tokenizer, device, pad_entity_id, gen=False, use_amp=False, debug=False,
+            self, args, device, tokenizer, pad_entity_id, gen=False, use_amp=False, debug=False,
             ignore_pad_token_for_loss=True,
             context_max_length=None, resp_max_length=None, entity_max_length=None,
             tokenizer_bert=None, prompt_max_length=None
@@ -360,6 +370,7 @@ class CRSConvDataCollator:
         self.ignore_pad_token_for_loss = ignore_pad_token_for_loss
         self.gen = gen
         self.debug = debug
+        self.args = args
 
         self.padding = 'max_length' if self.debug else True
         self.pad_to_multiple_of = 8 if use_amp else None
@@ -385,17 +396,21 @@ class CRSConvDataCollator:
         self.generate_prompt_ids = self.tokenizer.convert_tokens_to_ids(self.tokenizer.tokenize('System:'))
 
     def __call__(self, data_batch):
+
         context_batch = defaultdict(list)
+        pre_context_batch = defaultdict(list)
         context_batch_bert = defaultdict(list)
 
         # prompt_batch = defaultdict(list)
         entity_batch = []
         resp_batch = []
+        pre_resp_batch = []
         context_len_batch = []
+        pre_context_len_batch = []
 
         if self.gen:
             self.tokenizer.padding_side = 'left'
-            for data in data_batch:
+            for text, title, data in data_batch:
                 context_ids = sum(data['context_tokens'], [])
                 context_ids = context_ids[-(self.context_max_length - len(self.generate_prompt_ids)):]
                 context_len_batch.append(len(context_ids))
@@ -411,10 +426,16 @@ class CRSConvDataCollator:
                 # prompt_batch['input_ids'].append(data['prompt'])
                 resp_batch.append(data['response'])
                 entity_batch.append(data['context_entities'])
+
+                # pre-training
+                pre_context_ids = title
+                pre_context_len_batch.append(len(pre_context_ids))
+                pre_context_batch['input_ids'].append(pre_context_ids)
+                pre_resp_batch.append(text)
         else:
             self.tokenizer.padding_side = 'right'
 
-            for data in data_batch:
+            for text, title, data in data_batch:
                 input_ids = sum(data['context_tokens'], []) + data['response']
                 input_ids = input_ids[-self.context_max_length:]
                 input_ids_bert = sum(data['context_tokens_bert'], [])
@@ -426,7 +447,14 @@ class CRSConvDataCollator:
                 # prompt_batch['input_ids'].append(data['prompt'])
                 entity_batch.append(data['context_entities'])
 
+                # pre-training
+                pre_input_ids = text + title
+                pre_input_ids = pre_input_ids[-self.args.max_plot_len:]
+
+                pre_context_batch['input_ids'].append(pre_input_ids)
+
         input_batch = {}
+        pre_input_batch = {}
 
         context_batch = self.tokenizer.pad(
             context_batch, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of,
@@ -435,19 +463,36 @@ class CRSConvDataCollator:
         context_batch_bert = self.tokenizer_bert.pad(
             context_batch_bert, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of)
 
+        pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length", max_length=self.args.max_review_len)
+
         if not self.gen:
             resp_batch = context_batch['input_ids']
             resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for resp
                           in resp_batch]
             input_batch['response'] = torch.as_tensor(resp_batch, device=self.device)
+
+            pre_resp_batch = pre_context_batch['input_ids']
+            pre_resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for
+                              resp
+                              in pre_resp_batch]
+            pre_input_batch['response'] = torch.as_tensor(pre_resp_batch, device=self.device)
         else:
             input_batch['response'] = resp_batch
             input_batch['context_len'] = context_len_batch
+
+            pre_input_batch['response'] = resp_batch
+            pre_input_batch['context_len'] = context_len_batch
+
         for k, v in context_batch.items():
             if not isinstance(v, torch.Tensor):
                 context_batch[k] = torch.as_tensor(v, device=self.device)
         input_batch['context'] = context_batch
         input_batch['context_bert'] = context_batch_bert
+
+        for k, v in pre_context_batch.items():
+            if not isinstance(v, torch.Tensor):
+                pre_context_batch[k] = torch.as_tensor(v, device=self.device)
+        pre_input_batch['context'] = pre_context_batch
 
         # prompt_batch = self.prompt_tokenizer.pad(
         #     prompt_batch, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of,
@@ -463,4 +508,4 @@ class CRSConvDataCollator:
         )
         input_batch['context_entities'] = entity_batch
 
-        return input_batch
+        return input_batch, pre_input_batch

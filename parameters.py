@@ -51,6 +51,7 @@ def parse_args():
     parser.add_argument("--max_gen_len", type=int, default=50)
     parser.add_argument('--num_warmup_steps', type=int, default=6345)
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay to use.")
+    parser.add_argument('--conv_loss_lambda', type=float, default=0.1, help='conv lambda')
 
     # GPT
     parser.add_argument('--gpt_name', type=str, default='microsoft/DialoGPT-small',
