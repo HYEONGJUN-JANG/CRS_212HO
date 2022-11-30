@@ -10,7 +10,7 @@ import json
 
 
 def evaluate(input_ids, preds, tokenizer, log=False, log_file_path=None):
-    log_file = open(log_file_path, 'w', buffering=1)
+    log_file = open(log_file_path, 'w', buffering=1, encoding='utf-8')
     # log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
     decoded_preds = [decoded_pred.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_pred in
@@ -19,7 +19,7 @@ def evaluate(input_ids, preds, tokenizer, log=False, log_file_path=None):
 
     decoded_inputs = tokenizer.batch_decode(input_ids, skip_special_tokens=False)
     decoded_inputs = [decoded_input.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_input in
-                     decoded_inputs]
+                      decoded_inputs]
     decoded_inputs = [input.strip() for input in decoded_inputs]
 
     if log:
