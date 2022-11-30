@@ -242,7 +242,8 @@ def main(args):
         # load rec fine-tuned model
         logger.info(f'Load pretrained file\t{bestrec_path}')
         model.load_state_dict(torch.load(bestrec_path))
-        # pretrain
+        # [pretrain]
+        # dataset
         content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, args.device_id)
         content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt)
         content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt)
@@ -251,9 +252,12 @@ def main(args):
         pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
                                                    collate_fn=content_conv_test_collator)
 
+        # train & test
         pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_conv_dataloader, pretrain_conv_dataloader_test,
                       pre_conv_result_file_path)
-        # data
+
+        # [fine-tuning]
+        # dataset
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer,
             context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
@@ -308,6 +312,7 @@ def main(args):
             batch_size=args.conv_batch_size,
             collate_fn=data_collator_generator,
         )
+        # train & test
         train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
                            conv_results_file_path)
 
