@@ -17,7 +17,7 @@ def evaluate(preds, tokenizer, log=False, log_file_path=None):
                      decoded_preds]
     decoded_preds = [pred.strip() for pred in decoded_preds]
 
-    if log and hasattr('log_file'):
+    if log:
         for pred in decoded_preds:
             log_file.write(json.dumps({
                 # 'context': context,
