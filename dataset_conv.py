@@ -34,7 +34,7 @@ class ContentInformationConv(Dataset):
         f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
 
         data = json.load(f)
-
+        logger.info(f'[Conv] content information load')
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
 
             crs_id = sample['crs_id']
@@ -184,9 +184,11 @@ class CRSConvDataset(Dataset):
         self.data = []
         process_data_file = self._raw_data_process(raw_data_file)
         self.data = process_data_file
+        self.split = split
         # self.prepare_data(process_data_file)
 
     def _raw_data_process(self, raw_data):
+        logger.info(f'[Conv] {self.split} - Dataset load')
         augmented_convs = [self._merge_conv_data(conversation["dialog"]) for
                            conversation in tqdm(raw_data,
                                                 bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')]  # 연속해서 나온 대화들 하나로 합침 (예) S1, S2, R1 --> S1 + S2, R1
