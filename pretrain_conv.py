@@ -9,17 +9,17 @@ from transformers import AutoTokenizer, AdamW, get_linear_schedule_with_warmup
 import json
 
 
-def evaluate(self, preds, log=False, log_file_path=None):
+def evaluate(preds, tokenizer, log=False, log_file_path=None):
     log_file = open(log_file_path, 'w', buffering=1)
     # log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
-    decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=False)
+    decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
     decoded_preds = [decoded_pred.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_pred in
                      decoded_preds]
     decoded_preds = [pred.strip() for pred in decoded_preds]
 
-    if log and hasattr(self, 'log_file'):
+    if log and hasattr('log_file'):
         for pred in decoded_preds:
-            self.log_file.write(json.dumps({
+            log_file.write(json.dumps({
                 # 'context': context,
                 'pred': pred
             }, ensure_ascii=False) + '\n')
@@ -63,7 +63,7 @@ def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
 
     # test
-    logger.info('[Conv - Pre-training Test]')
+    logger.info('[Conv - Pre-training] Test')
     gpt_model.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
 
@@ -75,7 +75,8 @@ def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
             gen_resp_ids.append(gen_seq[length:])
-        evaluate(gen_resp_ids, log=True, log_file_path=path)
+        evaluate(gen_resp_ids, tokenizer_gpt,
+                 log=True, log_file_path=path)
 
-    if path is not None:
-        torch.save(gpt_model.state_dict(), path)  # TIME_MODELNAME 형식
+        if path is not None:
+            torch.save(gpt_model.state_dict(), path)  # TIME_MODELNAME 형식
