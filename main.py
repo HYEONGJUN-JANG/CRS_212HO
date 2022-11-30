@@ -103,6 +103,7 @@ def main(args):
     # 22.10.13: path of saved model
     pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
     trained_path = f'./saved_model/trained_model_{args.name}.pt'
+    conv_pretrained_path = f'./saved_model/conv_pretrained_model_{args.name}.pt'
     bestrec_path = './saved_model/trained_model_bestrec.pt'
 
     # CUDA device check
@@ -254,7 +255,7 @@ def main(args):
 
         # train & test
         pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_conv_dataloader, pretrain_conv_dataloader_test,
-                      pre_conv_result_file_path)
+                      path=pre_conv_result_file_path, save_path=conv_pretrained_path)
 
         # [fine-tuning]
         # dataset
