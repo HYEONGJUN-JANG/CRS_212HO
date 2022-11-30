@@ -10,7 +10,7 @@ import json
 
 
 def evaluate(input_ids, preds, tokenizer, log=False, log_file_path=None):
-    log_file = open(log_file_path, 'w', buffering=1, encoding='utf-8')
+    log_file = open(log_file_path, 'a', buffering=1, encoding='utf-8')
     # log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
     decoded_preds = [decoded_pred.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_pred in
@@ -30,7 +30,7 @@ def evaluate(input_ids, preds, tokenizer, log=False, log_file_path=None):
             }, ensure_ascii=False) + '\n')
 
 
-def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test, path=None):
+def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test, path=None, save_path=None):
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
     optimizer_grouped_parameters = [
@@ -83,5 +83,5 @@ def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_
         evaluate(batch['context'].input_ids, gen_resp_ids, tokenizer_gpt,
                  log=True, log_file_path=path)
 
-        if path is not None:
-            torch.save(gpt_model.state_dict(), path)  # TIME_MODELNAME 형식
+        if save_path is not None:
+            torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식
