@@ -80,7 +80,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
                                                    entity_padding_mask)
 
             loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
-                             encoder_attention_mask=encoder_mask, ).loss
+                             encoder_attention_mask=encoder_mask).loss
 
             optimizer.zero_grad()
             loss.backward()

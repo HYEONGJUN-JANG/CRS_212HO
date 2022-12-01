@@ -246,9 +246,10 @@ def main(args):
             model.load_state_dict(torch.load(bestrec_path))
         # [pretrain]
         # dataset
-        content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, args.device_id)
-        content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt)
-        content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt)
+        content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, tokenizer,
+                                                      args.device_id)
+        content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
+        content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
         pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
                                               collate_fn=content_conv_train_collator)
         pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,

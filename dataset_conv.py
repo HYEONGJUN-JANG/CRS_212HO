@@ -18,28 +18,39 @@ import numpy as np
 
 
 class ContentInformationConv(Dataset):
-    def __init__(self, args, data_path, tokenizer, device, mode='train'):
+    def __init__(self, args, data_path, tokenizer_gpt, tokenizer_bert, device):
         super(Dataset, self).__init__()
         self.args = args
         self.data_path = data_path
-        self.tokenizer = tokenizer
+
+        self.tokenizer_bert = tokenizer_bert
+        self.tokenizer_gpt = tokenizer_gpt
 
         self.data_samples = []
         self.device = device
+        self.entity2id = json.load(
+            open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
         self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
-        self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
+        self.read_data(tokenizer_gpt, args.max_plot_len, args.max_review_len)
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
         f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
 
         data = json.load(f)
         logger.info(f'[Conv] content information load')
+        cnt = 0
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            if cnt == 100:
+                break
+            else:
+                cnt += 1
 
             crs_id = sample['crs_id']
             reviews = sample['reviews']
             plots = sample['plots']
+            plots_meta = sample['plots_meta']
+            reviews_meta = sample['reviews_meta']
             title = "%s (%s)" % (sample['title'], sample['year'])
 
             if self.movie2name[crs_id][0] == -1:
@@ -47,8 +58,11 @@ class ContentInformationConv(Dataset):
 
             if len(reviews) == 0:
                 reviews = ['']
+                reviews_meta = [[]]
+
             if len(plots) == 0:
                 plots = ['']
+                plots_meta = [[]]
 
             review_prefix = 'The review of' + title
             plot_prefix = 'The plot of' + title
@@ -57,61 +71,75 @@ class ContentInformationConv(Dataset):
             reviews = [review + tokenizer.eos_token for review in reviews]
             plots = [plot + tokenizer.eos_token for plot in plots]
 
-            tokenized_review_title = self.tokenizer(review_prefix).input_ids
-            tokenized_review_title += self.tokenizer(':').input_ids
+            tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
+            tokenized_review_title += self.tokenizer_gpt(':').input_ids
 
-            tokenized_plot_title = self.tokenizer(plot_prefix).input_ids
-            tokenized_plot_title += self.tokenizer(':').input_ids
+            tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
+            tokenized_plot_title += self.tokenizer_gpt(':').input_ids
 
-            tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len, truncation=True).input_ids
-            tokenized_plots = self.tokenizer(plots, max_length=max_plot_len, truncation=True).input_ids
-            # tokenized_reviews = self.tokenizer(titled_reviews, max_length=max_review_len,
-            #                                    padding='max_length',
-            #                                    truncation=True,
-            #                                    add_special_tokens=True)
-            # tokenized_plots = self.tokenizer(titled_plots, max_length=max_plot_len,
-            #                                  padding='max_length',
-            #                                  truncation=True,
-            #                                  add_special_tokens=True)
+            tokenized_reviews = self.tokenizer_gpt(reviews, max_length=max_review_len, truncation=True).input_ids
+            tokenized_plots = self.tokenizer_gpt(plots, max_length=max_plot_len, truncation=True).input_ids
+
+            tokenized_reviews_bert = self.tokenizer_bert(reviews, max_length=max_review_len,
+                                                         truncation=True,
+                                                         add_special_tokens=True).input_ids
+            tokenized_plots_bert = self.tokenizer_bert(plots, max_length=max_plot_len,
+                                                       truncation=True,
+                                                       add_special_tokens=True).input_ids
+
+            for idx, meta in enumerate(reviews_meta):
+                reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))
+
+            for idx, meta in enumerate(plots_meta):
+                plots_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                plots_meta[idx] = plots_meta[idx] + [0] * (self.args.n_meta - len(meta))
 
             for i in range(min(len(reviews), self.args.n_review)):
                 self.data_samples.append(
-                    {"text": tokenized_reviews[i], "title": tokenized_review_title})
+                    {"text": tokenized_reviews[i], "title": tokenized_review_title,
+                     "text_bert": tokenized_reviews_bert[i], "context_entities": reviews_meta[i]})
 
             for i in range(min(len(plots), self.args.n_plot)):
                 self.data_samples.append(
-                    {"text": tokenized_plots[i], "title": tokenized_plot_title})
+                    {"text": tokenized_plots[i], "title": tokenized_plot_title,
+                     "text_bert": tokenized_plots_bert[i], "context_entities": plots_meta[i]})
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, idx):
         text = self.data_samples[idx]['text']
         title = self.data_samples[idx]['title']
-
+        text_bert = self.data_samples[idx]['text_bert']
+        context_entities = self.data_samples[idx]['context_entities']
         # text = torch.LongTensor(text)
         # mask = torch.LongTensor(mask)
         # title = torch.LongTensor(title)
 
         # input_ids, mask, label
-        return text, title
+        return text, title, text_bert, context_entities
 
     def __len__(self):
         return len(self.data_samples)
 
 
 class ContentConvCollator:
-    def __init__(self, mode, args, tokenizer):
+    def __init__(self, mode, args, tokenizer, tokenizer_bert):
         self.mode = mode
         self.args = args
         self.device = args.device_id
         self.tokenizer = tokenizer
+        self.tokenizer_bert = tokenizer_bert
 
     def __call__(self, data_batch):
         context_batch = defaultdict(list)
+        context_batch_bert = defaultdict(list)
+
         resp_batch = []
         context_len_batch = []
+        entity_batch = []
 
-        for text, title in data_batch:
+        for text, title, text_bert, context_entities in data_batch:
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
                 input_ids = title + text
@@ -119,16 +147,23 @@ class ContentConvCollator:
 
                 context_batch['input_ids'].append(input_ids)
 
+                context_batch_bert['input_ids'].append(text_bert)
+                entity_batch.append(context_entities)
+
             elif self.mode == 'test':
                 self.tokenizer.padding_side = 'left'
                 context_ids = title
                 context_len_batch.append(len(context_ids))
                 context_batch['input_ids'].append(context_ids)
                 resp_batch.append(text)
+                context_batch_bert['input_ids'].append(text_bert)
+                entity_batch.append(context_entities)
 
         input_batch = {}
 
         context_batch = self.tokenizer.pad(context_batch, padding="max_length", max_length=self.args.max_review_len)
+        context_batch_bert = self.tokenizer_bert.pad(context_batch_bert, padding="max_length",
+                                                     max_length=self.args.max_review_len)
 
         if self.mode == 'train':
             resp_batch = context_batch['input_ids']
@@ -142,7 +177,12 @@ class ContentConvCollator:
         for k, v in context_batch.items():
             if not isinstance(v, torch.Tensor):
                 context_batch[k] = torch.as_tensor(v, device=self.device)
+        for k, v in context_batch_bert.items():
+            if not isinstance(v, torch.Tensor):
+                context_batch_bert[k] = torch.as_tensor(v, device=self.device)
         input_batch['context'] = context_batch
+        input_batch['context_bert'] = context_batch_bert
+        input_batch['context_entities'] = entity_batch
 
         return input_batch
 
@@ -424,6 +464,7 @@ class CRSConvDataCollator:
                 # context_ids += self.generate_prompt_ids
                 context_batch['input_ids'].append(context_ids)
 
+                # todo: check 왜 sum() 했는지?
                 input_ids_bert = sum(data['context_tokens_bert'], [])
                 input_ids_bert = input_ids_bert[-self.context_max_length:]
                 context_batch_bert['input_ids'].append(input_ids_bert)
@@ -468,7 +509,8 @@ class CRSConvDataCollator:
         context_batch_bert = self.tokenizer_bert.pad(
             context_batch_bert, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of)
 
-        pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length", max_length=self.args.max_review_len)
+        pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
+                                               max_length=self.args.max_review_len)
 
         if not self.gen:
             resp_batch = context_batch['input_ids']
