@@ -251,12 +251,13 @@ def main(args):
         content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt)
         pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
                                               collate_fn=content_conv_train_collator)
-        pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size, shuffle=False,
+        pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
+                                                   shuffle=False,
                                                    collate_fn=content_conv_test_collator)
 
         # train & test
-        pretrain_conv(args, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
-                      pretrain_conv_dataloader_test,
+        pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
+                      pretrain_dataloader_test=pretrain_conv_dataloader_test,
                       path=pre_conv_result_file_path, save_path=conv_pretrained_path)
 
         # [fine-tuning]
