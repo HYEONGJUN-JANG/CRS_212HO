@@ -50,15 +50,19 @@ class ContentInformationConv(Dataset):
             if len(plots) == 0:
                 plots = ['']
 
-            # review_prefix = title + self.tokenizer.eos_token
-            # plot_prefix = title + self.tokenizer.eos_token
+            review_prefix = 'The review of' + title
+            plot_prefix = 'The plot of' + title
             # title += self.tokenizer.eos_token
             # prefix = title + tokenizer.eos_token
             reviews = [review + tokenizer.eos_token for review in reviews]
             plots = [plot + tokenizer.eos_token for plot in plots]
 
-            tokenized_title = self.tokenizer(title).input_ids
-            tokenized_title += self.tokenizer(':').input_ids
+            tokenized_review_title = self.tokenizer(review_prefix).input_ids
+            tokenized_review_title += self.tokenizer(':').input_ids
+
+            tokenized_plot_title = self.tokenizer(plot_prefix).input_ids
+            tokenized_plot_title += self.tokenizer(':').input_ids
+
             tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len, truncation=True).input_ids
             tokenized_plots = self.tokenizer(plots, max_length=max_plot_len, truncation=True).input_ids
             # tokenized_reviews = self.tokenizer(titled_reviews, max_length=max_review_len,
@@ -72,11 +76,11 @@ class ContentInformationConv(Dataset):
 
             for i in range(min(len(reviews), self.args.n_review)):
                 self.data_samples.append(
-                    {"text": tokenized_reviews[i], "title": tokenized_title})
+                    {"text": tokenized_reviews[i], "title": tokenized_review_title})
 
             for i in range(min(len(plots), self.args.n_plot)):
                 self.data_samples.append(
-                    {"text": tokenized_plots[i], "title": tokenized_title})
+                    {"text": tokenized_plots[i], "title": tokenized_plot_title})
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
