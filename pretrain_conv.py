@@ -25,7 +25,7 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
 
     decoded_titles = tokenizer.batch_decode(titles, skip_special_tokens=False)
     decoded_titles = [decoded_title.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_title in
-                         decoded_titles]
+                      decoded_titles]
     decoded_titles = [title.strip() for title in decoded_titles]
 
     if log:
@@ -36,7 +36,9 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
             }, ensure_ascii=False) + '\n')
 
 
-def pretrain_conv(args, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test, path=None, save_path=None):
+def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test,
+                  path=None,
+                  save_path=None):
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
     projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
@@ -70,7 +72,15 @@ def pretrain_conv(args, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloade
         # train
         projector.train()
         for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            loss = gpt_model(**batch['context'], labels=batch['response']).loss
+            with torch.no_grad():
+                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                    batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
+
+            encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                   entity_padding_mask)
+
+            loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
+                             encoder_attention_mask=encoder_mask, ).loss
 
             optimizer.zero_grad()
             loss.backward()
