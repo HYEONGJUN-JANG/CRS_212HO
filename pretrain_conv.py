@@ -7,6 +7,7 @@ from torch import nn, optim
 from tqdm import tqdm
 from transformers import AutoTokenizer, AdamW, get_linear_schedule_with_warmup
 import json
+from model import Projector
 
 
 def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
@@ -35,10 +36,11 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
             }, ensure_ascii=False) + '\n')
 
 
-def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test, path=None,
-                  save_path=None):
+def pretrain_conv(args, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test, path=None, save_path=None):
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
+    projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
+
     optimizer_grouped_parameters = [
         {
             "params": [p for model in modules for n, p in model.named_parameters()
@@ -49,6 +51,9 @@ def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_
             "params": [p for model in modules for n, p in model.named_parameters()
                        if any(nd in n for nd in no_decay) and p.requires_grad],
             "weight_decay": 0.0,
+        },
+        {
+            "params": projector.parameters()
         }
     ]
 
@@ -63,6 +68,7 @@ def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_
         gpt_model.train()
         total_loss = 0
         # train
+        projector.train()
         for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             loss = gpt_model(**batch['context'], labels=batch['response']).loss
 
@@ -77,10 +83,16 @@ def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_
     logger.info('[Conv - Pre-training] Test')
     gpt_model.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        with torch.no_grad():
+            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
+
+        encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                               entity_padding_mask)
 
         # TODO: input what?
-        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=None,
-                                      encoder_attention_mask=None,
+        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encode_state,
+                                      encoder_attention_mask=encoder_mask,
                                       max_new_tokens=args.max_gen_len)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
