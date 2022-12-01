@@ -52,20 +52,20 @@ def pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_dataloader, pretrain_
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-    # for epoch in range(args.conv_epoch_pt):
-    #     logger.info(f'[Conv - Pre-training] Train-{epoch}')
-    #     gpt_model.train()
-    #     total_loss = 0
-    #     # train
-    #     for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-    #         loss = gpt_model(**batch['context'], labels=batch['response']).loss
-    #
-    #         optimizer.zero_grad()
-    #         loss.backward()
-    #         optimizer.step()
-    #         lr_scheduler.step()
-    #         total_loss += loss.data.float()
-    #     print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
+    for epoch in range(args.conv_epoch_pt):
+        logger.info(f'[Conv - Pre-training] Train-{epoch}')
+        gpt_model.train()
+        total_loss = 0
+        # train
+        for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            loss = gpt_model(**batch['context'], labels=batch['response']).loss
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            lr_scheduler.step()
+            total_loss += loss.data.float()
+        print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
 
     # test
     logger.info('[Conv - Pre-training] Test')
