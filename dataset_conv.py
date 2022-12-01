@@ -52,12 +52,13 @@ class ContentInformationConv(Dataset):
 
             # review_prefix = title + self.tokenizer.eos_token
             # plot_prefix = title + self.tokenizer.eos_token
-            title += self.tokenizer.eos_token
+            # title += self.tokenizer.eos_token
             # prefix = title + tokenizer.eos_token
             reviews = [review + tokenizer.eos_token for review in reviews]
             plots = [plot + tokenizer.eos_token for plot in plots]
 
             tokenized_title = self.tokenizer(title).input_ids
+            tokenized_title += self.tokenizer(':').input_ids
             tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len, truncation=True).input_ids
             tokenized_plots = self.tokenizer(plots, max_length=max_plot_len, truncation=True).input_ids
             # tokenized_reviews = self.tokenizer(titled_reviews, max_length=max_review_len,
@@ -164,6 +165,7 @@ class CRSConvDataset(Dataset):
         # {head_entity_id: [(relation_id, tail_entity_id)]}
         self.entity_kg = json.load(open(os.path.join(path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
         self.entity_kg = self._entity_kg_process()
+        self.split = split
 
         self.context_max_length = context_max_length
         if self.context_max_length is None:
@@ -184,7 +186,7 @@ class CRSConvDataset(Dataset):
         self.data = []
         process_data_file = self._raw_data_process(raw_data_file)
         self.data = process_data_file
-        self.split = split
+
         # self.prepare_data(process_data_file)
 
     def _raw_data_process(self, raw_data):
