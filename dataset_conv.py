@@ -110,8 +110,8 @@ class ContentConvCollator:
         for text, title in data_batch:
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
-                input_ids = text + title
-                input_ids = input_ids[-self.args.max_plot_len:]
+                input_ids = title + text
+                input_ids = input_ids[:self.args.max_plot_len]
 
                 context_batch['input_ids'].append(input_ids)
 
