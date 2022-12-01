@@ -251,7 +251,7 @@ def main(args):
         content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt)
         pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
                                               collate_fn=content_conv_train_collator)
-        pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
+        pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size, shuffle=False,
                                                    collate_fn=content_conv_test_collator)
 
         # train & test

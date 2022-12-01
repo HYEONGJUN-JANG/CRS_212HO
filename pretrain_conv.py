@@ -10,7 +10,7 @@ import json
 from model import Projector
 
 
-def evaluate(input_ids, preds, tokenizer, log=False, log_file_path=None):
+def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
     log_file = open(log_file_path, 'a', buffering=1, encoding='utf-8')
     # log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
@@ -18,21 +18,25 @@ def evaluate(input_ids, preds, tokenizer, log=False, log_file_path=None):
                      decoded_preds]
     decoded_preds = [pred.strip() for pred in decoded_preds]
 
-    decoded_inputs = tokenizer.batch_decode(input_ids, skip_special_tokens=False)
-    decoded_inputs = [decoded_input.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_input in
-                      decoded_inputs]
-    decoded_inputs = [input.strip() for input in decoded_inputs]
+    decoded_responses = tokenizer.batch_decode(response, skip_special_tokens=False)
+    decoded_responses = [decoded_response.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_response in
+                         decoded_responses]
+    decoded_responses = [response.strip() for response in decoded_responses]
+
+    decoded_titles = tokenizer.batch_decode(titles, skip_special_tokens=False)
+    decoded_titles = [decoded_title.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_title in
+                         decoded_titles]
+    decoded_titles = [title.strip() for title in decoded_titles]
 
     if log:
-        for title, pred in zip(decoded_inputs, decoded_preds):
+        for response, pred, title in zip(decoded_responses, decoded_preds, decoded_titles):
             log_file.write(json.dumps({
-                'title': title,
-                'pred': pred
+                'pred': pred,
+                'title: response': title + ' ' + response
             }, ensure_ascii=False) + '\n')
 
 
-def pretrain_conv(args, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test, path=None,
-                  save_path=None):
+def pretrain_conv(args, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test, path=None, save_path=None):
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
     projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
@@ -94,7 +98,7 @@ def pretrain_conv(args, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloade
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
             gen_resp_ids.append(gen_seq[length:])
-        evaluate(batch['context'].input_ids, gen_resp_ids, tokenizer_gpt,
+        evaluate(batch['context'].input_ids, batch['response'], gen_resp_ids, tokenizer_gpt,
                  log=True, log_file_path=path)
 
         if save_path is not None:
