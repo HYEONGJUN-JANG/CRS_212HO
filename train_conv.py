@@ -21,7 +21,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
 
         with torch.no_grad():
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
+                batch['context_entities'], batch['context_bert'].input_ids)
 
             encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                    entity_padding_mask)
@@ -93,14 +93,21 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
             pre_batch = batches[1]
             with torch.no_grad():
                 entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                    batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
+                    batch['context_entities'], batch['context_bert'].input_ids)
+                pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask = model.get_representations(
+                    pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
 
             encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                    entity_padding_mask)
+            pre_encode_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
+                                                           pre_entity_representations,
+                                                           pre_entity_padding_mask)
 
             loss_ft = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
                                 encoder_attention_mask=encoder_mask).loss
-            loss_pt = gpt_model(**pre_batch['context'], labels=pre_batch['response']).loss
+            loss_pt = gpt_model(**pre_batch['context'], labels=pre_batch['response'],
+                                encoder_hidden_states=pre_encode_state,
+                                encoder_attention_mask=pre_encoder_mask).loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
