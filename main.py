@@ -265,17 +265,17 @@ def main(args):
         # dataset
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer, content_conv_dataset,
-            context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
+            context_max_length=args.n_meta, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         conv_valid_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'valid', tokenizer_gpt, tokenizer, content_conv_dataset,
-            context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
+            context_max_length=args.n_meta, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         conv_test_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'test', tokenizer_gpt, tokenizer, content_conv_dataset,
-            context_max_length=args.context_max_length, resp_max_length=args.max_response_len,
+            context_max_length=args.n_meta, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         # dataloader

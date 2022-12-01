@@ -13,16 +13,16 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertM
 
 def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                         total_report):
+    gpt_model.eval()
+    projector.eval()
     evaluator.log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         batch = batches[0]
-        # pre_batch = batches[1]
+
         with torch.no_grad():
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                 batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
-            # scores = model.conv_forward(batch['context'], batch['response'])
-            # encoding_state = torch.cat([entity_representations, token_embedding])
-            # encoding_mask = torch.cat([entity_padding_mask, token_padding_mask])
+
             encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                    entity_padding_mask)
 
@@ -40,18 +40,17 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     test_report = {}
     for k, v in report.items():
         test_report[f'test/{k}'] = v
-    # test_loss = np.mean(test_loss)
-    # test_report['test/loss'] = test_loss
+
     test_report['epoch'] = epoch
     logger.info(test_report)
     total_report.append(test_report)
-    # if run:
-    #     run.log(test_report)
     evaluator.reset_metric()
 
 
 def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
                        conv_results_file_path):
+    total_report = []
+
     num_update_steps_per_epoch = math.ceil(len(train_dataloader))
     max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
     projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
@@ -79,15 +78,15 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
     evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
-    # TODO: pre-train model load
-    total_report = []
+
     # train loop
     for epoch in range(args.conv_epoch_ft):
         finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                             total_report)
-        total_loss = 0
         logger.info(f'[Conversation epoch {str(epoch)}]')
         logger.info('[Train]')
+        total_loss = 0
+        gpt_model.train()
         projector.train()
         for step, batches in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
             batch = batches[0]
@@ -100,7 +99,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                                                    entity_padding_mask)
 
             loss_ft = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
-                             encoder_attention_mask=encoder_mask).loss
+                                encoder_attention_mask=encoder_mask).loss
             loss_pt = gpt_model(**pre_batch['context'], labels=pre_batch['response']).loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)

@@ -12,7 +12,7 @@ from model import Projector
 
 def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
     log_file = open(log_file_path, 'a', buffering=1, encoding='utf-8')
-    # log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
+
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
     decoded_preds = [decoded_pred.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_pred in
                      decoded_preds]
@@ -65,11 +65,11 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
+    # train
     for epoch in range(args.conv_epoch_pt):
         logger.info(f'[Conv - Pre-training] Train-{epoch}')
-        gpt_model.train()
         total_loss = 0
-        # train
+        gpt_model.train()
         projector.train()
         for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             with torch.no_grad():
@@ -92,6 +92,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
     # test
     logger.info('[Conv - Pre-training] Test')
     gpt_model.eval()
+    projector.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         with torch.no_grad():
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
@@ -100,7 +101,6 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
         encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                entity_padding_mask)
 
-        # TODO: input what?
         gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encode_state,
                                       encoder_attention_mask=encoder_mask,
                                       max_new_tokens=args.max_gen_len)
