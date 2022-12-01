@@ -106,44 +106,29 @@ def main(args):
     conv_pretrained_path = f'./saved_model/conv_pretrained_model_{args.name}.pt'
     bestrec_path = './saved_model/trained_model_bestrec.pt'
 
-    # CUDA device check
     # todo: multi-GPU
     if torch.cuda.device_count() > 1:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(device)
 
     # create result file
-    # todo: tester 와 겹치는 부분 없는지?
     results_file_path, conv_results_file_path, pre_conv_result_file_path = createResultFile(args)
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
     DATA_PATH = os.path.join(ROOT_PATH, 'data')
     REDIAL_DATASET_PATH = os.path.join(DATA_PATH, 'redial')
-    # todo: 삭제??
-    content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
-    # Conv reulst path
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
     bert_config = AutoConfig.from_pretrained(args.bert_name)
-    # bert_config.vocab_size = len(tokenizer)
     args.vocab_size = tokenizer.vocab_size
     if args.t_layer != -1:
         bert_config.num_hidden_layers = args.t_layer
-    # bert_config.num_hidden_layers = 1 # 22.09.24 BERT random initialize
     if 'gpt' in args.bert_name.lower():
         bert_model = AutoModel.from_pretrained(args.gpt_name)
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name)
-        # bert_model.resize_token_embeddings(len(tokenizer))
-
-    # bert_model = randomize_model(bert_model) # 22.09.24 BERT random initialize
-    # bart_tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
-    # bart = BartModel.from_pretrained('facebook/bart-base')
-    # inputs = tokenizer("Hello, my dog is cute", return_tensors="pt")
-    # outputs = bert_model(**inputs)
-    # encoder_vector = bart.encoder(**inputs)
 
     # BERT model freeze layers
     if args.n_layer != -1:
@@ -198,34 +183,27 @@ def main(args):
     valid_data = crs_dataset.valid_data
     test_data = crs_dataset.test_data
 
-    # if args.test:
-    #     train_data.extend(valid_data)
-    # else:
-    #     test_data = valid_data
-
     movie2ids = crs_dataset.movie2id
-    num_movie = len(movie2ids)
 
-    # todo: language generation part
+    # Load expert model
     model = MovieExpertCRS(args, bert_model, bert_config, movie2ids, crs_dataset.entity_kg,
                            crs_dataset.n_entity, args.name, n_prefix_rec=10).to(args.device_id)
-    # conv_model = Generator(gpt_model).to(args.device_id)
-
-    pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
-
-    # For pre-training
-    if not args.pretrained:
-        # content_data_path = REDIAL_DATASET_PATH + '/content_data.json'
-        if 'none' not in args.name:
-            pretrain(args, model, pretrain_dataloader, pretrained_path)
-    else:
-        model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
     if 'rec' in args.task:
+        pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
+
+        # For pre-training
+        if not args.pretrained:
+            if 'none' not in args.name:
+                pretrain(args, model, pretrain_dataloader, pretrained_path)
+        else:
+            model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+
         if args.word_encoder == 2:
             type = 'gpt'
         else:
             type = 'bert'
+
         train_rec_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size,
                                                 word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
                                                 task='rec', type=type)
@@ -237,8 +215,8 @@ def main(args):
                                                                   test_rec_dataloader,
                                                                   trained_path, results_file_path,
                                                                   pretrain_dataloader)
-
         return content_hit, initial_hit, best_result
+
     if 'conv' in args.task:
         # load rec fine-tuned model
         if os.path.isfile(bestrec_path):
@@ -320,9 +298,6 @@ def main(args):
         # train & test
         train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
                            conv_results_file_path)
-
-    # todo: result 기록하는 부분 --> train_recommender 안에 구현 완료
-    # todo: ???
 
 
 if __name__ == '__main__':
