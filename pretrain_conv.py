@@ -74,7 +74,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
         for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             with torch.no_grad():
                 entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                    batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
+                    batch['context_entities'], batch['context_bert'].input_ids)
 
             encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                    entity_padding_mask)
@@ -96,7 +96,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         with torch.no_grad():
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                batch['context_entities'], torch.tensor(batch['context_bert'].input_ids))
+                batch['context_entities'], batch['context_bert'].input_ids)
 
         encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                entity_padding_mask)

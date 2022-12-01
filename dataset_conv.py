@@ -300,7 +300,8 @@ class CRSConvDataset(Dataset):
 
                 conv_dict = {
                     "role": conv['role'],
-                    "context_tokens": self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids, # copy(context_tokens),
+                    "context_tokens": self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
+                    # copy(context_tokens),
                     "context_tokens_bert": copy(context_tokens_bert),
                     "response": self.tokenizer(mask_text_token, add_special_tokens=False).input_ids,  # text_tokens,
                     "context_entities": copy(context_entities)
@@ -369,8 +370,10 @@ class CRSConvDataset(Dataset):
         idx = rand.randint(0, len(self.content_conv_dataset) - 1)
         text = self.content_conv_dataset[idx][0]
         title = self.content_conv_dataset[idx][1]
+        text_bert = self.content_conv_dataset[idx][2]
+        context_entities = self.content_conv_dataset[idx][3]
 
-        return text, title, self.data[item]
+        return text, title, text_bert, context_entities, self.data[item]
 
     def __len__(self):
         return len(self.data)
@@ -405,7 +408,7 @@ class CRSConvDataCollator:
 
         self.entity_max_length = entity_max_length
         if self.entity_max_length is None:
-            self.entity_max_length = self.tokenizer.model_max_length
+            self.entity_max_length = self.args.n_meta
 
         self.pad_entity_id = pad_entity_id
 
@@ -413,14 +416,15 @@ class CRSConvDataCollator:
 
     def __call__(self, data_batch):
 
-        context_batch, pre_context_batch, context_batch_bert = defaultdict(list), defaultdict(list), defaultdict(list)
-        entity_batch = []
+        context_batch, pre_context_batch = defaultdict(list), defaultdict(list)
+        context_batch_bert, pre_context_batch_bert = defaultdict(list), defaultdict(list)
+        entity_batch, pre_entity_batch = [], []
         resp_batch, pre_resp_batch = [], []
         context_len_batch, pre_context_len_batch = [], []
 
         if self.gen:
             self.tokenizer.padding_side = 'left'
-            for text, title, data in data_batch:
+            for text, title, text_bert, context_entities, data in data_batch:
                 # dialog history
                 context_ids = sum(data['context_tokens'], [])
                 context_ids = context_ids[-(self.context_max_length - len(self.generate_prompt_ids)):]
@@ -430,12 +434,12 @@ class CRSConvDataCollator:
 
                 resp_batch.append(data['response'])
 
-                # context words
+                # fine-tuning context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
                 input_ids_bert = input_ids_bert[-self.context_max_length:]
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
-                # context entities
+                # fine-tuning context entities
                 entity_batch.append(data['context_entities'])
 
                 # pre-training
@@ -444,10 +448,16 @@ class CRSConvDataCollator:
                 pre_context_batch['input_ids'].append(pre_context_ids)
 
                 pre_resp_batch.append(text)
+
+                # pre-training context words
+                pre_context_batch_bert['input_ids'].append(text_bert)
+
+                # pre-training context entities
+                pre_entity_batch.append(context_entities)
         else:
             self.tokenizer.padding_side = 'right'
 
-            for text, title, data in data_batch:
+            for text, title, text_bert, context_entities, data in data_batch:
                 # dialog history
                 input_ids = sum(data['context_tokens'], []) + data['response']
                 input_ids = input_ids[-self.context_max_length:]
@@ -466,6 +476,12 @@ class CRSConvDataCollator:
                 pre_input_ids = pre_input_ids[:self.args.max_plot_len]
                 pre_context_batch['input_ids'].append(pre_input_ids)
 
+                # pre-training context words
+                pre_context_batch_bert['input_ids'].append(text_bert)
+
+                # pre-training context entities
+                pre_entity_batch.append(context_entities)
+
         input_batch = {}
         pre_input_batch = {}
 
@@ -479,6 +495,9 @@ class CRSConvDataCollator:
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
                                                max_length=self.args.max_review_len)
+
+        pre_context_batch_bert = self.tokenizer_bert.pad(pre_context_batch_bert, padding="max_length",
+                                                         max_length=self.args.max_review_len)
 
         if not self.gen:
             resp_batch = context_batch['input_ids']
@@ -505,10 +524,13 @@ class CRSConvDataCollator:
                 context_batch[k] = torch.as_tensor(v, device=self.device)
         input_batch['context'] = context_batch
 
-        # context words
+        # fine-tuning: context words
+        for k, v in context_batch_bert.items():
+            if not isinstance(v, torch.Tensor):
+                context_batch_bert[k] = torch.as_tensor(v, device=self.device)
         input_batch['context_bert'] = context_batch_bert
 
-        # context entities
+        # fine-tuning: context entities
         entity_batch = padded_tensor(
             entity_batch, max_len=self.entity_max_length
         )
@@ -519,5 +541,17 @@ class CRSConvDataCollator:
             if not isinstance(v, torch.Tensor):
                 pre_context_batch[k] = torch.as_tensor(v, device=self.device)
         pre_input_batch['context'] = pre_context_batch
+
+        # pre-training: context words
+        for k, v in pre_context_batch_bert.items():
+            if not isinstance(v, torch.Tensor):
+                pre_context_batch_bert[k] = torch.as_tensor(v, device=self.device)
+        pre_input_batch['context_bert'] = pre_context_batch_bert
+
+        # pre-training: context entities
+        pre_entity_batch = padded_tensor(
+            pre_entity_batch, max_len=self.entity_max_length
+        )
+        pre_input_batch['context_entities'] = pre_entity_batch
 
         return input_batch, pre_input_batch
