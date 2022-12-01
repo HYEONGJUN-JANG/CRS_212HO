@@ -255,7 +255,8 @@ def main(args):
                                                    collate_fn=content_conv_test_collator)
 
         # train & test
-        pretrain_conv(args, gpt_model, tokenizer_gpt, pretrain_conv_dataloader, pretrain_conv_dataloader_test,
+        pretrain_conv(args, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
+                      pretrain_conv_dataloader_test,
                       path=pre_conv_result_file_path, save_path=conv_pretrained_path)
 
         # [fine-tuning]

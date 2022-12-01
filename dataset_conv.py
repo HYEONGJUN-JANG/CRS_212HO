@@ -448,8 +448,8 @@ class CRSConvDataCollator:
                 entity_batch.append(data['context_entities'])
 
                 # pre-training
-                pre_input_ids = text + title
-                pre_input_ids = pre_input_ids[-self.args.max_plot_len:]
+                pre_input_ids = title + text
+                pre_input_ids = pre_input_ids[:self.args.max_plot_len]
 
                 pre_context_batch['input_ids'].append(pre_input_ids)
 
