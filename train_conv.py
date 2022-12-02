@@ -26,8 +26,8 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                    entity_padding_mask)
 
-            gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encode_state,
-                                          encoder_attention_mask=encoder_mask,
+            gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=None,
+                                          encoder_attention_mask=None,
                                           max_new_tokens=args.max_gen_len,
                                           no_repeat_ngram_size=3)
             gen_resp_ids = []
@@ -103,11 +103,11 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                                                            pre_entity_representations,
                                                            pre_entity_padding_mask)
 
-            loss_ft = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
-                                encoder_attention_mask=encoder_mask).loss
+            loss_ft = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=None,
+                                encoder_attention_mask=None).loss
             loss_pt = gpt_model(**pre_batch['context'], labels=pre_batch['response'],
-                                encoder_hidden_states=pre_encode_state,
-                                encoder_attention_mask=pre_encoder_mask).loss
+                                encoder_hidden_states=None,
+                                encoder_attention_mask=None).loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
