@@ -23,11 +23,11 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
-            encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                   entity_padding_mask)
+            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                    entity_padding_mask)
 
-            gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=None,
-                                          encoder_attention_mask=None,
+            gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encoder_state,
+                                          encoder_attention_mask=encoder_mask,
                                           max_new_tokens=args.max_gen_len,
                                           no_repeat_ngram_size=3)
             gen_resp_ids = []
@@ -97,17 +97,18 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                 pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask = model.get_representations(
                     pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
 
-            encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                   entity_padding_mask)
-            pre_encode_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
-                                                           pre_entity_representations,
-                                                           pre_entity_padding_mask)
+            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                    entity_padding_mask)
+            pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
+                                                            pre_entity_representations,
+                                                            pre_entity_padding_mask)
 
-            loss_ft = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=None,
-                                encoder_attention_mask=None).loss
-            loss_pt = gpt_model(**pre_batch['context'], labels=pre_batch['response'],
-                                encoder_hidden_states=None,
-                                encoder_attention_mask=None).loss
+            loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True,
+                                encoder_hidden_states=encoder_state,
+                                encoder_attention_mask=encoder_mask).conv_loss
+            loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
+                                encoder_hidden_states=pre_encoder_state,
+                                encoder_attention_mask=pre_encoder_mask).conv_loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
@@ -117,7 +118,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
             total_loss += loss.data.float()
             print('Total Loss:\t%.4f' % total_loss)
             print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
-
 
         logger.info('[Test]')
         finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
