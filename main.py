@@ -228,8 +228,7 @@ def main(args):
                                                    shuffle=False,
                                                    collate_fn=content_conv_test_collator)
         if not args.conv_pretrained:
-            if 'none' not in args.name:
-                pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
+            pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
                               pretrain_dataloader_test=pretrain_conv_dataloader_test,
                               path=pre_conv_result_file_path, save_path=conv_pretrained_path)
         else:
