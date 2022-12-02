@@ -289,9 +289,10 @@ class CRSConvDataset(Dataset):
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
 
-            text_token_ids_bert = self.tokenizer_bert(text_tokens + self.tokenizer_bert.sep_token, add_special_tokens=False).input_ids
-            text_token_ids = self.tokenizer(text_tokens + self.tokenizer.eos_token, add_special_tokens=False).input_ids  # movie name 으로 하고 싶을 경우
-
+            text_token_ids_bert = self.tokenizer_bert(text_tokens + self.tokenizer_bert.sep_token,
+                                                      add_special_tokens=False).input_ids
+            text_token_ids = self.tokenizer(text_tokens + self.tokenizer.eos_token,
+                                            add_special_tokens=False).input_ids  # movie name 으로 하고 싶을 경우
 
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
@@ -303,14 +304,15 @@ class CRSConvDataset(Dataset):
 
                 conv_dict = {
                     "role": conv['role'],
-                    "context_tokens": copy(context_tokens), # self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
+                    "context_tokens": copy(context_tokens),
+                    # self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
                     "context_tokens_bert": copy(context_tokens_bert),
-                    "response": text_token_ids, # self.tokenizer(mask_text_token, add_special_tokens=False).input_ids
+                    "response": text_token_ids,  # self.tokenizer(mask_text_token, add_special_tokens=False).input_ids
                     "context_entities": copy(context_entities)
                 }
                 if conv['role'] == 'Recommender':
                     augmented_conv_dicts.append(conv_dict)
-            context_tokens.append(text_token_ids) # text_tokens
+            context_tokens.append(text_token_ids)  # text_tokens
             context_tokens_bert.append(text_token_ids_bert)
 
             context_items += movies
@@ -492,8 +494,9 @@ class CRSConvDataCollator:
             context_batch, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of,
             max_length=self.context_max_length)
 
-        context_batch_bert = self.tokenizer_bert.pad(context_batch_bert, padding="max_length",
-                                                     max_length=self.args.max_review_len)
+        context_batch_bert = self.tokenizer_bert.pad(
+            context_batch_bert, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of,
+            max_length=self.context_max_length)
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
                                                max_length=self.args.max_review_len)
