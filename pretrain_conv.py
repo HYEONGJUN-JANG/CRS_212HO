@@ -76,11 +76,11 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
                 entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                     batch['context_entities'], batch['context_bert'].input_ids)
 
-            encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                   entity_padding_mask)
+            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                    entity_padding_mask)
 
-            loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=None,
-                             encoder_attention_mask=None).loss
+            loss = gpt_model(**batch['context'], conv_labels=batch['response'], encoder_hidden_states=encoder_state,
+                             encoder_attention_mask=encoder_mask, conv=True).conv_loss
 
             optimizer.zero_grad()
             loss.backward()
@@ -98,11 +98,11 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
-        encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                               entity_padding_mask)
+        encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                entity_padding_mask)
 
-        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=None,
-                                      encoder_attention_mask=None,
+        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encoder_state,
+                                      encoder_attention_mask=encoder_mask,
                                       max_new_tokens=args.max_gen_len)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):

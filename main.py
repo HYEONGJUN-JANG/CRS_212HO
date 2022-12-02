@@ -156,7 +156,7 @@ def main(args):
     gpt_config = AutoConfig.from_pretrained(args.gpt_name)
     gpt_config.add_cross_attention = True
 
-    gpt_model = AutoModelForCausalLM.from_pretrained(args.gpt_name, config=gpt_config)
+    gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
     gpt_model.config.add_cross_attention = True
@@ -229,8 +229,8 @@ def main(args):
                                                    collate_fn=content_conv_test_collator)
         if not args.conv_pretrained:
             pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
-                              pretrain_dataloader_test=pretrain_conv_dataloader_test,
-                              path=pre_conv_result_file_path, save_path=conv_pretrained_path)
+                          pretrain_dataloader_test=pretrain_conv_dataloader_test,
+                          path=pre_conv_result_file_path, save_path=conv_pretrained_path)
         else:
             gpt_model.load_state_dict(torch.load(best_conv_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
