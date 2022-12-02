@@ -17,6 +17,7 @@ from pytz import timezone
 import sys
 import os
 
+from dataset_kg import KGInformation
 from train_conv import train_conversation
 from config import gpt2_special_tokens_dict, bert_special_tokens_dict
 from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv, ContentConvCollator
@@ -169,27 +170,19 @@ def main(args):
         for param in module.parameters():
             param.requires_grad = False
 
-    if 'gpt' in args.bert_name.lower():
-        tokenizer.add_special_tokens(gpt2_special_tokens_dict)
-        bert_model.resize_token_embeddings(len(tokenizer))
-        content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
-        crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer, tokenizer.eos_token)
-        args.word_encoder = 2
-    else:
-        content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
-        crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer, tokenizer.sep_token)
-
-    train_data = crs_dataset.train_data
-    valid_data = crs_dataset.valid_data
-    test_data = crs_dataset.test_data
-
-    movie2ids = crs_dataset.movie2id
+    kg_information = KGInformation(args, REDIAL_DATASET_PATH)
 
     # Load expert model
-    model = MovieExpertCRS(args, bert_model, bert_config, movie2ids, crs_dataset.entity_kg,
-                           crs_dataset.n_entity, args.name, n_prefix_rec=10).to(args.device_id)
+    model = MovieExpertCRS(args, bert_model, bert_config, kg_information.movie2id, kg_information.entity_kg,
+                           kg_information.n_entity, args.name, n_prefix_rec=10).to(args.device_id)
 
     if 'rec' in args.task:
+        content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
+        crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer, kg_information)
+        train_data = crs_dataset.train_data
+        valid_data = crs_dataset.valid_data
+        test_data = crs_dataset.test_data
+
         pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
         # For pre-training
@@ -228,7 +221,7 @@ def main(args):
                                                       args.device_id)
         content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
         content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
-        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
+        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=False,
                                               collate_fn=content_conv_train_collator)
         pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
                                                    shuffle=False,
