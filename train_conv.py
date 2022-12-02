@@ -80,9 +80,9 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
     evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
 
     # train loop
+    finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+                        total_report)
     for epoch in range(args.conv_epoch_ft):
-        finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
-                            total_report)
         logger.info(f'[Conversation epoch {str(epoch)}]')
         logger.info('[Train]')
         total_loss = 0
