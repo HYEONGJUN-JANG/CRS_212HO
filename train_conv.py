@@ -15,7 +15,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                         total_report):
     gpt_model.eval()
     projector.eval()
-    evaluator.log_file.write(f'\n*** test-{epoch + 1} ***\n\n')
+    evaluator.log_file.write(f'\n*** test-{epoch} ***\n\n')
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         batch = batches[0]
 
