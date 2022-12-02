@@ -115,7 +115,10 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
             optimizer.step()
             lr_scheduler.step()
             total_loss += loss.data.float()
-        print('Loss:\t%.4f' % total_loss)
+            print('Total Loss:\t%.4f' % total_loss)
+            print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
+
+
         logger.info('[Test]')
         finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                             total_report)
