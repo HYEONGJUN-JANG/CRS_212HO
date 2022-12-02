@@ -32,7 +32,7 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
         for response, pred, title in zip(decoded_responses, decoded_preds, decoded_titles):
             log_file.write(json.dumps({
                 'pred': pred,
-                'title: response': title + ' ' + response
+                'label': title + ' ' + response
             }, ensure_ascii=False) + '\n')
 
 
@@ -79,8 +79,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                    entity_padding_mask)
 
-            loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=encode_state,
-                             encoder_attention_mask=encoder_mask).loss
+            loss = gpt_model(**batch['context'], labels=batch['response'], encoder_hidden_states=None,
+                             encoder_attention_mask=None).loss
 
             optimizer.zero_grad()
             loss.backward()
@@ -101,8 +101,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
         encode_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                entity_padding_mask)
 
-        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encode_state,
-                                      encoder_attention_mask=encoder_mask,
+        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=None,
+                                      encoder_attention_mask=None,
                                       max_new_tokens=args.max_gen_len)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
