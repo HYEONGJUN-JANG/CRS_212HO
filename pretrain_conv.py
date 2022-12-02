@@ -107,7 +107,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
-            gen_resp_ids.append(gen_seq[length:])
+            gen_resp_ids.append(gen_seq)
         evaluate(batch['context'].input_ids, batch['response'], gen_resp_ids, tokenizer_gpt,
                  log=True, log_file_path=path)
 

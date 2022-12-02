@@ -36,9 +36,9 @@ class ContentInformationConv(Dataset):
             open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
         self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
-        self.read_data(tokenizer_gpt, args.max_plot_len, args.max_review_len)
+        self.read_data(args.max_plot_len, args.max_review_len)
 
-    def read_data(self, tokenizer, max_plot_len, max_review_len):
+    def read_data(self, max_plot_len, max_review_len):
         f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
 
         data = json.load(f)
@@ -68,15 +68,15 @@ class ContentInformationConv(Dataset):
 
             # Title
             tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
-            tokenized_review_title += self.tokenizer_gpt(':').input_ids
+            tokenized_review_title += self.tokenizer_gpt(' is as follow: ').input_ids
 
             tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
-            tokenized_plot_title += self.tokenizer_gpt(':').input_ids
+            tokenized_plot_title += self.tokenizer_gpt(' is as follow: ').input_ids
 
             # GPT - review & plot
-            tokenized_reviews = self.tokenizer_gpt([review + tokenizer.eos_token for review in reviews],
+            tokenized_reviews = self.tokenizer_gpt([review + self.tokenizer_gpt.eos_token for review in reviews],
                                                    max_length=max_review_len, truncation=True).input_ids
-            tokenized_plots = self.tokenizer_gpt([plot + tokenizer.eos_token for plot in plots],
+            tokenized_plots = self.tokenizer_gpt([plot + self.tokenizer_gpt.eos_token for plot in plots],
                                                  max_length=max_plot_len, truncation=True).input_ids
             # BERT - review & plot
             tokenized_reviews_bert = self.tokenizer_bert(reviews, max_length=max_review_len,
