@@ -55,8 +55,8 @@ def parse_args():
     parser.add_argument("--conv_pre_eval_batch_size", type=int, default=32, help="conv pre-training eval batch size")
 
     # GPT
-    parser.add_argument('--gpt_name', type=str, default='microsoft/DialoGPT-small',
-                        choices=['microsoft/DialoGPT-small', 'gpt2'])
+    parser.add_argument('--gpt_name', type=str, default='facebook/bart-base',
+                        choices=['microsoft/DialoGPT-small', 'gpt2', 'facebook/bart-base'])
     parser.add_argument('--gpt_n_layer', type=int, default=-1)
 
 
