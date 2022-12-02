@@ -68,16 +68,16 @@ class ContentInformationConv(Dataset):
 
             # Title
             tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
-            tokenized_review_title += self.tokenizer_gpt(' is as follow: ').input_ids
+            tokenized_review_title += self.tokenizer_gpt(':').input_ids
 
             tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
-            tokenized_plot_title += self.tokenizer_gpt(' is as follow: ').input_ids
+            tokenized_plot_title += self.tokenizer_gpt(':').input_ids
 
             # GPT - review & plot
             tokenized_reviews = self.tokenizer_gpt([review + self.tokenizer_gpt.eos_token for review in reviews],
-                                                   max_length=max_review_len, truncation=True).input_ids
+                                                   max_length=self.args.max_gen_len, truncation=True).input_ids
             tokenized_plots = self.tokenizer_gpt([plot + self.tokenizer_gpt.eos_token for plot in plots],
-                                                 max_length=max_plot_len, truncation=True).input_ids
+                                                 max_length=self.args.max_gen_len, truncation=True).input_ids
             # BERT - review & plot
             tokenized_reviews_bert = self.tokenizer_bert(reviews, max_length=max_review_len,
                                                          truncation=True,
@@ -138,7 +138,7 @@ class ContentConvCollator:
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
                 input_ids = title + text
-                input_ids = input_ids[:self.args.max_plot_len]
+                input_ids = input_ids[:self.args.max_gen_len]
 
                 context_batch['input_ids'].append(input_ids)
 
@@ -156,7 +156,7 @@ class ContentConvCollator:
 
         input_batch = {}
 
-        context_batch = self.tokenizer.pad(context_batch, padding="max_length", max_length=self.args.max_review_len)
+        context_batch = self.tokenizer.pad(context_batch, padding="max_length", max_length=self.args.max_gen_len)
         context_batch_bert = self.tokenizer_bert.pad(context_batch_bert, padding="max_length",
                                                      max_length=self.args.max_review_len)
 
@@ -440,7 +440,7 @@ class CRSConvDataCollator:
 
                 # fine-tuning context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
-                input_ids_bert = input_ids_bert[-self.context_max_length:]
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len:]
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
                 # fine-tuning context entities
@@ -469,7 +469,7 @@ class CRSConvDataCollator:
 
                 # context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
-                input_ids_bert = input_ids_bert[-self.context_max_length:]
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len:]
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
                 # context entities
@@ -477,7 +477,7 @@ class CRSConvDataCollator:
 
                 # pre-training
                 pre_input_ids = title + text
-                pre_input_ids = pre_input_ids[:self.args.max_plot_len]
+                pre_input_ids = pre_input_ids[:self.args.max_gen_len]
                 pre_context_batch['input_ids'].append(pre_input_ids)
 
                 # pre-training context words
@@ -496,10 +496,10 @@ class CRSConvDataCollator:
 
         context_batch_bert = self.tokenizer_bert.pad(
             context_batch_bert, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of,
-            max_length=self.context_max_length)
+            max_length=self.args.max_dialog_len)
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
-                                               max_length=self.args.max_review_len)
+                                               max_length=self.args.max_gen_len)
 
         pre_context_batch_bert = self.tokenizer_bert.pad(pre_context_batch_bert, padding="max_length",
                                                          max_length=self.args.max_review_len)
