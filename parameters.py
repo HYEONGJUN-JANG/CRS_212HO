@@ -23,7 +23,6 @@ def parse_args():
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
     parser.add_argument('--meta', type=str, default='word',
                         choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
-    parser.add_argument('--pretrained', action='store_true')
     parser.add_argument('--test', action='store_false')
 
     # rec
@@ -38,6 +37,7 @@ def parse_args():
     parser.add_argument('--dropout_ft', type=float, default=0, help='dropout_ft')  # [NEW] dropout in fine-tuning
     parser.add_argument('--lr_dc_step', type=int, default=5, help='warmup_step')
     parser.add_argument('--lr_dc', type=float, default=0.1, help='warmup_gamma')
+    parser.add_argument('--pretrained', action='store_true')
 
     # conv
     parser.add_argument('--conv_epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
@@ -53,12 +53,12 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay to use.")
     parser.add_argument('--conv_loss_lambda', type=float, default=0.1, help='conv lambda')
     parser.add_argument("--conv_pre_eval_batch_size", type=int, default=32, help="conv pre-training eval batch size")
+    parser.add_argument('--conv_pretrained', action='store_true')
 
     # GPT
     parser.add_argument('--gpt_name', type=str, default='microsoft/DialoGPT-small',
                         choices=['microsoft/DialoGPT-small', 'gpt2', 'facebook/bart-base'])
     parser.add_argument('--gpt_n_layer', type=int, default=-1)
-
 
     # BERT
     parser.add_argument('--bert_name', type=str, default='bert-base-uncased',

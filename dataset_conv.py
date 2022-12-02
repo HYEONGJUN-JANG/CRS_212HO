@@ -490,8 +490,8 @@ class CRSConvDataCollator:
             context_batch, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of,
             max_length=self.context_max_length)
 
-        context_batch_bert = self.tokenizer_bert.pad(
-            context_batch_bert, padding=self.padding, pad_to_multiple_of=self.pad_to_multiple_of)
+        context_batch_bert = self.tokenizer_bert.pad(context_batch_bert, padding="max_length",
+                                                     max_length=self.args.max_review_len)
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
                                                max_length=self.args.max_review_len)
