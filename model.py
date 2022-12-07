@@ -45,7 +45,7 @@ class Projector(nn.Module):
         self.prompt_proj2 = nn.Linear(self.token_dim_size, self.n_layer * self.n_block * self.token_dim_size)
 
     def forward(self, token_emb, token_mask, entity_emb, entity_mask):
-        token_emb = self.token_proj(token_emb)
+        # token_emb = self.token_proj(token_emb)
         entity_emb = self.entity_proj(entity_emb)
 
         # encode_state = torch.cat([token_emb, entity_emb], dim=1)
