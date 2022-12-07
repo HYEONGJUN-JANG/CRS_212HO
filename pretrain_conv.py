@@ -36,7 +36,7 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
             }, ensure_ascii=False) + '\n')
 
 
-def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, log_file):
+def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test, model, args, log_file):
     test_cnt = 0
     log_file.write('-----------------------------\n')
     # test
@@ -52,15 +52,13 @@ def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, arg
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
-        # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-        #                                         entity_padding_mask)
+        encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                entity_padding_mask)
 
-        gen_seqs = gpt_model.generate(**batch['context'], conv_labels=batch['response'],
-                                      encoder_hidden_states=token_embedding,
-                                      encoder_attention_mask=token_padding_mask, conv=True)
-        # gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
-        #                               encoder_attention_mask=token_padding_mask,
-        #                               max_new_tokens=args.max_gen_len)
+        # gen_seqs = gpt_model.generate(**batch['context'], conv_labels=batch['response'],
+        #                               prompt_embeds=encoder_state, conv=True)
+        gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
+                                      max_new_tokens=args.max_gen_len)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
@@ -100,7 +98,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-    pretrain_evaluate(gpt_model, tokenizer_gpt, pretrain_dataloader_test, model, args, log_file)
+    pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, log_file)
 
     # train
     for epoch in range(args.conv_epoch_pt):
@@ -116,8 +114,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                     entity_padding_mask)
 
-            loss = gpt_model(**batch['context'], conv_labels=batch['response'], encoder_hidden_states=encoder_state,
-                             encoder_attention_mask=encoder_mask, conv=True).conv_loss
+            loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
+                             conv=True).conv_loss
 
             optimizer.zero_grad()
             loss.backward()
@@ -125,7 +123,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             lr_scheduler.step()
             total_loss += loss.data.float()
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
-        pretrain_evaluate(gpt_model, tokenizer_gpt, pretrain_dataloader_test, model, args, log_file)
+        pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, log_file)
 
         if save_path is not None:
             torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식
