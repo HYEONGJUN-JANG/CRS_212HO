@@ -11,7 +11,7 @@ from model import Projector
 
 
 def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
-    log_file = open(log_file_path, 'a', buffering=1, encoding='utf-8')
+    # log_file = open(log_file_path, 'a', buffering=1, encoding='utf-8')
 
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
     decoded_preds = [decoded_pred.replace('[PAD]', '').replace('[SEP]', '') for decoded_pred in
@@ -29,16 +29,16 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
     decoded_titles = [title.strip() for title in decoded_titles]
 
     if log:
-        log_file.write('-----------------------------\n')
         for response, pred, title in zip(decoded_responses, decoded_preds, decoded_titles):
-            log_file.write(json.dumps({
+            log_file_path.write(json.dumps({
                 'pred': pred,
                 'label': title + ' ' + response
             }, ensure_ascii=False) + '\n')
 
 
-def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, path):
+def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, log_file):
     test_cnt = 0
+    log_file.write('-----------------------------\n')
     # test
     logger.info('[Conv - Pre-training] Test')
     gpt_model.eval()
@@ -63,12 +63,13 @@ def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, arg
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
             gen_resp_ids.append(gen_seq)
         evaluate(batch['context'].input_ids, batch['response'], gen_resp_ids, tokenizer,
-                 log=True, log_file_path=path)
+                 log=True, log_file_path=log_file)
 
 
 def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer, pretrain_dataloader, pretrain_dataloader_test,
                   path=None,
                   save_path=None):
+    log_file = open(path, 'a', buffering=1, encoding='utf-8')
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
     # projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
@@ -121,7 +122,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer, pretrain_datalo
             total_loss += loss.data.float()
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
 
-        pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, path)
+        pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, log_file)
 
         if save_path is not None:
             torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식
