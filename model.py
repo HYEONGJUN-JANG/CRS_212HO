@@ -24,7 +24,7 @@ class Projector(nn.Module):
     def __init__(self, bert_hidden_size, gpt_hidden_size, entity_dim_size):
         super(Projector, self).__init__()
         self.gpt_hidden_size = gpt_hidden_size
-        self.bert_hidden_size =bert_hidden_size
+        self.bert_hidden_size = bert_hidden_size
         self.entity_dim_size = entity_dim_size
 
         self.token_proj = nn.Sequential(
