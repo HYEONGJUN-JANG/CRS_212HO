@@ -147,7 +147,7 @@ class ContentConvCollator:
 
                 context_batch['input_ids'].append(input_ids)
 
-                context_batch_bert['input_ids'].append(text_bert)
+                context_batch_bert['input_ids'].append(text_bert)  # [CLS] ~~ [SEP]
                 entity_batch.append(context_entities)
 
             elif self.mode == 'test':
@@ -295,8 +295,8 @@ class CRSConvDataset(Dataset):
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
 
-            text_token_ids_bert = self.tokenizer_bert(text_tokens,
-                                                      add_special_tokens=False).input_ids
+            # text_token_ids_bert = self.tokenizer_bert(text_tokens + self.tokenizer_bert.sep_token,
+            #                                           add_special_tokens=False).input_ids
             text_token_ids = self.tokenizer_bert(text_tokens + self.tokenizer_bert.sep_token,
                                                  add_special_tokens=False).input_ids  # movie name 으로 하고 싶을 경우
 
@@ -312,14 +312,14 @@ class CRSConvDataset(Dataset):
                     "role": conv['role'],
                     "context_tokens": copy(context_tokens),
                     # self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
-                    "context_tokens_bert": copy(context_tokens_bert),
+                    "context_tokens_bert": copy(context_tokens),
                     "response": text_token_ids,  # self.tokenizer(mask_text_token, add_special_tokens=False).input_ids
                     "context_entities": copy(context_entities)
                 }
                 if conv['role'] == 'Recommender':
                     augmented_conv_dicts.append(conv_dict)
             context_tokens.append(text_token_ids)  # text_tokens
-            context_tokens_bert.append(text_token_ids_bert)
+            # context_tokens_bert.append(text_token_ids_bert)
 
             context_items += movies
             for entity in entities + movies:
@@ -448,7 +448,7 @@ class CRSConvDataCollator:
                 # TODO: 여기도 [CLS], [SEP] 둘다 붙는게 맞는지 확인
                 input_ids_bert = data['context_tokens_bert']
                 input_ids_bert = sum(input_ids_bert, [])
-                input_ids_bert = input_ids_bert[-self.args.max_dialog_len - 1:]
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]
                 input_ids_bert = [self.tokenizer_bert.cls_token_id] + input_ids_bert
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
@@ -479,7 +479,7 @@ class CRSConvDataCollator:
                 # context words
                 input_ids_bert = data['context_tokens_bert']
                 input_ids_bert = sum(input_ids_bert, [])
-                input_ids_bert = input_ids_bert[-self.args.max_dialog_len - 1:]
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]
                 input_ids_bert = [self.tokenizer_bert.cls_token_id] + input_ids_bert
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
