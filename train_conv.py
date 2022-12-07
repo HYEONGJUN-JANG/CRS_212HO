@@ -25,7 +25,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
 
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                     entity_padding_mask)
-
+#
             gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encoder_state,
                                           encoder_attention_mask=encoder_mask,
                                           max_new_tokens=args.max_gen_len,

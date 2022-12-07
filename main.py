@@ -32,7 +32,7 @@ from train_rec import train_recommender
 from pretrain import pretrain
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
-    get_linear_schedule_with_warmup, AutoModelForCausalLM, GPT2Config, GPT2Model
+    get_linear_schedule_with_warmup, AutoModelForCausalLM
 
 ## HJ Branch Test
 from utils import get_time_kst
@@ -132,7 +132,7 @@ def main(args):
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name)
 
-    # BERT model freeze layers
+    # BERT model freeze layers#
     if args.n_layer != -1:
         if 'bart' in args.bert_name:
             modules = [bert_model.encoder, bert_model.decoder.embed_tokens,
@@ -151,32 +151,25 @@ def main(args):
             param.requires_grad = False
 
     # GPT
-    gpt_config = GPT2Config(n_layer=2, vocab_size=tokenizer.vocab_size, add_cross_attention=True,
-                            n_positions=bert_config.max_position_embeddings, eos_token_id=tokenizer.sep_token_id,
-                            pad_token_id=tokenizer.pad_token_id, is_encoder_decoder=True)
-    # gpt_model = GPT2Model(config=gpt_config)
-    gpt_model = PromptGPT2forCRS(config=gpt_config)
+    tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
+    tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
+    gpt_config = AutoConfig.from_pretrained(args.gpt_name)
+    gpt_config.add_cross_attention = True
+
+    gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
+    gpt_model.resize_token_embeddings(len(tokenizer_gpt))
+    gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
+    gpt_model.config.add_cross_attention = True
     gpt_model = gpt_model.to(args.device_id)
 
-    # gpt_config = AutoConfig.from_pretrained(args.gpt_name)
-    # gpt_config.add_cross_attention = True
-    # tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
-    # tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
-    #
-    # gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
-    # gpt_model.resize_token_embeddings(len(tokenizer_gpt))
-    # gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
-    # gpt_model.config.add_cross_attention = True
-    # gpt_model = gpt_model.to(args.device_id)
-
-    # # GPT model freeze layers
-    # if args.gpt_n_layer != -1:
-    #     if 'gpt' in args.gpt_name:
-    #         modules = [gpt_model.h[:gpt_config.num_hidden_layers - args.n_layer],
-    #                    gpt_model.wte, gpt_model.wpe]  # 2개 남기기
-    # for module in modules:
-    #     for param in module.parameters():
-    #         param.requires_grad = False
+    # GPT model freeze layers
+    if args.gpt_n_layer != -1:
+        if 'gpt' in args.gpt_name:
+            modules = [gpt_model.h[:gpt_config.num_hidden_layers - args.n_layer],
+                       gpt_model.wte, gpt_model.wpe]  # 2개 남기기
+    for module in modules:
+        for param in module.parameters():
+            param.requires_grad = False
 
     kg_information = KGInformation(args, REDIAL_DATASET_PATH)
 
@@ -224,21 +217,18 @@ def main(args):
             logger.info(f'Load pretrained file\t{bestrec_path}')
             model.load_state_dict(torch.load(bestrec_path))
         # [pretrain]
-        gpt_model.wte = bert_model.embeddings.word_embeddings
-        gpt_model.wpe = bert_model.embeddings.position_embeddings
-
         # dataset
-        content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer,
+        content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, tokenizer,
                                                       args.device_id)
-        content_conv_train_collator = ContentConvCollator('train', args, tokenizer)
-        content_conv_test_collator = ContentConvCollator('test', args, tokenizer)
-        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
-                                              collate_fn=content_conv_train_collator)  # TODO: shuffle True?
+        content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
+        content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
+        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=False,
+                                              collate_fn=content_conv_train_collator)
         pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
                                                    shuffle=False,
                                                    collate_fn=content_conv_test_collator)
         if not args.conv_pretrained:
-            pretrain_conv(args, model, gpt_model, gpt_config, tokenizer, pretrain_conv_dataloader,
+            pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
                           pretrain_dataloader_test=pretrain_conv_dataloader_test,
                           path=pre_conv_result_file_path, save_path=conv_pretrained_path)
         else:
@@ -247,25 +237,25 @@ def main(args):
         # [fine-tuning]
         # dataset
         conv_train_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'train', tokenizer, content_conv_dataset,
+            REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer, content_conv_dataset,
             context_max_length=args.n_meta, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         conv_valid_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'valid', tokenizer, content_conv_dataset,
+            REDIAL_DATASET_PATH, 'valid', tokenizer_gpt, tokenizer, content_conv_dataset,
             context_max_length=args.n_meta, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         conv_test_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'test', tokenizer, content_conv_dataset,
+            REDIAL_DATASET_PATH, 'test', tokenizer_gpt, tokenizer, content_conv_dataset,
             context_max_length=args.n_meta, resp_max_length=args.max_response_len,
             entity_max_length=args.entity_max_length
         )
         # dataloader
         data_collator_teacher = CRSConvDataCollator(
-            args, tokenizer_bert=tokenizer, device=args.device_id, gen=False,
+            args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=False,
             context_max_length=args.context_max_length + args.resp_max_length,
-            entity_max_length=args.entity_max_length, pad_entity_id=tokenizer.pad_token_id
+            entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
         train_dataloader = DataLoader(
             conv_train_dataset,
@@ -286,9 +276,9 @@ def main(args):
         #     collate_fn=data_collator_teacher,
         # )
         data_collator_generator = CRSConvDataCollator(
-            args, tokenizer_bert=tokenizer, device=args.device_id, gen=True,
+            args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=True,
             context_max_length=args.context_max_length, resp_max_length=args.resp_max_length,
-            entity_max_length=args.entity_max_length, pad_entity_id=tokenizer.pad_token_id
+            entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
         valid_gen_dataloader = DataLoader(
             conv_valid_dataset,
@@ -301,10 +291,11 @@ def main(args):
             collate_fn=data_collator_generator,
         )
         # train & test
-        train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer,
+        train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
                            conv_results_file_path)
 
 
 if __name__ == '__main__':
     args = parse_args()
     main(args)
+ #
