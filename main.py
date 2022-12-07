@@ -152,7 +152,8 @@ def main(args):
 
     # GPT
     gpt_config = GPT2Config(n_layer=2, vocab_size=tokenizer.vocab_size, add_cross_attention=True,
-                            n_positions=bert_config.max_position_embeddings)
+                            n_positions=bert_config.max_position_embeddings, eos_token_id=tokenizer.sep_token_id,
+                            pad_token_id=tokenizer.pad_token_id)
     # gpt_model = GPT2Model(config=gpt_config)
     gpt_model = PromptGPT2forCRS(config=gpt_config)
     gpt_model = gpt_model.to(args.device_id)
