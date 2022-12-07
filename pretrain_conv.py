@@ -11,7 +11,7 @@ from model import Projector
 
 
 def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
-    log_file = open(log_file_path, 'a', buffering=1, encoding='utf-8')
+    # log_file = open(log_file_path, 'a', buffering=1, encoding='utf-8')
 
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
     decoded_preds = [decoded_pred.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_pred in
@@ -30,7 +30,7 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
 
     if log:
         for response, pred, title in zip(decoded_responses, decoded_preds, decoded_titles):
-            log_file.write(json.dumps({
+            log_file_path.write(json.dumps({
                 'pred': pred,
                 'label': title + ' ' + response
             }, ensure_ascii=False) + '\n')
