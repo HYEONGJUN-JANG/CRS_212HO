@@ -131,7 +131,7 @@ def main(args):
         bert_model = AutoModel.from_pretrained(args.gpt_name)
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name)
-
+    #
     # BERT model freeze layers
     if args.n_layer != -1:
         if 'bart' in args.bert_name:
