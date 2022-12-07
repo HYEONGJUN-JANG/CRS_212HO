@@ -222,7 +222,7 @@ def main(args):
                                                       args.device_id)
         content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
         content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
-        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=False,
+        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
                                               collate_fn=content_conv_train_collator)
         pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
                                                    shuffle=False,
@@ -298,4 +298,3 @@ def main(args):
 if __name__ == '__main__':
     args = parse_args()
     main(args)
- #
