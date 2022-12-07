@@ -74,10 +74,13 @@ class ContentInformationConv(Dataset):
             tokenized_plot_title += self.tokenizer_gpt(':').input_ids
 
             # GPT - review & plot
-            tokenized_reviews = self.tokenizer_gpt([review + self.tokenizer_gpt.eos_token for review in reviews],
+            tokenized_reviews = self.tokenizer_gpt([review for review in reviews],
                                                    max_length=self.args.max_gen_len, truncation=True).input_ids
-            tokenized_plots = self.tokenizer_gpt([plot + self.tokenizer_gpt.eos_token for plot in plots],
+            tokenized_reviews = [review + [self.tokenizer_gpt.eos_token_id] for review in tokenized_reviews]
+            tokenized_plots = self.tokenizer_gpt([plot for plot in plots],
                                                  max_length=self.args.max_gen_len, truncation=True).input_ids
+            tokenized_plots = [plot + [self.tokenizer_gpt.eos_token_id] for plot in tokenized_plots]
+
             # BERT - review & plot
             tokenized_reviews_bert = self.tokenizer_bert(reviews, max_length=max_review_len,
                                                          truncation=True,
@@ -138,7 +141,8 @@ class ContentConvCollator:
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
                 input_ids = title + text
-                input_ids = input_ids[:self.args.max_gen_len]
+                input_ids = input_ids[:self.args.max_gen_len - 1]
+                input_ids.append(self.tokenizer.eos_token_id)
 
                 context_batch['input_ids'].append(input_ids)
 
@@ -159,7 +163,7 @@ class ContentConvCollator:
         context_batch = self.tokenizer.pad(context_batch, padding="max_length", max_length=self.args.max_gen_len)
         context_batch_bert = self.tokenizer_bert.pad(context_batch_bert, padding="max_length",
                                                      max_length=self.args.max_review_len)
-#
+        #
         if self.mode == 'train':
             resp_batch = context_batch['input_ids']
             resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for resp
@@ -440,7 +444,8 @@ class CRSConvDataCollator:
 
                 # fine-tuning context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
-                input_ids_bert = input_ids_bert[-self.args.max_dialog_len:]
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]
+                input_ids_bert = [self.tokenizer_bert.cls_token_id] + input_ids_bert
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
                 # fine-tuning context entities
@@ -469,7 +474,8 @@ class CRSConvDataCollator:
 
                 # context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
-                input_ids_bert = input_ids_bert[-self.args.max_dialog_len:]
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]
+                input_ids_bert = [self.tokenizer_bert.cls_token_id] + input_ids_bert
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
                 # context entities
