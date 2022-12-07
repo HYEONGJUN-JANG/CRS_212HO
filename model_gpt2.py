@@ -102,7 +102,7 @@ class GPT2Attention(nn.Module):
             #     left_mask_shape = list(causal_mask.shape[:-1]) + [key_length - query_length]
             #     left_mask = causal_mask.new_ones(left_mask_shape)
             #     causal_mask = torch.cat([left_mask, causal_mask], dim=-1)
-            causal_mask = self.bias[:, :, key_length - query_length: key_length, :key_length].bool()  # maksed
+            causal_mask = self.bias[:, :, key_length - query_length: key_length, :key_length].bool()
 
             if prompt_len > 0:
                 left_mask_shape = list(causal_mask.shape[:-1]) + [prompt_len]
@@ -381,7 +381,7 @@ class GPT2Model(GPT2PreTrainedModel):
                 raise ValueError("batch_size has to be defined and > 0")
             attention_mask = attention_mask.view(batch_size, -1)
             if prompt_embeds is not None:
-                prompt_attention_mask = prompt_embeds.new_ones((batch_size, prompt_embeds.shape[-2]))  # [B, Plen]
+                prompt_attention_mask = prompt_embeds.new_ones((batch_size, prompt_embeds.shape[-2]))
                 attention_mask = torch.cat([prompt_attention_mask, attention_mask], dim=-1)
             # We create a 3D attention mask from a 2D tensor mask.
             # Sizes are [batch_size, 1, 1, to_seq_length]
@@ -425,15 +425,15 @@ class GPT2Model(GPT2PreTrainedModel):
         head_mask = self.get_head_mask(head_mask, self.config.n_layer)
 
         if inputs_embeds is None:
-            inputs_embeds = self.wte(input_ids)  # [B, L, d]
-        position_embeds = self.wpe(position_ids)  # [1, L, d]
+            inputs_embeds = self.wte(input_ids)
+        position_embeds = self.wpe(position_ids)
         hidden_states = inputs_embeds + position_embeds
 
         if token_type_ids is not None:
             token_type_embeds = self.wte(token_type_ids)
             hidden_states = hidden_states + token_type_embeds
 
-        hidden_states = self.drop(hidden_states)  # dropout (0.1)
+        hidden_states = self.drop(hidden_states)
 
         output_shape = input_shape + (hidden_states.size(-1),)
 
@@ -634,11 +634,12 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
             conv=False,
             conv_labels=None,
             return_dict=True,
+            generation=False,
     ):
         transformer_outputs = self.transformer(
             input_ids,
             past_key_values=past_key_values,
-            prompt_embeds=prompt_embeds,  # (layer_num, n_block, batch_size, head_num, prompt_len, head_dim)
+            prompt_embeds=prompt_embeds,  # (layer_num, 2, batch_size, head_num, prompt_len, head_dim)
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
@@ -684,14 +685,17 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
 
         loss, lm_logits = None, None
         if conv:
-            lm_logits = self.lm_head(hidden_states)
-            if conv_labels is not None:
-                # Shift so that tokens < n predict n
-                shift_logits = lm_logits[..., :-1, :].contiguous()
-                shift_labels = conv_labels[..., 1:].contiguous()
-                # Flatten the tokens
-                loss_fct = CrossEntropyLoss()
-                loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+            if not generation:
+                lm_logits = self.lm_head(hidden_states)
+
+                if conv_labels is not None:
+                    # Shift so that tokens < n predict n
+                    shift_logits = lm_logits[..., :-1, :].contiguous()
+                    shift_labels = conv_labels[..., 1:].contiguous()
+                    # Flatten the tokens
+                    loss_fct = CrossEntropyLoss()
+                    loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
 
         return MultiOutput(
             conv_loss=loss,
@@ -703,6 +707,49 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
             attentions=transformer_outputs.attentions,
             cross_attentions=transformer_outputs.cross_attentions,
         )
+
+    def generate(self,
+                 input_ids=None,
+                 past_key_values=None,
+                 prompt_embeds=None,  # (layer_num, 2, batch_size, head_num, prompt_len, head_dim)
+                 attention_mask=None,
+                 token_type_ids=None,
+                 position_ids=None,
+                 head_mask=None,
+                 inputs_embeds=None,
+                 encoder_hidden_states=None,
+                 encoder_attention_mask=None,
+                 use_cache=None,
+                 output_attentions=None,
+                 output_hidden_states=None,
+                 rec=False,
+                 entity_embeds=None,
+                 rec_labels=None,
+                 conv=False,
+                 conv_labels=None,
+                 return_dict=True,
+                 max_gen_len=50):
+
+        batch_size = input_ids.shape[0]
+
+        for _ in range(max_gen_len):
+            transformer_outputs = self.transformer(
+                input_ids,
+                attention_mask=attention_mask,
+                encoder_hidden_states=encoder_hidden_states,
+                encoder_attention_mask=encoder_attention_mask,
+                return_dict=return_dict
+            )
+            hidden_states = transformer_outputs[0][:, -1, :]
+            lm_logits = self.lm_head(hidden_states)
+            preds = lm_logits.argmax(dim=-1).long()
+            input_ids = torch.cat((input_ids, preds.unsqueeze(-1)), dim=1)
+            one_vector = torch.ones(batch_size, device=self.device)
+            attention_mask = torch.cat([attention_mask, one_vector.unsqueeze(-1)], dim=1)
+            # finished = ((input_ids == end_token_idx).sum(dim=-1) > 0).sum().item() == batch_size
+            # if finished:
+            #     break
+        return input_ids
 
     @staticmethod
     def _reorder_cache(past: Tuple[Tuple[torch.Tensor]], beam_idx: torch.Tensor) -> Tuple[Tuple[torch.Tensor]]:
