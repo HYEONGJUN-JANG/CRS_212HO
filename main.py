@@ -32,7 +32,7 @@ from train_rec import train_recommender
 from pretrain import pretrain
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
-    get_linear_schedule_with_warmup, AutoModelForCausalLM
+    get_linear_schedule_with_warmup, AutoModelForCausalLM, GPT2Config, GPT2Model
 
 ## HJ Branch Test
 from utils import get_time_kst
@@ -151,25 +151,30 @@ def main(args):
             param.requires_grad = False
 
     # GPT
-    tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
-    tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
-    gpt_config = AutoConfig.from_pretrained(args.gpt_name)
-    gpt_config.add_cross_attention = True
-
-    gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
-    gpt_model.resize_token_embeddings(len(tokenizer_gpt))
-    gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
-    gpt_model.config.add_cross_attention = True
+    gpt_config = GPT2Config(n_layer=2, vocab_size=tokenizer.vocab_size, add_cross_attention=True,
+                            n_positions=bert_config.max_position_embeddings)
+    gpt_model = GPT2Model(config=gpt_config)
     gpt_model = gpt_model.to(args.device_id)
 
-    # GPT model freeze layers
-    if args.gpt_n_layer != -1:
-        if 'gpt' in args.gpt_name:
-            modules = [gpt_model.h[:gpt_config.num_hidden_layers - args.n_layer],
-                       gpt_model.wte, gpt_model.wpe]  # 2개 남기기
-    for module in modules:
-        for param in module.parameters():
-            param.requires_grad = False
+    # gpt_config = AutoConfig.from_pretrained(args.gpt_name)
+    # gpt_config.add_cross_attention = True
+    # tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
+    # tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
+    #
+    # gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
+    # gpt_model.resize_token_embeddings(len(tokenizer_gpt))
+    # gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
+    # gpt_model.config.add_cross_attention = True
+    # gpt_model = gpt_model.to(args.device_id)
+
+    # # GPT model freeze layers
+    # if args.gpt_n_layer != -1:
+    #     if 'gpt' in args.gpt_name:
+    #         modules = [gpt_model.h[:gpt_config.num_hidden_layers - args.n_layer],
+    #                    gpt_model.wte, gpt_model.wpe]  # 2개 남기기
+    # for module in modules:
+    #     for param in module.parameters():
+    #         param.requires_grad = False
 
     kg_information = KGInformation(args, REDIAL_DATASET_PATH)
 
@@ -217,6 +222,9 @@ def main(args):
             logger.info(f'Load pretrained file\t{bestrec_path}')
             model.load_state_dict(torch.load(bestrec_path))
         # [pretrain]
+        gpt_model.wte = bert_model.embeddings.word_embeddings
+        gpt_model.wpe = bert_model.embeddings.position_embeddings
+
         # dataset
         content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, tokenizer,
                                                       args.device_id)
