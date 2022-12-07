@@ -11,10 +11,10 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertM
     get_linear_schedule_with_warmup, AutoModelForCausalLM
 
 
-def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, gpt_model, tokenizer,
+def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                         total_report):
     gpt_model.eval()
-    # projector.eval()
+    projector.eval()
     evaluator.log_file.write(f'\n*** test-{epoch} ***\n\n')
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         batch = batches[0]
@@ -23,16 +23,16 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, gpt_
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
-            # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-            #                                         entity_padding_mask)
-
-            gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
-                                          encoder_attention_mask=token_padding_mask,
+            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                    entity_padding_mask)
+#
+            gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encoder_state,
+                                          encoder_attention_mask=encoder_mask,
                                           max_new_tokens=args.max_gen_len,
                                           no_repeat_ngram_size=3)
             gen_resp_ids = []
             for gen_seq, length in zip(gen_seqs, batch['context_len']):
-                gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
+                gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
                 gen_resp_ids.append(gen_seq[length:])
             evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], log=True)
     # metric
@@ -40,20 +40,20 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, gpt_
     test_report = {}
     for k, v in report.items():
         test_report[f'test/{k}'] = v
-    #
+
     test_report['epoch'] = epoch
     logger.info(test_report)
     total_report.append(test_report)
     evaluator.reset_metric()
 
 
-def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer,
+def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
                        conv_results_file_path):
     total_report = []
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader))
     max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
-    # projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
+    projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
@@ -67,28 +67,27 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
             "params": [p for model in modules for n, p in model.named_parameters()
                        if any(nd in n for nd in no_decay) and p.requires_grad],
             "weight_decay": 0.0,
+        },
+        {
+            "params": projector.parameters()
         }
-        # ,
-        # {
-        #     "params": projector.parameters()
-        # }
 
     ]
 
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_ft)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-    evaluator = ConvEvaluator(tokenizer=tokenizer, log_file_path=conv_results_file_path)
+    evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
 
     # train loop
-    finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, gpt_model, tokenizer,
+    finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                         total_report)
     for epoch in range(args.conv_epoch_ft):
         logger.info(f'[Conversation epoch {str(epoch)}]')
         logger.info('[Train]')
         total_loss = 0
         gpt_model.train()
-        # projector.train()
+        projector.train()
         for step, batches in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
             batch = batches[0]
             pre_batch = batches[1]
@@ -98,18 +97,18 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                 pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask = model.get_representations(
                     pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
 
-            # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-            #                                         entity_padding_mask)
-            # pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
-            #                                                 pre_entity_representations,
-            #                                                 pre_entity_padding_mask)
+            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                    entity_padding_mask)
+            pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
+                                                            pre_entity_representations,
+                                                            pre_entity_padding_mask)
 
             loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True,
-                                encoder_hidden_states=token_embedding,
-                                encoder_attention_mask=token_padding_mask).conv_loss
+                                encoder_hidden_states=encoder_state,
+                                encoder_attention_mask=encoder_mask).conv_loss
             loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
-                                encoder_hidden_states=pre_token_embedding,
-                                encoder_attention_mask=pre_token_padding_mask).conv_loss
+                                encoder_hidden_states=pre_encoder_state,
+                                encoder_attention_mask=pre_encoder_mask).conv_loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
@@ -121,5 +120,5 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
             print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
 
         logger.info('[Test]')
-        finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, gpt_model, tokenizer,
+        finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                             total_report)
