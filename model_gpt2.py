@@ -685,9 +685,10 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
 
         loss, lm_logits = None, None
         if conv:
-            lm_logits = self.lm_head(hidden_states)
 
             if not generation:
+                lm_logits = self.lm_head(hidden_states)
+
                 if conv_labels is not None:
                     # Shift so that tokens < n predict n
                     shift_logits = lm_logits[..., :-1, :].contiguous()
@@ -695,9 +696,7 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
                     # Flatten the tokens
                     loss_fct = CrossEntropyLoss()
                     loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
-            else:
-                pred = lm_logits.argmax(-1).long()
-                return pred
+
         return MultiOutput(
             conv_loss=loss,
             logits=lm_logits,
@@ -728,24 +727,28 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
                  rec_labels=None,
                  conv=False,
                  conv_labels=None,
-                 return_dict=True, ):
-        transformer_outputs = self.transformer(
-            input_ids,
-            past_key_values=past_key_values,
-            prompt_embeds=prompt_embeds,  # (layer_num, 2, batch_size, head_num, prompt_len, head_dim)
-            attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            head_mask=head_mask,
-            inputs_embeds=inputs_embeds,
-            encoder_hidden_states=encoder_hidden_states,
-            encoder_attention_mask=encoder_attention_mask,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-        hidden_states = transformer_outputs[0]
+                 return_dict=True,
+                 max_gen_len=50):
+
+        batch_size = input_ids.shape[0]
+
+        for _ in range(max_gen_len):
+            transformer_outputs = self.transformer(
+                input_ids,
+                attention_mask=attention_mask,
+                encoder_hidden_states=encoder_hidden_states,
+                encoder_attention_mask=encoder_attention_mask,
+                return_dict=return_dict
+            )
+            hidden_states = transformer_outputs[0][:, -1, :]
+            lm_logits = self.lm_head(hidden_states)
+            preds = lm_logits.argmax(dim=-1).long()
+            input_ids = torch.cat((input_ids, preds.unsqueeze(-1)), dim=1)
+            # finished = ((input_ids == end_token_idx).sum(dim=-1) > 0).sum().item() == batch_size
+            # if finished:
+            #     break
+        return input_ids
+
 
     @staticmethod
     def _reorder_cache(past: Tuple[Tuple[torch.Tensor]], beam_idx: torch.Tensor) -> Tuple[Tuple[torch.Tensor]]:
