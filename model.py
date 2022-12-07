@@ -37,6 +37,12 @@ class Projector(nn.Module):
             nn.ReLU(),
             nn.Linear(self.token_dim_size // 2, self.token_dim_size)
         )
+        self.n_layer = 12
+        self.n_block = 2
+        self.n_head = 12  # head 수는 12
+        self.hidden_size = self.token_dim_size
+        self.head_dim = self.hidden_size // self.n_head
+        self.prompt_proj2 = nn.Linear(self.token_dim_size, self.n_layer * self.n_block * self.token_dim_size)
 
     def forward(self, token_emb, token_mask, entity_emb, entity_mask):
         token_emb = self.token_proj(token_emb)
@@ -44,7 +50,15 @@ class Projector(nn.Module):
 
         encode_state = torch.cat([token_emb, entity_emb], dim=1)
         encoder_mask = torch.cat([token_mask, entity_mask], dim=1)
-        return encode_state, encoder_mask
+
+        batch_size = encode_state.shape[0]
+        prompt_len = encode_state.shape[1]
+        prompt_embeds = self.prompt_proj2(encode_state)
+        prompt_embeds = prompt_embeds.reshape(
+            batch_size, prompt_len, self.n_layer, self.n_block, self.n_head, self.head_dim
+        ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
+
+        return prompt_embeds, encoder_mask
 
 
 class MovieExpertCRS(nn.Module):
