@@ -57,7 +57,8 @@ def parse_args():
 
     # GPT
     parser.add_argument('--gpt_name', type=str, default='microsoft/DialoGPT-small',
-                        choices=['microsoft/DialoGPT-small', 'gpt2', 'facebook/bart-base'])
+                        choices=['microsoft/DialoGPT-small', 'microsoft/DialoGPT-large', 'gpt2', 'gpt2-large',
+                                 'facebook/bart-base'])
     parser.add_argument('--gpt_n_layer', type=int, default=-1)
 
     # BERT
