@@ -744,11 +744,12 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
             lm_logits = self.lm_head(hidden_states)
             preds = lm_logits.argmax(dim=-1).long()
             input_ids = torch.cat((input_ids, preds.unsqueeze(-1)), dim=1)
+            one_vector = torch.ones(batch_size, device=self.device)
+            attention_mask = torch.cat([attention_mask, one_vector.unsqueeze(-1)], dim=1)
             # finished = ((input_ids == end_token_idx).sum(dim=-1) > 0).sum().item() == batch_size
             # if finished:
             #     break
         return input_ids
-
 
     @staticmethod
     def _reorder_cache(past: Tuple[Tuple[torch.Tensor]], beam_idx: torch.Tensor) -> Tuple[Tuple[torch.Tensor]]:
