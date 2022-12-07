@@ -29,11 +29,41 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
     decoded_titles = [title.strip() for title in decoded_titles]
 
     if log:
+        log_file.write('-----------------------------\n')
         for response, pred, title in zip(decoded_responses, decoded_preds, decoded_titles):
             log_file.write(json.dumps({
                 'pred': pred,
                 'label': title + ' ' + response
             }, ensure_ascii=False) + '\n')
+
+
+def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, path):
+    test_cnt = 0
+    # test
+    logger.info('[Conv - Pre-training] Test')
+    gpt_model.eval()
+    # projector.eval()
+    for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        if test_cnt == 100:
+            break
+        else:
+            test_cnt += 1
+        with torch.no_grad():
+            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                batch['context_entities'], batch['context_bert'].input_ids)
+
+        # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+        #                                         entity_padding_mask)
+
+        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
+                                      encoder_attention_mask=token_padding_mask,
+                                      max_new_tokens=args.max_gen_len)
+        gen_resp_ids = []
+        for gen_seq, length in zip(gen_seqs, batch['context_len']):
+            gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
+            gen_resp_ids.append(gen_seq)
+        evaluate(batch['context'].input_ids, batch['response'], gen_resp_ids, tokenizer,
+                 log=True, log_file_path=path)
 
 
 def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer, pretrain_dataloader, pretrain_dataloader_test,
@@ -66,6 +96,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer, pretrain_datalo
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
+    pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, path)
     # train
     for epoch in range(args.conv_epoch_pt):
         logger.info(f'[Conv - Pre-training] Train-{epoch}')
@@ -90,27 +121,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer, pretrain_datalo
             total_loss += loss.data.float()
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
 
-    # test
-    logger.info('[Conv - Pre-training] Test')
-    gpt_model.eval()
-    # projector.eval()
-    for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        with torch.no_grad():
-            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                batch['context_entities'], batch['context_bert'].input_ids)
-
-        # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-        #                                         entity_padding_mask)
-
-        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
-                                      encoder_attention_mask=token_padding_mask,
-                                      max_new_tokens=args.max_gen_len)
-        gen_resp_ids = []
-        for gen_seq, length in zip(gen_seqs, batch['context_len']):
-            gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
-            gen_resp_ids.append(gen_seq)
-        evaluate(batch['context'].input_ids, batch['response'], gen_resp_ids, tokenizer,
-                 log=True, log_file_path=path)
+        pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, path)
 
         if save_path is not None:
             torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식
