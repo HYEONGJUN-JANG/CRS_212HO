@@ -28,7 +28,7 @@ class Projector(nn.Module):
         self.entity_dim_size = entity_dim_size
 
         self.token_proj = nn.Sequential(
-            nn.Linear(self.gpt_hidden_size, self.gpt_hidden_size // 2),
+            nn.Linear(self.bert_hidden_size, self.gpt_hidden_size // 2),
             nn.ReLU(),
             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
         )
@@ -46,7 +46,7 @@ class Projector(nn.Module):
         self.prompt_proj2 = nn.Linear(self.bert_hidden_size, self.n_layer * self.n_block * self.gpt_hidden_size)
 
     def forward(self, token_emb, token_mask, entity_emb, entity_mask):
-        # token_emb = self.token_proj(token_emb)
+        token_emb = self.token_proj(token_emb)
         entity_emb = self.entity_proj(entity_emb)
 
         # encode_state = torch.cat([token_emb, entity_emb], dim=1)
