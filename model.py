@@ -42,7 +42,7 @@ class Projector(nn.Module):
         self.n_block = 2
         self.n_head = 12  # head 수는 12
         self.head_dim = self.gpt_hidden_size // self.n_head
-        self.prompt_proj2 = nn.Linear(self.bert_hidden_size, self.n_layer * self.n_block * self.gpt_hidden_size)
+        self.prompt_proj2 = nn.Linear(self.gpt_hidden_size, self.n_layer * self.n_block * self.gpt_hidden_size)
 
     def forward(self, token_emb, token_mask, entity_emb, entity_mask):
         token_emb = self.token_proj(token_emb)
