@@ -21,9 +21,9 @@ class MultiOutput(ModelOutput):
 
 
 class Projector(nn.Module):
-    def __init__(self, bert_hidden_size, gpt_hidden_size, entity_dim_size):
+    def __init__(self, gpt2_config, bert_hidden_size, entity_dim_size):
         super(Projector, self).__init__()
-        self.gpt_hidden_size = gpt_hidden_size
+        self.gpt_hidden_size = gpt2_config.hidden_size
         self.bert_hidden_size = bert_hidden_size
         self.entity_dim_size = entity_dim_size
 
@@ -38,9 +38,9 @@ class Projector(nn.Module):
             nn.ReLU(),
             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
         )
-        self.n_layer = 12
+        self.n_layer = gpt2_config.n_layer
         self.n_block = 2
-        self.n_head = 12  # head 수는 12
+        self.n_head = gpt2_config.n_head  # head 수는 12
         self.head_dim = self.gpt_hidden_size // self.n_head
         self.prompt_proj2 = nn.Linear(self.gpt_hidden_size, self.n_layer * self.n_block * self.gpt_hidden_size)
 

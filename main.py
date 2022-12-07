@@ -154,12 +154,12 @@ def main(args):
     tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
     tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
     gpt_config = AutoConfig.from_pretrained(args.gpt_name)
-    gpt_config.add_cross_attention = True
+    # gpt_config.add_cross_attention = True
 
     gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
-    gpt_model.config.add_cross_attention = True
+    # gpt_model.config.add_cross_attention = True
     gpt_model = gpt_model.to(args.device_id)
 
     # GPT model freeze layers
