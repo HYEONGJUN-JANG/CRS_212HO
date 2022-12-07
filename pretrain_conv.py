@@ -97,7 +97,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer, pretrain_datalo
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-    pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, path)
+    pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, log_file)
     # train
     for epoch in range(args.conv_epoch_pt):
         logger.info(f'[Conv - Pre-training] Train-{epoch}')
