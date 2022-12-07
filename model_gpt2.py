@@ -748,7 +748,7 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
             attention_mask = torch.cat([attention_mask, one_vector.unsqueeze(-1)], dim=1)
             # finished = ((input_ids == end_token_idx).sum(dim=-1) > 0).sum().item() == batch_size
             # if finished:
-            #     break
+            #     break #
         return input_ids
 
     @staticmethod
