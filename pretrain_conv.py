@@ -55,9 +55,11 @@ def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, arg
         # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
         #                                         entity_padding_mask)
 
-        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
-                                      encoder_attention_mask=token_padding_mask,
-                                      max_new_tokens=args.max_gen_len)
+        gen_seqs = gpt_model(**batch['context'], conv_labels=batch['response'], encoder_hidden_states=token_embedding,
+                         encoder_attention_mask=token_padding_mask, conv=True, generation=True)
+        # gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
+        #                               encoder_attention_mask=token_padding_mask,
+        #                               max_new_tokens=args.max_gen_len)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
