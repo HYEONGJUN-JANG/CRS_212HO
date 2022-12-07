@@ -132,7 +132,7 @@ def main(args):
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name)
 
-    # BERT model freeze layers
+    # BERT model freeze layers#
     if args.n_layer != -1:
         if 'bart' in args.bert_name:
             modules = [bert_model.encoder, bert_model.decoder.embed_tokens,
