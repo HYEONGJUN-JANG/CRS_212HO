@@ -36,9 +36,44 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
             }, ensure_ascii=False) + '\n')
 
 
+def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, log_file):
+    test_cnt = 0
+    log_file.write('-----------------------------\n')
+    # test
+    logger.info('[Conv - Pre-training] Test')
+    gpt_model.eval()
+    # projector.eval()
+    for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        if test_cnt == 100:
+            break
+        else:
+            test_cnt += 1
+        with torch.no_grad():
+            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                batch['context_entities'], batch['context_bert'].input_ids)
+
+        # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+        #                                         entity_padding_mask)
+
+        gen_seqs = gpt_model.generate(**batch['context'], conv_labels=batch['response'],
+                                      encoder_hidden_states=token_embedding,
+                                      encoder_attention_mask=token_padding_mask, conv=True)
+        # gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=token_embedding,
+        #                               encoder_attention_mask=token_padding_mask,
+        #                               max_new_tokens=args.max_gen_len)
+        gen_resp_ids = []
+        for gen_seq, length in zip(gen_seqs, batch['context_len']):
+            gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
+            gen_resp_ids.append(gen_seq)
+        evaluate(batch['context'].input_ids, batch['response'], gen_resp_ids, tokenizer,
+                 log=True, log_file_path=log_file)
+
+
 def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test,
                   path=None,
                   save_path=None):
+    log_file = open(path, 'a', buffering=1, encoding='utf-8')
+
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
     projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
@@ -58,12 +93,14 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             "params": projector.parameters()
         }
     ]
- #
+    #
     num_update_steps_per_epoch = math.ceil(len(pretrain_dataloader))
     max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
 
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
+
+    pretrain_evaluate(gpt_model, tokenizer_gpt, pretrain_dataloader_test, model, args, log_file)
 
     # train
     for epoch in range(args.conv_epoch_pt):
@@ -88,28 +125,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             lr_scheduler.step()
             total_loss += loss.data.float()
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
-
-    # test
-    logger.info('[Conv - Pre-training] Test')
-    gpt_model.eval()
-    projector.eval()
-    for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        with torch.no_grad():
-            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
-                batch['context_entities'], batch['context_bert'].input_ids)
-
-        encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                entity_padding_mask)
-
-        gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encoder_state,
-                                      encoder_attention_mask=encoder_mask,
-                                      max_new_tokens=args.max_gen_len)
-        gen_resp_ids = []
-        for gen_seq, length in zip(gen_seqs, batch['context_len']):
-            gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
-            gen_resp_ids.append(gen_seq)
-        evaluate(batch['context'].input_ids, batch['response'], gen_resp_ids, tokenizer_gpt,
-                 log=True, log_file_path=path)
+        pretrain_evaluate(gpt_model, tokenizer_gpt, pretrain_dataloader_test, model, args, log_file)
 
         if save_path is not None:
             torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식
