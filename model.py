@@ -21,11 +21,13 @@ class MultiOutput(ModelOutput):
 
 
 class Projector(nn.Module):
-    def __init__(self, gpt2_config, bert_hidden_size, entity_dim_size):
+    def __init__(self, gpt2_config, bert_hidden_size, entity_dim_size, projection_order, device):
         super(Projector, self).__init__()
         self.gpt_hidden_size = gpt2_config.hidden_size
         self.bert_hidden_size = bert_hidden_size
         self.entity_dim_size = entity_dim_size
+        self.projection_order = projection_order
+        self.device = device
 
         self.token_proj = nn.Sequential(
             nn.Linear(self.bert_hidden_size, self.gpt_hidden_size // 2),
@@ -38,21 +40,34 @@ class Projector(nn.Module):
             nn.ReLU(),
             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
         )
+
+        self.user_proj = nn.Sequential(
+            nn.Linear(self.entity_dim_size, self.gpt_hidden_size // 2),
+            nn.ReLU(),
+            nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
+        )
+
         self.n_layer = gpt2_config.n_layer
         self.n_block = 2
         self.n_head = gpt2_config.n_head  # head 수는 12
         self.head_dim = self.gpt_hidden_size // self.n_head
         self.prompt_proj2 = nn.Linear(self.gpt_hidden_size, self.n_layer * self.n_block * self.gpt_hidden_size)
 
-    def forward(self, token_emb, token_mask, entity_emb, entity_mask):
+    def forward(self, token_emb, token_mask, entity_emb, entity_mask, user_representation):
         token_emb = self.token_proj(token_emb)
         entity_emb = self.entity_proj(entity_emb)
+        user_emb = self.user_proj(user_representation)
 
-        # encode_state = torch.cat([token_emb, entity_emb], dim=1)
-        # encoder_mask = torch.cat([token_mask, entity_mask], dim=1)
-
-        encoder_state = token_emb
-        encoder_mask = token_mask
+        if self.projection_order == 1:
+            encoder_state = token_emb
+            encoder_mask = token_mask
+        elif self.projection_order == 2:
+            encoder_state = torch.cat([token_emb, entity_emb], dim=1)
+            encoder_mask = torch.cat([token_mask, entity_mask], dim=1)
+        elif self.projection_order == 3:
+            encoder_state = torch.cat([token_emb, entity_emb, user_emb.unsqueeze(1)], dim=1)
+            encoder_mask = torch.cat([token_mask, entity_mask, torch.ones(token_mask.shape[0], 1, device=self.device)],
+                                     dim=1)
 
         batch_size = encoder_state.shape[0]
         prompt_len = encoder_state.shape[1]
@@ -317,6 +332,38 @@ class MovieExpertCRS(nn.Module):
                                             attention_mask=token_padding_mask.to(
                                                 self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
         return entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask
+
+    def get_representationsWithUser(self, context_entities, context_tokens):
+        entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask = self.get_representations(
+            context_entities,
+            context_tokens)
+
+        token_embedding = self.linear_transformation(token_embedding_prev)
+        if self.args.word_encoder == 0:
+            token_attn_rep = token_embedding[:, 0, :]
+        elif self.args.word_encoder == 2:
+            sequence_len = torch.sum(token_padding_mask, dim=1) - 1
+            token_attn_rep = token_embedding[torch.arange(context_tokens.shape[0]), sequence_len]
+
+        entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
+                                                position=self.args.position)  # (bs, entity_dim)
+
+        # dropout
+        token_attn_rep = self.dropout_ft(token_attn_rep)
+        entity_attn_rep = self.dropout_ft(entity_attn_rep)
+
+        # if 'word' in self.args.meta and 'meta' in self.args.meta:
+        #     gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+        #     user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
+        # elif 'word' in self.args.meta:
+        #     user_embedding = token_attn_rep
+        # elif 'meta' in self.args.meta:
+        #     user_embedding = entity_attn_rep
+
+        gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+        user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
+
+        return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
 
     def forward(self, context_entities, context_tokens):
 
