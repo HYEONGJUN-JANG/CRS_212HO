@@ -53,7 +53,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader))
     max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
-    projector = Projector(gpt_config.hidden_size, args.kg_emb_dim).to(args.device_id)
+    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim).to(args.device_id)
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
@@ -99,6 +99,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
 
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                     entity_padding_mask)
+
             pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
                                                             pre_entity_representations,
                                                             pre_entity_padding_mask)
