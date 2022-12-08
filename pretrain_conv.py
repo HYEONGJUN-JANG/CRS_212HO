@@ -49,11 +49,11 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
         else:
             test_cnt += 1
         with torch.no_grad():
-            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
         encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                entity_padding_mask)
+                                                entity_padding_mask, user_representation)
 
         # gen_seqs = gpt_model.generate(**batch['context'], conv_labels=batch['response'],
         #                               prompt_embeds=encoder_state, conv=True)
@@ -74,7 +74,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
-    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim).to(args.device_id)
+    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.projection_order, args.device_id).to(
+        args.device_id)
 
     optimizer_grouped_parameters = [
         {
@@ -108,11 +109,11 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
         projector.train()
         for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             with torch.no_grad():
-                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                     batch['context_entities'], batch['context_bert'].input_ids)
 
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                    entity_padding_mask)
+                                                    entity_padding_mask, user_representation)
 
             loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
                              conv=True).conv_loss

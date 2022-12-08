@@ -20,11 +20,11 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
         batch = batches[0]
 
         with torch.no_grad():
-            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                    entity_padding_mask)
+                                                    entity_padding_mask, user_representation)
 
             gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
                                           max_new_tokens=args.max_gen_len,
@@ -53,7 +53,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader))
     max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
-    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim).to(args.device_id)
+    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.device_id).to(args.device_id)
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
@@ -92,17 +92,17 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
             batch = batches[0]
             pre_batch = batches[1]
             with torch.no_grad():
-                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = model.get_representations(
+                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                     batch['context_entities'], batch['context_bert'].input_ids)
-                pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask = model.get_representations(
+                pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask, user_representation = model.get_representationsWithUser(
                     pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
 
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                    entity_padding_mask)
+                                                    entity_padding_mask, user_representation)
 
             pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
                                                             pre_entity_representations,
-                                                            pre_entity_padding_mask)
+                                                            pre_entity_padding_mask, user_representation)
 
             loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
                                 conv=True).conv_loss
