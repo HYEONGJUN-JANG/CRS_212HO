@@ -141,7 +141,7 @@ class ContentConvCollator:
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
                 input_ids = title + text
-                input_ids = input_ids[:self.args.max_gen_len - 1]
+                input_ids = input_ids[:self.args.context_max_len + self.args.max_response_len - 1]
                 input_ids.append(self.tokenizer.eos_token_id)
 
                 context_batch['input_ids'].append(input_ids)
@@ -197,7 +197,6 @@ class CRSConvDataset(Dataset):
     #
     def __init__(
             self, path, split, tokenizer, tokenizer_bert, content_conv_dataset, debug=False,
-            context_max_length=None, resp_max_length=None, entity_max_length=None
     ):
         super(CRSConvDataset, self).__init__()
         self.data = []
@@ -215,19 +214,6 @@ class CRSConvDataset(Dataset):
         self.n_entity = max(self.entity2id.values()) + 1
         self.entity_kg = json.load(open(os.path.join(path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
         self.entity_kg = self._entity_kg_process()
-
-        self.context_max_length = context_max_length
-        if self.context_max_length is None:
-            self.context_max_length = self.tokenizer.model_max_length
-
-        self.resp_max_length = resp_max_length
-        if self.resp_max_length is None:
-            self.resp_max_length = self.tokenizer.model_max_length
-        self.resp_max_length -= 1
-
-        self.entity_max_length = entity_max_length
-        if self.entity_max_length is None:
-            self.entity_max_length = self.tokenizer.model_max_length
 
         data_file = os.path.join(path, f'{split}_data.json')
         with open(data_file, 'r', encoding='utf-8') as f:
@@ -410,9 +396,9 @@ class CRSConvDataCollator:
         if self.context_max_length is None:
             self.context_max_length = self.tokenizer.model_max_length
 
-        self.resp_max_length = resp_max_length
-        if self.resp_max_length is None:
-            self.resp_max_length = self.tokenizer.model_max_length
+        # self.resp_max_length = resp_max_length
+        # if self.resp_max_length is None:
+        #     self.resp_max_length = self.tokenizer.model_max_length
 
         self.entity_max_length = entity_max_length
         if self.entity_max_length is None:
@@ -483,7 +469,7 @@ class CRSConvDataCollator:
 
                 # pre-training
                 pre_input_ids = title + text
-                pre_input_ids = pre_input_ids[:self.args.max_gen_len]
+                pre_input_ids = pre_input_ids[:self.context_max_length]
                 pre_context_batch['input_ids'].append(pre_input_ids)
 
                 # pre-training context words
