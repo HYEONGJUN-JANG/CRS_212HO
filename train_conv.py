@@ -25,11 +25,11 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
 
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                     entity_padding_mask)
-#
-            gen_seqs = gpt_model.generate(**batch['context'], encoder_hidden_states=encoder_state,
-                                          encoder_attention_mask=encoder_mask,
+
+            gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
                                           max_new_tokens=args.max_gen_len,
                                           no_repeat_ngram_size=3)
+
             gen_resp_ids = []
             for gen_seq, length in zip(gen_seqs, batch['context_len']):
                 gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
@@ -103,12 +103,10 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                                                             pre_entity_representations,
                                                             pre_entity_padding_mask)
 
-            loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True,
-                                encoder_hidden_states=encoder_state,
-                                encoder_attention_mask=encoder_mask).conv_loss
+            loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
+                                conv=True).conv_loss
             loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
-                                encoder_hidden_states=pre_encoder_state,
-                                encoder_attention_mask=pre_encoder_mask).conv_loss
+                                prompt_embeds=pre_encoder_state).conv_loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
