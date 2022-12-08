@@ -40,7 +40,7 @@ class ContentInformation(Dataset):
         # all_entities_name = entity2id.keys()
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             review_list, plot_list = [], []
-            review_chunck, plot_chunck = [], []
+            review_chunck, plot_chunck, review_meta_chunk, plot_meta_chunk = [], [], [], []
             review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
             crs_id = sample['crs_id']
@@ -78,15 +78,23 @@ class ContentInformation(Dataset):
 
             # prefixed_reviews = [masked_prefix + review for review in reviews]
             # prefixed_plots = [masked_prefix + plot for plot in plots]
+
+            # reviews sampling
+            reviews = reviews[:self.args.n_review]
+            reviews_meta = reviews_meta[:self.args.n_review]
+            plots = plots[:self.args.n_plot]
+            plots_meta = plots_meta[:self.args.n_plot]
+
             mask_label = [-100] * max_review_len
             # mask_label[1:1 + len(tokenized_title)] = tokenized_title
             # Make chunch of each review
-            for review in reviews:
+            for idx, review in enumerate(reviews):
                 tokenized_review = self.tokenizer.tokenize(review)
                 total_len = len(tokenized_review)
                 sidx = 0
                 eidx = max_review_len
                 while True:
+                    review_meta_chunk.append(reviews_meta[idx])
                     review_chunck.append(self.tokenizer.decode((self.tokenizer(review[sidx:eidx - 2],
                                                                                max_length=max_review_len,
                                                                                padding='max_length',
@@ -97,12 +105,13 @@ class ContentInformation(Dataset):
                     sidx += self.args.window_size
                     eidx += self.args.window_size
 
-            for plot in plots:
+            for idx, plot in enumerate(plots):
                 tokenized_plot = self.tokenizer.tokenize(plot)
                 total_len = len(tokenized_plot)
                 sidx = 0
                 eidx = max_plot_len
                 while True:
+                    plot_meta_chunk.append(plots_meta[idx])
                     plot_chunck.append(self.tokenizer.decode((self.tokenizer(plot[sidx:eidx - 2],
                                                                              max_length=max_review_len,
                                                                              padding='max_length',
@@ -122,42 +131,42 @@ class ContentInformation(Dataset):
                                              truncation=True,
                                              add_special_tokens=True)
 
-            if self.args.word_encoder == 2:
-                review_lens = [sum(mask) for mask in tokenized_reviews.attention_mask]
-                for tokenized_review, last_idx in zip(tokenized_reviews.input_ids, review_lens):
-                    tokenized_review[last_idx - 1] = tokenizer.cls_token_id
+            # if self.args.word_encoder == 2:
+            #     review_lens = [sum(mask) for mask in tokenized_reviews.attention_mask]
+            #     for tokenized_review, last_idx in zip(tokenized_reviews.input_ids, review_lens):
+            #         tokenized_review[last_idx - 1] = tokenizer.cls_token_id
+            #
+            #     plot_lens = [sum(mask) for mask in tokenized_plots.attention_mask]
+            #     for tokenized_plot, last_idx in zip(tokenized_plots.input_ids, plot_lens):
+            #         tokenized_plot[last_idx - 1] = tokenizer.cls_token_id
 
-                plot_lens = [sum(mask) for mask in tokenized_plots.attention_mask]
-                for tokenized_plot, last_idx in zip(tokenized_plots.input_ids, plot_lens):
-                    tokenized_plot[last_idx - 1] = tokenizer.cls_token_id
+            for idx, meta in enumerate(review_meta_chunk):
+                review_meta_chunk[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                review_meta_chunk[idx] = review_meta_chunk[idx] + [0] * (self.args.n_meta - len(meta))
 
-            for idx, meta in enumerate(reviews_meta):
-                reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
-                reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))
+            for idx, meta in enumerate(plot_meta_chunk):
+                plot_meta_chunk[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+                plot_meta_chunk[idx] = plot_meta_chunk[idx] + [0] * (self.args.n_meta - len(meta))
 
-            for idx, meta in enumerate(plots_meta):
-                plots_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
-                plots_meta[idx] = plots_meta[idx] + [0] * (self.args.n_meta - len(meta))
-
-            for i in range(min(len(reviews), self.args.n_review)):
+            for i in range(len(tokenized_reviews.input_ids)):
                 review_list.append(tokenized_reviews.input_ids[i])
                 review_mask_list.append(tokenized_reviews.attention_mask[i])
-                reviews_meta_list.append(reviews_meta[i])
+                reviews_meta_list.append(review_meta_chunk[i])
 
-            for i in range(self.args.n_review - len(reviews)):
-                zero_vector = [0] * max_review_len
-                review_list.append(zero_vector)
-                review_mask_list.append(zero_vector)
+            # for i in range(self.args.n_review - len(reviews)):
+            #     zero_vector = [0] * max_review_len
+            #     review_list.append(zero_vector)
+            #     review_mask_list.append(zero_vector)
 
-            for i in range(min(len(plots), self.args.n_plot)):
+            for i in range(len(tokenized_plots.input_ids)):
                 plot_list.append(tokenized_plots.input_ids[i])
                 plot_mask_list.append(tokenized_plots.attention_mask[i])
-                plots_meta_list.append(plots_meta[i])
+                plots_meta_list.append(plot_meta_chunk[i])
 
-            for i in range(self.args.n_plot - len(plots)):
-                zero_vector = [0] * max_plot_len
-                plot_list.append(zero_vector)
-                plot_mask_list.append(zero_vector)
+            # for i in range(self.args.n_plot - len(plots)):
+            #     zero_vector = [0] * max_plot_len
+            #     plot_list.append(zero_vector)
+            #     plot_mask_list.append(zero_vector)
 
             self.data_samples[self.movie2name[crs_id][0]] = {"plot": plot_list, "plot_mask": plot_mask_list,
                                                              "review": review_list,
