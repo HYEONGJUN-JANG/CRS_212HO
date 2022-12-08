@@ -53,7 +53,8 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader))
     max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
-    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.device_id).to(args.device_id)
+    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.projection_order,
+                          args.device_id).to(args.device_id)
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
