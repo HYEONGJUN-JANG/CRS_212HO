@@ -37,6 +37,7 @@ def parse_args():
     parser.add_argument('--lr_dc_step', type=int, default=5, help='warmup_step')
     parser.add_argument('--lr_dc', type=float, default=0.1, help='warmup_gamma')
     parser.add_argument('--pretrained', action='store_true')
+    parser.add_argument('--window_size', type=int, default=30, help='content sliding window size')
 
     # conv
     parser.add_argument('--conv_epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
