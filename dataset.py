@@ -40,6 +40,7 @@ class ContentInformation(Dataset):
         # all_entities_name = entity2id.keys()
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             review_list, plot_list = [], []
+            review_chunck, plot_chunck = [], []
             review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
             crs_id = sample['crs_id']
@@ -79,12 +80,44 @@ class ContentInformation(Dataset):
             # prefixed_plots = [masked_prefix + plot for plot in plots]
             mask_label = [-100] * max_review_len
             # mask_label[1:1 + len(tokenized_title)] = tokenized_title
+            # Make chunch of each review
+            for review in reviews:
+                tokenized_review = self.tokenizer.tokenize(review)
+                total_len = len(tokenized_review)
+                sidx = 0
+                eidx = max_review_len
+                while True:
+                    review_chunck.append(self.tokenizer.decode((self.tokenizer(review[sidx:eidx - 2],
+                                                                               max_length=max_review_len,
+                                                                               padding='max_length',
+                                                                               add_special_tokens=False).input_ids)).replace(
+                        self.tokenizer.pad_token, ''))
+                    if eidx > total_len:
+                        break
+                    sidx += self.args.window_size
+                    eidx += self.args.window_size
 
-            tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len,
+            for plot in plots:
+                tokenized_plot = self.tokenizer.tokenize(plot)
+                total_len = len(tokenized_plot)
+                sidx = 0
+                eidx = max_plot_len
+                while True:
+                    plot_chunck.append(self.tokenizer.decode((self.tokenizer(plot[sidx:eidx - 2],
+                                                                             max_length=max_review_len,
+                                                                             padding='max_length',
+                                                                             add_special_tokens=False).input_ids)).replace(
+                        self.tokenizer.pad_token, ''))
+                    if eidx > total_len:
+                        break
+                    sidx += self.args.window_size
+                    eidx += self.args.window_size
+
+            tokenized_reviews = self.tokenizer(review_chunck, max_length=max_review_len,
                                                padding='max_length',
                                                truncation=True,
                                                add_special_tokens=True)
-            tokenized_plots = self.tokenizer(plots, max_length=max_plot_len,
+            tokenized_plots = self.tokenizer(plot_chunck, max_length=max_plot_len,
                                              padding='max_length',
                                              truncation=True,
                                              add_special_tokens=True)
