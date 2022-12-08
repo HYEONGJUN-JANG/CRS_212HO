@@ -238,23 +238,17 @@ def main(args):
         # dataset
         conv_train_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer, content_conv_dataset,
-            context_max_length=args.n_meta, resp_max_length=args.max_response_len,
-            entity_max_length=args.entity_max_length
         )
         conv_valid_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'valid', tokenizer_gpt, tokenizer, content_conv_dataset,
-            context_max_length=args.n_meta, resp_max_length=args.max_response_len,
-            entity_max_length=args.entity_max_length
         )
         conv_test_dataset = CRSConvDataset(
             REDIAL_DATASET_PATH, 'test', tokenizer_gpt, tokenizer, content_conv_dataset,
-            context_max_length=args.n_meta, resp_max_length=args.max_response_len,
-            entity_max_length=args.entity_max_length
         )
         # dataloader
         data_collator_teacher = CRSConvDataCollator(
             args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=False,
-            context_max_length=args.context_max_length + args.resp_max_length,
+            context_max_length=args.context_max_length + args.max_gen_len,
             entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
         train_dataloader = DataLoader(
@@ -277,7 +271,7 @@ def main(args):
         # )
         data_collator_generator = CRSConvDataCollator(
             args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=True,
-            context_max_length=args.context_max_length, resp_max_length=args.resp_max_length,
+            context_max_length=args.context_max_length, resp_max_length=args.max_gen_len,
             entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
         valid_gen_dataloader = DataLoader(

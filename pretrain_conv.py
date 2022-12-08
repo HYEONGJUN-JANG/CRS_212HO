@@ -58,7 +58,7 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
         # gen_seqs = gpt_model.generate(**batch['context'], conv_labels=batch['response'],
         #                               prompt_embeds=encoder_state, conv=True)
         gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
-                                      max_new_tokens=args.max_gen_len)
+                                      max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
@@ -74,7 +74,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
-    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.projection_order, args.device_id).to(
+    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.projection_order,
+                          args.device_id).to(
         args.device_id)
 
     optimizer_grouped_parameters = [
