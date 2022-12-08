@@ -25,6 +25,7 @@ class ConvEvaluator:
         decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=False)
         decoded_labels = [decoded_label.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '') for decoded_label in
                           decoded_labels]
+
         decoded_labels = [label.strip() for label in decoded_labels]
 
         decoded_contexts = self.tokenizer.batch_decode(contexts.input_ids, skip_special_tokens=False)
