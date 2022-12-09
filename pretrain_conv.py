@@ -52,11 +52,9 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
-        if args.projection_order == 4:
-            encoder_state = user_representation.unsqueeze(1)
-        else:
-            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                    entity_padding_mask, user_representation)
+
+        encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                entity_padding_mask, user_representation)
 
         # gen_seqs = gpt_model.generate(**batch['context'], conv_labels=batch['response'],
         #                               prompt_embeds=encoder_state, conv=True)
@@ -116,11 +114,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
                 entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                     batch['context_entities'], batch['context_bert'].input_ids)
 
-            if args.projection_order == 4:
-                encoder_state = user_representation.unsqueeze(1)
-            else:
-                encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                        entity_padding_mask, user_representation)
+            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                    entity_padding_mask, user_representation)
 
             loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
                              conv=True).conv_loss
