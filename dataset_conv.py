@@ -491,7 +491,7 @@ class CRSConvDataCollator:
             max_length=self.args.max_dialog_len)
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
-                                               max_length=self.args.max_gen_len)
+                                               max_length=self.context_max_length)
 
         pre_context_batch_bert = self.tokenizer_bert.pad(pre_context_batch_bert, padding="max_length",
                                                          max_length=self.args.max_review_len)
@@ -504,8 +504,7 @@ class CRSConvDataCollator:
 
             pre_resp_batch = pre_context_batch['input_ids']
             pre_resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for
-                              resp
-                              in pre_resp_batch]
+                              resp in pre_resp_batch]
             pre_input_batch['response'] = torch.as_tensor(pre_resp_batch, device=self.device)
         else:
             input_batch['response'] = resp_batch
