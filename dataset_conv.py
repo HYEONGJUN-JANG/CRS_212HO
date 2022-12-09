@@ -141,7 +141,7 @@ class ContentConvCollator:
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
                 input_ids = title + text
-                input_ids = input_ids[:self.args.context_max_len + self.args.max_response_len - 1]
+                input_ids = input_ids[:self.args.context_max_length + self.args.max_gen_len - 1]
                 input_ids.append(self.tokenizer.eos_token_id)
 
                 context_batch['input_ids'].append(input_ids)
