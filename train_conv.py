@@ -31,7 +31,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             model_scores = model(batch['context_entities'],
                                  batch['context_bert'].input_ids)  # context_entities, context_tokens
             recommended_items = [id2entity[top1odx.item()] for top1odx in
-                                 torch.topk(model_scores, 1, dim=1).indices.view(-1)]
+                                 torch.topk(model_scores, 3, dim=1).indices.view(-1)]
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                 batch['context_entities'], batch['context_bert'].input_ids)
 

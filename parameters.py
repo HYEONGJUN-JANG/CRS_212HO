@@ -53,11 +53,11 @@ def parse_args():
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay to use.")
     parser.add_argument('--conv_loss_lambda', type=float, default=0.1, help='conv lambda')
     parser.add_argument("--conv_pre_eval_batch_size", type=int, default=32, help="conv pre-training eval batch size")
-    parser.add_argument('--conv_pretrained', action='store_true')
+    parser.add_argument('--conv_pretrained', action='store_false')
     parser.add_argument("--projection_order", type=int, default=3, help="1:t, 2:t+e, 3:t+e+u")
 
     # GPT
-    parser.add_argument('--gpt_name', type=str, default='gpt2-large',
+    parser.add_argument('--gpt_name', type=str, default='gpt2',
                         choices=['microsoft/DialoGPT-small', 'microsoft/DialoGPT-large', 'gpt2', 'gpt2-large',
                                  'facebook/bart-base'])
     parser.add_argument('--gpt_n_layer', type=int, default=-1)
