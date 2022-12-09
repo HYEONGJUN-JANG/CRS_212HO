@@ -16,27 +16,30 @@ class ConvEvaluator:
             self.log_file = open(log_file_path, 'w', buffering=1)
             self.log_cnt = 0
 
-    def evaluate(self, preds, labels, contexts, log=False):
+    def evaluate(self, preds, labels, contexts, recommended_items, log=False):
         decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=False)
-        decoded_preds = [decoded_pred.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '') for decoded_pred in
+        decoded_preds = [decoded_pred.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '') for
+                         decoded_pred in
                          decoded_preds]
         decoded_preds = [pred.strip() for pred in decoded_preds]
 
         decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=False)
-        decoded_labels = [decoded_label.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '') for decoded_label in
+        decoded_labels = [decoded_label.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '') for
+                          decoded_label in
                           decoded_labels]
 
         decoded_labels = [label.strip() for label in decoded_labels]
 
         decoded_contexts = self.tokenizer.batch_decode(contexts.input_ids, skip_special_tokens=False)
-        decoded_contexts = [decoded_context.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '') for decoded_context in
+        decoded_contexts = [decoded_context.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '')
+                            for decoded_context in
                             decoded_contexts]
         decoded_contexts = [context.strip() for context in decoded_contexts]
 
         if log and hasattr(self, 'log_file'):
             for context, pred, label in zip(decoded_contexts, decoded_preds, decoded_labels):
                 self.log_file.write(json.dumps({
-                    # 'context': context,
+                    'Rec': recommended_items,
                     'pred': pred,
                     'label': label
                 }, ensure_ascii=False) + '\n')

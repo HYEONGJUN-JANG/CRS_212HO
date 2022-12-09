@@ -9,6 +9,12 @@ from evaluate_conv import ConvEvaluator
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
     get_linear_schedule_with_warmup, AutoModelForCausalLM
+import json
+import os
+
+entity2id = json.load(
+    open(os.path.join('data/redial', 'entity2id.json'), 'r', encoding='utf-8'))
+id2entity = {idx: entity for entity, idx in entity2id.items()}
 
 
 def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
@@ -20,6 +26,10 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
         batch = batches[0]
 
         with torch.no_grad():
+            model_scores = model(batch['context_entities'],
+                                 batch['context_bert'].input_ids)  # context_entities, context_tokens
+            recommended_items = [id2entity[top1odx.item()] for top1odx in
+                                 torch.topk(model_scores, 1, dim=1).indices.view(-1)]
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
@@ -34,7 +44,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             for gen_seq, length in zip(gen_seqs, batch['context_len']):
                 gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
                 gen_resp_ids.append(gen_seq[length:])
-            evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], log=True)
+            evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], recommended_items, log=True)
     # metric
     report = evaluator.report()
     test_report = {}
