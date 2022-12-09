@@ -68,6 +68,9 @@ class Projector(nn.Module):
             encoder_state = torch.cat([token_emb, entity_emb, user_emb.unsqueeze(1)], dim=1)
             encoder_mask = torch.cat([token_mask, entity_mask, torch.ones(token_mask.shape[0], 1, device=self.device)],
                                      dim=1)
+        elif self.projection_order == 4:
+            encoder_state = user_emb.unsqueeze(1)
+            encoder_mask = torch.ones(token_mask.shape[0], 1, device=self.device)
 
         batch_size = encoder_state.shape[0]
         prompt_len = encoder_state.shape[1]

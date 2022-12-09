@@ -35,11 +35,8 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
-            if args.projection_order == 4:
-                encoder_state = user_representation.unsqueeze(1)
-            else:
-                encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                        entity_padding_mask, user_representation)
+            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                    entity_padding_mask, user_representation)
 
             gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
                                           max_new_tokens=args.max_gen_len,
@@ -114,11 +111,9 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                 pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask, user_representation = model.get_representationsWithUser(
                     pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
 
-            if args.projection_order == 4:
-                encoder_state = user_representation.unsqueeze(1)
-            else:
-                encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                        entity_padding_mask, user_representation)
+
+            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                    entity_padding_mask, user_representation)
 
             pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
                                                             pre_entity_representations,
