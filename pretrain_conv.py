@@ -53,7 +53,7 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
                 batch['context_entities'], batch['context_bert'].input_ids)
 
         if args.projection_order == 4:
-            encoder_state = user_representation
+            encoder_state = user_representation.unsqueeze(1)
         else:
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                     entity_padding_mask, user_representation)
@@ -117,7 +117,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
                     batch['context_entities'], batch['context_bert'].input_ids)
 
             if args.projection_order == 4:
-                encoder_state = user_representation
+                encoder_state = user_representation.unsqueeze(1)
             else:
                 encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                         entity_padding_mask, user_representation)
