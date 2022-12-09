@@ -216,6 +216,10 @@ def main(args):
         if os.path.isfile(bestrec_path):
             logger.info(f'Load pretrained file\t{bestrec_path}')
             model.load_state_dict(torch.load(bestrec_path))
+
+        for param in model.parameters():
+            param.requires_grad = False
+
         # [pretrain]
         # dataset
         content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, tokenizer,
