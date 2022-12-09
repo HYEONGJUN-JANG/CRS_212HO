@@ -123,6 +123,7 @@ def main(args):
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
+    tokenizer.add_special_tokens(bert_special_tokens_dict)
     bert_config = AutoConfig.from_pretrained(args.bert_name)
     args.vocab_size = tokenizer.vocab_size
     if args.t_layer != -1:
@@ -131,6 +132,7 @@ def main(args):
         bert_model = AutoModel.from_pretrained(args.gpt_name)
     else:
         bert_model = AutoModel.from_pretrained(args.bert_name)
+    bert_model.resize_token_embeddings(len(tokenizer))
 
     # BERT model freeze layers#
     if args.n_layer != -1:

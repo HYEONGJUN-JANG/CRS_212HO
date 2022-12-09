@@ -1,5 +1,5 @@
 bert_special_tokens_dict = {
-    'additional_special_tokens': ['<movie>'],
+    'additional_special_tokens': ['<movie>', '<movieend>'],
 }
 
 gpt2_special_tokens_dict = {

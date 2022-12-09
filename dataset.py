@@ -40,7 +40,7 @@ class ContentInformation(Dataset):
         # all_entities_name = entity2id.keys()
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             review_list, plot_list = [], []
-            review_chunck, plot_chunck, review_meta_chunk, plot_meta_chunk = [], [], [], []
+            review_chunk, plot_chunk, review_meta_chunk, plot_meta_chunk = [], [], [], []
             review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
             crs_id = sample['crs_id']
@@ -95,7 +95,7 @@ class ContentInformation(Dataset):
                 eidx = max_review_len
                 while True:
                     review_meta_chunk.append(reviews_meta[idx])
-                    review_chunck.append(self.tokenizer.decode((self.tokenizer(review[sidx:eidx - 2],
+                    review_chunk.append(self.tokenizer.decode((self.tokenizer(review[sidx:eidx - 2],
                                                                                max_length=max_review_len,
                                                                                padding='max_length',
                                                                                add_special_tokens=False).input_ids)).replace(
@@ -112,7 +112,7 @@ class ContentInformation(Dataset):
                 eidx = max_plot_len
                 while True:
                     plot_meta_chunk.append(plots_meta[idx])
-                    plot_chunck.append(self.tokenizer.decode((self.tokenizer(plot[sidx:eidx - 2],
+                    plot_chunk.append(self.tokenizer.decode((self.tokenizer(plot[sidx:eidx - 2],
                                                                              max_length=max_review_len,
                                                                              padding='max_length',
                                                                              add_special_tokens=False).input_ids)).replace(
@@ -122,11 +122,11 @@ class ContentInformation(Dataset):
                     sidx += self.args.window_size
                     eidx += self.args.window_size
 
-            tokenized_reviews = self.tokenizer(review_chunck, max_length=max_review_len,
+            tokenized_reviews = self.tokenizer(review_chunk, max_length=max_review_len,
                                                padding='max_length',
                                                truncation=True,
                                                add_special_tokens=True)
-            tokenized_plots = self.tokenizer(plot_chunck, max_length=max_plot_len,
+            tokenized_plots = self.tokenizer(plot_chunk, max_length=max_plot_len,
                                              padding='max_length',
                                              truncation=True,
                                              add_special_tokens=True)
@@ -284,7 +284,7 @@ class ReDialDataset:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
             for idx, word in enumerate(utt['text']):
                 if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = self.movie2name[word[1:]][1]
+                    utt['text'][idx] = '<movie> %s <movieend>' % self.movie2name[word[1:]][1]
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
