@@ -36,7 +36,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 batch['context_entities'], batch['context_bert'].input_ids)
 
             if args.projection_order == 4:
-                encoder_state = user_representation
+                encoder_state = user_representation.unsqueeze(1)
             else:
                 encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                         entity_padding_mask, user_representation)
@@ -115,7 +115,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                     pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
 
             if args.projection_order == 4:
-                encoder_state = user_representation
+                encoder_state = user_representation.unsqueeze(1)
             else:
                 encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                         entity_padding_mask, user_representation)
