@@ -50,9 +50,9 @@ class ContentInformationConv(Dataset):
             plots = sample['plots']
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
-            title = "%s (%s)" % (sample['title'], sample['year'])
-            review_prefix = 'The review of ' + title
-            plot_prefix = 'The plot of ' + title
+            title = "<movie> %s (%s) <movieend>" % (sample['title'], sample['year'])
+            # review_prefix = 'The review of ' + title
+            # plot_prefix = 'The plot of ' + title
 
             # Exception
             if self.movie2name[crs_id][0] == -1:
@@ -67,11 +67,11 @@ class ContentInformationConv(Dataset):
                 plots_meta = [[]]
 
             # Title
-            tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
-            tokenized_review_title += self.tokenizer_gpt(':').input_ids
+            tokenized_review_title = self.tokenizer_gpt(title).input_ids
+            # tokenized_review_title += self.tokenizer_gpt(':').input_ids
 
-            tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
-            tokenized_plot_title += self.tokenizer_gpt(':').input_ids
+            tokenized_plot_title = self.tokenizer_gpt(title).input_ids
+            # tokenized_plot_title += self.tokenizer_gpt(':').input_ids
 
             # GPT - review & plot
             tokenized_reviews = self.tokenizer_gpt([review for review in reviews],
@@ -243,7 +243,7 @@ class CRSConvDataset(Dataset):
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
             for idx, word in enumerate(utt['text']):
                 if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = self.movie2name[word[1:]][1]
+                    utt['text'][idx] = '<movie> %s <movieend>' % self.movie2name[word[1:]][1]
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
@@ -280,8 +280,9 @@ class CRSConvDataset(Dataset):
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
 
-            text_token_ids_bert = self.tokenizer_bert(text_tokens + self.tokenizer_bert.sep_token,
-                                                      add_special_tokens=False).input_ids
+            text_token_ids_bert = self.tokenizer_bert(
+                text_tokens.replace('<movie>', '').replace('<movieend>', '') + self.tokenizer_bert.sep_token,
+                add_special_tokens=False).input_ids
             text_token_ids = self.tokenizer(text_tokens + self.tokenizer.eos_token,
                                             add_special_tokens=False).input_ids  # movie name 으로 하고 싶을 경우
 
