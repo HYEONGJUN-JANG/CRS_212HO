@@ -281,7 +281,7 @@ class CRSConvDataset(Dataset):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
 
             text_token_ids_bert = self.tokenizer_bert(
-                text_tokens.replace('<movie>', '').replace('<movieend>', '') + self.tokenizer_bert.sep_token,
+                text_tokens + self.tokenizer_bert.sep_token,
                 add_special_tokens=False).input_ids
             text_token_ids = self.tokenizer(text_tokens + self.tokenizer.eos_token,
                                             add_special_tokens=False).input_ids  # movie name 으로 하고 싶을 경우
