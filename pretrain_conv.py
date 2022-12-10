@@ -58,7 +58,7 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
 
         # gen_seqs = gpt_model.generate(**batch['context'], conv_labels=batch['response'],
         #                               prompt_embeds=encoder_state, conv=True)
-        gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=None,
+        gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
                                       max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
@@ -117,7 +117,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                     entity_padding_mask, user_representation)
 
-            loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=None,
+            loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
                              conv=True).conv_loss
 
             optimizer.zero_grad()
