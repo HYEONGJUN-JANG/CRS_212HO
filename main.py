@@ -105,7 +105,7 @@ def main(args):
     pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
     trained_path = f'./saved_model/trained_model_{args.name}.pt'
     conv_pretrained_path = f'./saved_model/conv_pretrained_model_{args.name}.pt'
-    bestrec_path = './saved_model/trained_model_bestrec.pt'
+    bestrec_path = 'saved_model/trained_model_bestrec.pt'
     best_conv_pretrained_path = './saved_model/conv_pretrained_model_best.pt'
 
     # todo: multi-GPU
@@ -217,7 +217,7 @@ def main(args):
         # load rec fine-tuned model
         if os.path.isfile(bestrec_path):
             logger.info(f'Load pretrained file\t{bestrec_path}')
-            model.load_state_dict(torch.load(bestrec_path))
+            model.load_state_dict(torch.load(bestrec_path, map_location='cuda:0'))
 
         for param in model.parameters():
             param.requires_grad = False
