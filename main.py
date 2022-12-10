@@ -108,7 +108,7 @@ def main(args):
     bestrec_path = 'saved_model/trained_model_bestrec.pt'
     best_conv_pretrained_path = './saved_model/conv_pretrained_model_best.pt'
     if args.conv_pretrained_path != 'none':
-        best_conv_pretrained_path = './saved_model/%s'
+        best_conv_pretrained_path = './saved_model/%s' % args.conv_pretrained_path
 
     # todo: multi-GPU
     if torch.cuda.device_count() > 1:
