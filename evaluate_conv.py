@@ -39,7 +39,7 @@ class ConvEvaluator:
         if log and hasattr(self, 'log_file'):
             for context, pred, label, item in zip(decoded_contexts, decoded_preds, decoded_labels, recommended_items):
                 self.log_file.write(json.dumps({
-                    'Rec': item,
+                    'Rec': [movie[movie.rfind('/')+1:movie.rfind('>')] for movie in item],
                     'pred': pred,
                     'label': label
                 }, ensure_ascii=False) + '\n')
