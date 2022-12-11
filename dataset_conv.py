@@ -51,6 +51,7 @@ class ContentInformationConv(Dataset):
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
             title = "<movie> %s (%s) <movieend>" % (sample['title'], sample['year'])
+
             # review_prefix = 'The review of ' + title
             # plot_prefix = 'The plot of ' + title
 
