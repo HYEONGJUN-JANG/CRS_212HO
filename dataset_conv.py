@@ -52,8 +52,8 @@ class ContentInformationConv(Dataset):
             reviews_meta = sample['reviews_meta']
             title = "<movie> %s (%s) <movieend>" % (sample['title'], sample['year'])
 
-            # review_prefix = 'The review of ' + title
-            # plot_prefix = 'The plot of ' + title
+            review_prefix = 'Review' + self.tokenizer_gpt.eos_token + title
+            plot_prefix = 'Plot' + self.tokenizer_gpt.eos_token + title
 
             # Exception
             if self.movie2name[crs_id][0] == -1:
@@ -68,10 +68,10 @@ class ContentInformationConv(Dataset):
                 plots_meta = [[]]
 
             # Title
-            tokenized_review_title = self.tokenizer_gpt(title).input_ids
+            tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
             # tokenized_review_title += self.tokenizer_gpt(':').input_ids
 
-            tokenized_plot_title = self.tokenizer_gpt(title).input_ids
+            tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
             # tokenized_plot_title += self.tokenizer_gpt(':').input_ids
 
             # GPT - review & plot
