@@ -47,7 +47,7 @@ def parse_args():
     parser.add_argument('--conv_lr_ft', type=float, default=1e-4, help='Fine-tuning Learning rate')
     parser.add_argument('--context_max_length', type=int, default=128)
     # parser.add_argument('--resp_max_length', type=int, default=30)
-    parser.add_argument("--max_gen_len", type=int, default=30)
+    parser.add_argument("--max_gen_len", type=int, default=50)
     parser.add_argument("--entity_max_length", type=int, help="max entity length in dataset.", default=32)
     parser.add_argument('--num_warmup_steps', type=int, default=6345)
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay to use.")
