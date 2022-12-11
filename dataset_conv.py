@@ -76,10 +76,10 @@ class ContentInformationConv(Dataset):
 
             # GPT - review & plot
             tokenized_reviews = self.tokenizer_gpt([review for review in reviews],
-                                                   max_length=self.args.max_gen_len, truncation=True).input_ids
+                                                   max_length=max_review_len, truncation=True).input_ids
             tokenized_reviews = [review + [self.tokenizer_gpt.eos_token_id] for review in tokenized_reviews]
             tokenized_plots = self.tokenizer_gpt([plot for plot in plots],
-                                                 max_length=self.args.max_gen_len, truncation=True).input_ids
+                                                 max_length=max_plot_len, truncation=True).input_ids
             tokenized_plots = [plot + [self.tokenizer_gpt.eos_token_id] for plot in tokenized_plots]
 
             # BERT - review & plot
