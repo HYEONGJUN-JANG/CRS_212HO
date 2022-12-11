@@ -52,14 +52,14 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
             entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                 batch['context_entities'], batch['context_bert'].input_ids)
 
-
         encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                 entity_padding_mask, user_representation)
 
-        # gen_seqs = gpt_model.generate(**batch['context'], conv_labels=batch['response'],
-        #                               prompt_embeds=encoder_state, conv=True)
-        gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
-                                      max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
+        if args.conv_pretrained_type == 'none':
+            gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
+        else:
+            gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
+                                          max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
@@ -69,8 +69,7 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
 
 
 def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test,
-                  path=None,
-                  save_path=None):
+                  path=None, save_path=None):
     log_file = open(path, 'a', buffering=1, encoding='utf-8')
 
     modules = [gpt_model]
@@ -117,8 +116,11 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                                                     entity_padding_mask, user_representation)
 
-            loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
-                             conv=True).conv_loss
+            if args.conv_pretrained_type == 'none':
+                loss = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
+            else:
+                loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
+                                 conv=True).conv_loss
 
             optimizer.zero_grad()
             loss.backward()

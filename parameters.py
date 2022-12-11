@@ -56,6 +56,8 @@ def parse_args():
     parser.add_argument('--conv_pretrained', action='store_true')
     parser.add_argument("--projection_order", type=int, default=3, help="1:t, 2:t+e, 3:t+e+u, 4:e")
     parser.add_argument('--conv_pretrained_path', default='none', type=str)
+    parser.add_argument('--conv_pretrained_type', default='none', type=str)
+
     # GPT
     parser.add_argument('--gpt_name', type=str, default='gpt2',
                         choices=['microsoft/DialoGPT-small', 'microsoft/DialoGPT-large', 'gpt2', 'gpt2-large',

@@ -36,15 +36,17 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             for items in recommended_items:
                 movie_recommended_items.append([id2entity[item] for item in items if item in id2entity])
 
-            entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
-                batch['context_entities'], batch['context_bert'].input_ids)
-
-            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                    entity_padding_mask, user_representation)
-
-            gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
-                                          max_new_tokens=args.max_gen_len,
-                                          no_repeat_ngram_size=3)
+            if args.conv_pretrained_type == 'none':
+                gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len,
+                                              no_repeat_ngram_size=3)
+            else:
+                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
+                    batch['context_entities'], batch['context_bert'].input_ids)
+                encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                        entity_padding_mask, user_representation)
+                gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
+                                              max_new_tokens=args.max_gen_len,
+                                              no_repeat_ngram_size=3)
 
             gen_resp_ids = []
             for gen_seq, length in zip(gen_seqs, batch['context_len']):
@@ -109,23 +111,30 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
         for step, batches in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
             batch = batches[0]
             pre_batch = batches[1]
-            with torch.no_grad():
-                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
-                    batch['context_entities'], batch['context_bert'].input_ids)
-                pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask, user_representation = model.get_representationsWithUser(
-                    pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
 
-            encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                    entity_padding_mask, user_representation)
+            if args.conv_pretrained_type == 'none':
+                loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
+                loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True).conv_loss
+            else:
+                with torch.no_grad():
+                    entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
+                        batch['context_entities'], batch['context_bert'].input_ids)
+                    pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask, user_representation = model.get_representationsWithUser(
+                        pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
 
-            pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
-                                                            pre_entity_representations,
-                                                            pre_entity_padding_mask, user_representation)
+                encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                                                        entity_padding_mask, user_representation)
 
-            loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
-                                conv=True).conv_loss
-            loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
-                                prompt_embeds=encoder_state).conv_loss
+                pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
+                                                                pre_entity_representations,
+                                                                pre_entity_padding_mask, user_representation)
+
+                loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
+                                    conv=True).conv_loss
+
+                # todo: 이거 정체가 뭐지!?!?!?!?!?!?!?!?!?!?!?!?!?!
+                loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
+                                    prompt_embeds=encoder_state).conv_loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
