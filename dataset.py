@@ -48,7 +48,7 @@ class ContentInformation(Dataset):
             plots = sample['plots']
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
-            title = "%s (%s)" % (sample['title'], sample['year'])
+            # title = "%s (%s)" % (sample['title'], sample['year'])
             # title = sample['title']
             # _title = title.replace(' ', '_')
 
@@ -96,9 +96,9 @@ class ContentInformation(Dataset):
                 while True:
                     review_meta_chunk.append(reviews_meta[idx])
                     review_chunk.append(self.tokenizer.decode((self.tokenizer(review[sidx:eidx - 2],
-                                                                               max_length=max_review_len,
-                                                                               padding='max_length',
-                                                                               add_special_tokens=False).input_ids)).replace(
+                                                                              max_length=max_review_len,
+                                                                              padding='max_length',
+                                                                              add_special_tokens=False).input_ids)).replace(
                         self.tokenizer.pad_token, ''))
                     if eidx > total_len:
                         break
@@ -113,9 +113,9 @@ class ContentInformation(Dataset):
                 while True:
                     plot_meta_chunk.append(plots_meta[idx])
                     plot_chunk.append(self.tokenizer.decode((self.tokenizer(plot[sidx:eidx - 2],
-                                                                             max_length=max_review_len,
-                                                                             padding='max_length',
-                                                                             add_special_tokens=False).input_ids)).replace(
+                                                                            max_length=max_review_len,
+                                                                            padding='max_length',
+                                                                            add_special_tokens=False).input_ids)).replace(
                         self.tokenizer.pad_token, ''))
                     if eidx > total_len:
                         break
@@ -284,7 +284,7 @@ class ReDialDataset:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
             for idx, word in enumerate(utt['text']):
                 if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = '<movie> %s <movieend>' % self.movie2name[word[1:]][1]
+                    utt['text'][idx] = '<movie> %s' % self.movie2name[word[1:]][1]
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
