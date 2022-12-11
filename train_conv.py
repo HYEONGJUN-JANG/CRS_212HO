@@ -22,10 +22,10 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     gpt_model.eval()
     projector.eval()
     model.eval()
-    movie_recommended_items = []
     evaluator.log_file.write(f'\n*** test-{epoch} ***\n\n')
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         batch = batches[0]
+        movie_recommended_items = []
 
         with torch.no_grad():
             model_scores = model(batch['context_entities'],

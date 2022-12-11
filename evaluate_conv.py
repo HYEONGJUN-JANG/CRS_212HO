@@ -13,7 +13,7 @@ class ConvEvaluator:
 
         self.reset_metric()
         if log_file_path:
-            self.log_file = open(log_file_path, 'w', buffering=1)
+            self.log_file = open(log_file_path, 'w', buffering=1, encoding='UTF-8')
             self.log_cnt = 0
 
     def evaluate(self, preds, labels, contexts, recommended_items, log=False):
@@ -39,7 +39,7 @@ class ConvEvaluator:
         if log and hasattr(self, 'log_file'):
             for context, pred, label, item in zip(decoded_contexts, decoded_preds, decoded_labels, recommended_items):
                 self.log_file.write(json.dumps({
-                    'Rec': [movie[movie.rfind('/')+1:movie.rfind('>')] for movie in item],
+                    'Rec': [movie[movie.rfind('/') + 1:movie.rfind('>')] for movie in item],
                     'pred': pred,
                     'label': label
                 }, ensure_ascii=False) + '\n')
