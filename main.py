@@ -218,12 +218,12 @@ def main(args):
 
     if 'conv' in args.task:
         # load rec fine-tuned model
-        if os.path.isfile(bestrec_path):
-            logger.info(f'Load pretrained file\t{bestrec_path}')
-            model.load_state_dict(torch.load(bestrec_path))
-
-        for param in model.parameters():
-            param.requires_grad = False
+        # if os.path.isfile(bestrec_path):
+        #     logger.info(f'Load pretrained file\t{bestrec_path}')
+        #     model.load_state_dict(torch.load(bestrec_path))
+        #
+        # for param in model.parameters():
+        #     param.requires_grad = False
 
         # [pretrain]
         # dataset
