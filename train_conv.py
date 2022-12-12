@@ -8,7 +8,7 @@ from model import Projector
 from evaluate_conv import ConvEvaluator
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
-    get_linear_schedule_with_warmup, AutoModelForCausalLM
+    get_linear_schedule_with_warmup, AutoModelForCausalLM, LogitsProcessorList
 import json
 import os
 
@@ -44,8 +44,10 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 unfinished_sequences = gen_seqs2.new(gen_seqs2.shape[0]).fill_(1)
 
                 for _ in range(args.max_gen_len):
-                    next_tokens_scores = gpt_model(input_ids=gen_seqs2, attention_mask=attention_mask,
-                                                   conv=True).logits[:, -1, :]
+                    next_token_logits = gpt_model(input_ids=gen_seqs2, attention_mask=attention_mask,
+                                                  conv=True).logits[:, -1, :]
+                    next_tokens_scores = LogitsProcessorList()(gen_seqs2, next_token_logits)
+
                     next_tokens = torch.argmax(next_tokens_scores, dim=-1)
                     next_tokens = next_tokens * unfinished_sequences + tokenizer_gpt.pad_token_id * (
                             1 - unfinished_sequences)
@@ -71,6 +73,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             for gen_seq, length in zip(gen_seqs, batch['context_len']):
                 gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
                 gen_resp_ids.append(gen_seq[length:])
+            evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], movie_recommended_items, log=True)
             evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], movie_recommended_items, log=True)
 
             gen_resp_ids2 = []
