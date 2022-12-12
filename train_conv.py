@@ -132,7 +132,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                 loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
                                     conv=True).conv_loss
 
-                # todo: 이거 정체가 뭐지!?!?!?!?!?!?!?!?!?!?!?!?!?!
                 loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
                                     prompt_embeds=encoder_state).conv_loss
 
@@ -146,5 +145,5 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
         print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
 
         logger.info('[Test]')
-        finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+        finetuning_evaluate(args, evaluator, epoch+1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                             total_report)
