@@ -94,8 +94,7 @@ class ContentInformation(Dataset):
                 sidx = 0
                 eidx = max_review_len
                 while True:
-                    if eidx > total_len:
-                        break
+
                     review_meta_chunk.append(reviews_meta[idx])
                     review_chunk.append(
                         self.tokenizer.decode(
@@ -104,14 +103,16 @@ class ContentInformation(Dataset):
                     sidx += max_review_len // 2
                     eidx += max_review_len // 2
 
+                    if sidx > total_len:
+                        break
+
             for idx, plot in enumerate(plots):
                 tokenized_plot = self.tokenizer.tokenize(plot)
                 total_len = len(tokenized_plot)
                 sidx = 0
                 eidx = max_plot_len
                 while True:
-                    if eidx > total_len:
-                        break
+
                     plot_meta_chunk.append(plots_meta[idx])
                     plot_chunk.append(
                         self.tokenizer.decode(
@@ -119,6 +120,9 @@ class ContentInformation(Dataset):
 
                     sidx += max_plot_len // 2
                     eidx += max_plot_len // 2
+
+                    if sidx > total_len:
+                        break
 
             tokenized_reviews = self.tokenizer(review_chunk, max_length=max_review_len,
                                                padding='max_length',

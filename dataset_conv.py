@@ -76,15 +76,18 @@ class ContentInformationConv(Dataset):
                 sidx = 0
                 eidx = max_review_len
                 while True:
-                    if eidx > total_len:
-                        break
+
                     review_meta_chunk.append(reviews_meta[idx])
                     review_chunk.append(
                         self.tokenizer_gpt.decode(
                             self.tokenizer_gpt(review).input_ids[sidx:eidx - 1]))
 
-                    sidx += self.args.max_gen_len // 2
-                    eidx += self.args.max_gen_len // 2
+                    sidx += self.args.max_gen_len
+                    eidx += self.args.max_gen_len
+
+                    if sidx > total_len:
+                        break
+
 
             for idx, plot in enumerate(plots):
                 tokenized_plot = self.tokenizer_gpt.tokenize(plot)
@@ -92,15 +95,17 @@ class ContentInformationConv(Dataset):
                 sidx = 0
                 eidx = max_plot_len
                 while True:
-                    if eidx > total_len:
-                        break
+
                     plot_meta_chunk.append(plots_meta[idx])
                     plot_chunk.append(
                         self.tokenizer_gpt.decode(
                             self.tokenizer_gpt(plot).input_ids[sidx:eidx - 1]))
 
-                    sidx += self.args.max_gen_len // 2
-                    eidx += self.args.max_gen_len // 2
+                    sidx += self.args.max_gen_len
+                    eidx += self.args.max_gen_len
+
+                    if sidx > total_len:
+                        break
 
             # Title
             tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
