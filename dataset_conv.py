@@ -50,10 +50,13 @@ class ContentInformationConv(Dataset):
             plots = sample['plots']
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
-            title = "<movie> %s (%s) <movieend>" % (sample['title'], sample['year'])
+            title = "<movie> %s (%s)" % (sample['title'], sample['year'])
+            review_chunk, plot_chunk, review_meta_chunk, plot_meta_chunk = [], [], [], []
 
-            review_prefix = 'Review' + self.tokenizer_gpt.eos_token + title
-            plot_prefix = 'Plot' + self.tokenizer_gpt.eos_token + title
+            # review_prefix = 'Review' + self.tokenizer_gpt.eos_token + title
+            # plot_prefix = 'Plot' + self.tokenizer_gpt.eos_token + title
+            review_prefix = f'The review of {title} is '
+            plot_prefix = f'The plot of {title} is '
 
             # Exception
             if self.movie2name[crs_id][0] == -1:
@@ -67,6 +70,38 @@ class ContentInformationConv(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
+            for idx, review in enumerate(reviews):
+                tokenized_review = self.tokenizer_gpt.tokenize(review)
+                total_len = len(tokenized_review)
+                sidx = 0
+                eidx = max_review_len
+                while True:
+                    if sidx > total_len:
+                        break
+                    review_meta_chunk.append(reviews_meta[idx])
+                    review_chunk.append(
+                        self.tokenizer_gpt.decode(
+                            self.tokenizer_gpt(review, max_length=self.args.max_gen_len).input_ids[sidx:eidx - 1]))
+
+                    sidx += self.args.window_size
+                    eidx += self.args.window_size
+
+            for idx, plot in enumerate(plots):
+                tokenized_plot = self.tokenizer_gpt.tokenize(plot)
+                total_len = len(tokenized_plot)
+                sidx = 0
+                eidx = max_plot_len
+                while True:
+                    if sidx > total_len:
+                        break
+                    plot_meta_chunk.append(plots_meta[idx])
+                    plot_chunk.append(
+                        self.tokenizer_gpt.decode(
+                            self.tokenizer_gpt(plot, max_length=self.args.max_gen_len).input_ids[sidx:eidx - 1]))
+
+                    sidx += self.args.window_size
+                    eidx += self.args.window_size
+
             # Title
             tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
             # tokenized_review_title += self.tokenizer_gpt(':').input_ids
@@ -76,10 +111,10 @@ class ContentInformationConv(Dataset):
 
             # GPT - review & plot
             tokenized_reviews = self.tokenizer_gpt([review for review in reviews],
-                                                   max_length=max_review_len, truncation=True).input_ids
+                                                   max_length=self.args.max_gen_len, truncation=True).input_ids
             tokenized_reviews = [review + [self.tokenizer_gpt.eos_token_id] for review in tokenized_reviews]
             tokenized_plots = self.tokenizer_gpt([plot for plot in plots],
-                                                 max_length=max_plot_len, truncation=True).input_ids
+                                                 max_length=self.args.max_gen_len, truncation=True).input_ids
             tokenized_plots = [plot + [self.tokenizer_gpt.eos_token_id] for plot in tokenized_plots]
 
             # BERT - review & plot
@@ -142,7 +177,7 @@ class ContentConvCollator:
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
                 input_ids = title + text
-                input_ids = input_ids[:self.args.context_max_length + self.args.max_gen_len - 1]
+                input_ids = input_ids[:self.args.max_title_len + self.args.max_gen_len - 1]
                 input_ids.append(self.tokenizer.eos_token_id)
 
                 context_batch['input_ids'].append(input_ids)
@@ -162,7 +197,7 @@ class ContentConvCollator:
         input_batch = {}
 
         context_batch = self.tokenizer.pad(context_batch, padding="max_length",
-                                           max_length=self.args.context_max_length + self.args.max_gen_len)
+                                           max_length=self.args.max_title_len + self.args.max_gen_len)
         context_batch_bert = self.tokenizer_bert.pad(context_batch_bert, padding="max_length",
                                                      max_length=self.args.max_review_len)
         #
@@ -472,7 +507,7 @@ class CRSConvDataCollator:
 
                 # pre-training
                 pre_input_ids = title + text
-                pre_input_ids = pre_input_ids[:self.context_max_length]
+                pre_input_ids = pre_input_ids[:self.args.max_title_len + self.args.max_gen_len]
                 pre_context_batch['input_ids'].append(pre_input_ids)
 
                 # pre-training context words
@@ -494,7 +529,7 @@ class CRSConvDataCollator:
             max_length=self.args.max_dialog_len)
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
-                                               max_length=self.context_max_length)
+                                               max_length=self.args.max_title_len + self.args.max_gen_len)
 
         pre_context_batch_bert = self.tokenizer_bert.pad(pre_context_batch_bert, padding="max_length",
                                                          max_length=self.args.max_review_len)
