@@ -218,11 +218,11 @@ def main(args):
 
     if 'conv' in args.task:
         # load rec fine-tuned model
-        # if os.path.isfile(bestrec_path):
-        #     logger.info(f'Load pretrained file\t{bestrec_path}')
-        #     model.load_state_dict(torch.load(bestrec_path))
-        # for param in model.parameters():
-        #     param.requires_grad = False
+        if os.path.isfile(bestrec_path):
+            logger.info(f'Load pretrained file\t{bestrec_path}')
+            model.load_state_dict(torch.load(bestrec_path))
+        for param in model.parameters():
+            param.requires_grad = False
 
         # [pretrain]
         # dataset
@@ -242,6 +242,7 @@ def main(args):
         else:
             gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
                                                  map_location='cuda:%d' % args.device_id))  # state_dict를 불러 온 후, 모델에 저장`
+            logger.info(f'Load pretrained conv file\t{best_conv_pretrained_path}')
 
         # [fine-tuning]
         # dataset
@@ -283,14 +284,14 @@ def main(args):
             context_max_length=args.context_max_length, resp_max_length=args.max_gen_len,
             entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
-        valid_gen_dataloader = DataLoader(
-            conv_valid_dataset,
-            batch_size=args.conv_batch_size,
-            collate_fn=data_collator_generator,
-        )
+        # valid_gen_dataloader = DataLoader(
+        #     conv_valid_dataset,
+        #     batch_size=args.conv_batch_size,
+        #     collate_fn=data_collator_generator,
+        # )
         test_gen_dataloader = DataLoader(
             conv_test_dataset,
-            batch_size=args.conv_batch_size,
+            batch_size=args.gen_batch_size,
             collate_fn=data_collator_generator,
         )
         # train & test

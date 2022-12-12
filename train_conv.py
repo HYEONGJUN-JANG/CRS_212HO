@@ -26,10 +26,11 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         batch = batches[0]
         movie_recommended_items = []
-
         with torch.no_grad():
             model_scores = model(batch['context_entities'],
                                  batch['context_bert'].input_ids)  # context_entities, context_tokens
+            model_scores = model_scores[:, torch.LongTensor(model.movie2ids)]
+
             # recommended_items = [id2entity[top1odx.item()] for top1odx in
             #                      torch.topk(model_scores, 3, dim=1).indices.view(-1)]
             recommended_items = [top3 for top3 in torch.topk(model_scores, 3, dim=1).indices.view(-1, 3).tolist()]
@@ -37,7 +38,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 movie_recommended_items.append([id2entity[item] for item in items if item in id2entity])
 
             if args.conv_pretrained_type == 'none':
-                gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len)
+                # gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len)
                 gen_seqs2 = batch['context'].input_ids
                 attention_mask = batch['context'].attention_mask
                 cur_len = gen_seqs2.shape[-1]
@@ -45,8 +46,10 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
 
                 position_ids = attention_mask.long().cumsum(-1) - 1
                 position_ids.masked_fill_(attention_mask == 0, 1)
-
-                for _ in range(args.max_gen_len):
+                gen_len = 0
+                while True:
+                    if gen_len > args.max_gen_len:
+                        break
                     next_token_logits = gpt_model(input_ids=gen_seqs2, attention_mask=attention_mask,
                                                   position_ids=position_ids, conv=True).logits[:, -1, :]
                     next_tokens_scores = LogitsProcessorList()(gen_seqs2, next_token_logits)
@@ -55,13 +58,28 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                     next_tokens = next_tokens * unfinished_sequences + tokenizer_gpt.pad_token_id * (
                             1 - unfinished_sequences)
 
-                    gen_seqs2 = torch.cat([gen_seqs2, next_tokens[:, None]], dim=-1)
-                    cur_len = cur_len + 1
-                    unfinished_sequences = unfinished_sequences.mul((next_tokens != tokenizer_gpt.eos_token_id).long())
-                    attention_mask = torch.cat([attention_mask, attention_mask.new_ones((attention_mask.shape[0], 1))],
-                                               dim=-1)
+                    if next_tokens == tokenizer_gpt.vocab['<movie>']:
+                        recommended_item_name = id2entity[recommended_items[0][0]].split('/')[-1][:-1]
+                        tokenized_name = tokenizer_gpt(recommended_item_name).input_ids
+                        tokenized_name = torch.tensor(tokenized_name, device=args.device_id)
+                        next_tokens = torch.cat([next_tokens.view(-1), tokenized_name])
+                        tokenized_name_len = len(next_tokens)
+                        attention_mask = torch.cat(
+                            [attention_mask, attention_mask.new_ones((attention_mask.shape[0], tokenized_name_len))],
+                            dim=-1)
+                        gen_len += tokenized_name_len
+                    else:
+                        attention_mask = torch.cat(
+                            [attention_mask, attention_mask.new_ones((attention_mask.shape[0], 1))],
+                            dim=-1)
+                        gen_len += 1
+
                     position_ids = attention_mask.long().cumsum(-1) - 1
                     position_ids.masked_fill_(attention_mask == 0, 1)
+                    gen_seqs2 = torch.cat([gen_seqs2, next_tokens.view(gen_seqs2.shape[0], -1)], dim=-1)
+                    unfinished_sequences = unfinished_sequences.mul(
+                        (next_tokens[0] != tokenizer_gpt.eos_token_id).long())
+
                     if unfinished_sequences.max() == 0:
                         break
 
@@ -74,12 +92,11 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                                               max_new_tokens=args.max_gen_len,
                                               no_repeat_ngram_size=3)
 
-            gen_resp_ids = []
-            for gen_seq, length in zip(gen_seqs, batch['context_len']):
-                gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
-                gen_resp_ids.append(gen_seq[length:])
-            evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], movie_recommended_items, log=True)
-            evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], movie_recommended_items, log=True)
+            # gen_resp_ids = []
+            # for gen_seq, length in zip(gen_seqs, batch['context_len']):
+            #     gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
+            #     gen_resp_ids.append(gen_seq[length:])
+            # evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], movie_recommended_items, log=True)
 
             gen_resp_ids2 = []
             for gen_seq, length in zip(gen_seqs2, batch['context_len']):
