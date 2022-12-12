@@ -94,14 +94,13 @@ class ContentInformation(Dataset):
                 sidx = 0
                 eidx = max_review_len
                 while True:
-                    review_meta_chunk.append(reviews_meta[idx])
-                    review_chunk.append(self.tokenizer.decode((self.tokenizer(review[sidx:eidx - 2],
-                                                                              max_length=max_review_len,
-                                                                              padding='max_length',
-                                                                              add_special_tokens=False).input_ids)).replace(
-                        self.tokenizer.pad_token, ''))
-                    if eidx > total_len:
+                    if sidx > total_len:
                         break
+                    review_meta_chunk.append(reviews_meta[idx])
+                    review_chunk.append(
+                        self.tokenizer.decode(
+                            self.tokenizer(review, max_length=max_review_len).input_ids)[sidx:eidx - 2])
+
                     sidx += self.args.window_size
                     eidx += self.args.window_size
 
@@ -111,14 +110,13 @@ class ContentInformation(Dataset):
                 sidx = 0
                 eidx = max_plot_len
                 while True:
-                    plot_meta_chunk.append(plots_meta[idx])
-                    plot_chunk.append(self.tokenizer.decode((self.tokenizer(plot[sidx:eidx - 2],
-                                                                            max_length=max_review_len,
-                                                                            padding='max_length',
-                                                                            add_special_tokens=False).input_ids)).replace(
-                        self.tokenizer.pad_token, ''))
-                    if eidx > total_len:
+                    if sidx > total_len:
                         break
+                    plot_meta_chunk.append(plots_meta[idx])
+                    plot_chunk.append(
+                        self.tokenizer.decode(
+                            self.tokenizer(plot, max_length=max_review_len).input_ids[sidx:eidx - 2]))
+
                     sidx += self.args.window_size
                     eidx += self.args.window_size
 
