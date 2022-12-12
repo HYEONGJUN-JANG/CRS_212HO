@@ -240,7 +240,8 @@ def main(args):
                           pretrain_dataloader_test=pretrain_conv_dataloader_test,
                           path=pre_conv_result_file_path, save_path=conv_pretrained_path)
         else:
-            gpt_model.load_state_dict(torch.load(best_conv_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+            gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
+                                                 map_location='cuda:%d' % args.device_id))  # state_dict를 불러 온 후, 모델에 저장`
 
         # [fine-tuning]
         # dataset
