@@ -43,9 +43,12 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 cur_len = gen_seqs2.shape[-1]
                 unfinished_sequences = gen_seqs2.new(gen_seqs2.shape[0]).fill_(1)
 
+                position_ids = attention_mask.long().cumsum(-1) - 1
+                position_ids.masked_fill_(attention_mask == 0, 1)
+
                 for _ in range(args.max_gen_len):
                     next_token_logits = gpt_model(input_ids=gen_seqs2, attention_mask=attention_mask,
-                                                  conv=True).logits[:, -1, :]
+                                                  position_ids=position_ids, conv=True).logits[:, -1, :]
                     next_tokens_scores = LogitsProcessorList()(gen_seqs2, next_token_logits)
 
                     next_tokens = torch.argmax(next_tokens_scores, dim=-1)
@@ -57,6 +60,8 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                     unfinished_sequences = unfinished_sequences.mul((next_tokens != tokenizer_gpt.eos_token_id).long())
                     attention_mask = torch.cat([attention_mask, attention_mask.new_ones((attention_mask.shape[0], 1))],
                                                dim=-1)
+                    position_ids = attention_mask.long().cumsum(-1) - 1
+                    position_ids.masked_fill_(attention_mask == 0, 1)
                     if unfinished_sequences.max() == 0:
                         break
 
