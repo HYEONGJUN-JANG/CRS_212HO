@@ -100,8 +100,8 @@ class ContentInformation(Dataset):
                         self.tokenizer.decode(
                             self.tokenizer(review).input_ids[sidx:eidx - 2]))
 
-                    sidx += max_review_len // 2
-                    eidx += max_review_len // 2
+                    sidx += max_review_len
+                    eidx += max_review_len
 
                     if sidx > total_len:
                         break
@@ -118,8 +118,8 @@ class ContentInformation(Dataset):
                         self.tokenizer.decode(
                             self.tokenizer(plot).input_ids[sidx:eidx - 2]))
 
-                    sidx += max_plot_len // 2
-                    eidx += max_plot_len // 2
+                    sidx += max_plot_len
+                    eidx += max_plot_len
 
                     if sidx > total_len:
                         break
