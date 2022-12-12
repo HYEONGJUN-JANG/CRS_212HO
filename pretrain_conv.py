@@ -36,9 +36,9 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
             }, ensure_ascii=False) + '\n')
 
 
-def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test, model, args, log_file):
+def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test, model, args, epoch, log_file):
     test_cnt = 0
-    log_file.write('-----------------------------\n')
+    log_file.write(f'\n*** test-{epoch} ***\n\n')
     # test
     logger.info('[Conv - Pre-training] Test')
     gpt_model.eval()
@@ -100,7 +100,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-    pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, log_file)
+    pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0, log_file)
 
     # train
     for epoch in range(args.conv_epoch_pt):
@@ -128,7 +128,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             lr_scheduler.step()
             total_loss += loss.data.float()
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
-        pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, log_file)
+        pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
+                          log_file)
 
         if save_path is not None:
             torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식
