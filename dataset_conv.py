@@ -83,8 +83,8 @@ class ContentInformationConv(Dataset):
                         self.tokenizer_gpt.decode(
                             self.tokenizer_gpt(review, max_length=self.args.max_gen_len).input_ids[sidx:eidx - 1]))
 
-                    sidx += self.args.window_size
-                    eidx += self.args.window_size
+                    sidx += self.args.max_gen_len // 2
+                    eidx += self.args.max_gen_len // 2
 
             for idx, plot in enumerate(plots):
                 tokenized_plot = self.tokenizer_gpt.tokenize(plot)
@@ -99,8 +99,8 @@ class ContentInformationConv(Dataset):
                         self.tokenizer_gpt.decode(
                             self.tokenizer_gpt(plot, max_length=self.args.max_gen_len).input_ids[sidx:eidx - 1]))
 
-                    sidx += self.args.window_size
-                    eidx += self.args.window_size
+                    sidx += self.args.max_gen_len // 2
+                    eidx += self.args.max_gen_len // 2
 
             # Title
             tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
