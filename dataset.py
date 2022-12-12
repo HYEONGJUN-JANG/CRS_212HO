@@ -94,7 +94,6 @@ class ContentInformation(Dataset):
                 sidx = 0
                 eidx = max_review_len
                 while True:
-
                     review_meta_chunk.append(reviews_meta[idx])
                     review_chunk.append(
                         self.tokenizer.decode(
