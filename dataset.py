@@ -99,7 +99,7 @@ class ContentInformation(Dataset):
                     review_meta_chunk.append(reviews_meta[idx])
                     review_chunk.append(
                         self.tokenizer.decode(
-                            self.tokenizer(review).input_ids)[sidx:eidx - 2])
+                            self.tokenizer(review).input_ids[sidx:eidx - 2]))
 
                     sidx += max_review_len // 2
                     eidx += max_review_len // 2
