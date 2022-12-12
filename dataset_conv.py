@@ -51,7 +51,7 @@ class ContentInformationConv(Dataset):
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
             title = "<movie> %s (%s)" % (sample['title'], sample['year'])
-            review_chunk, plot_chunk, review_meta_chunk, plot_meta_chunk = [], [], [], []
+            tokenized_reviews, tokenized_plots, review_meta_chunk, plot_meta_chunk = [], [], [], []
 
             # review_prefix = 'Review' + self.tokenizer_gpt.eos_token + title
             # plot_prefix = 'Plot' + self.tokenizer_gpt.eos_token + title
@@ -70,57 +70,45 @@ class ContentInformationConv(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
-            for idx, review in enumerate(reviews):
-                tokenized_review = self.tokenizer_gpt.tokenize(review)
-                total_len = len(tokenized_review)
+            tokenzied_reviews_org = self.tokenizer_gpt(reviews, max_length=self.args.max_review_len,
+                                                       truncation=True).input_ids
+            for idx, tokenzied_review in enumerate(tokenzied_reviews_org):
+                # tokenized_review = self.tokenizer_gpt.tokenize(review)
+                total_len = len(tokenzied_review)
                 sidx = 0
-                eidx = max_review_len
+                eidx = self.args.max_gen_len
                 while True:
-
                     review_meta_chunk.append(reviews_meta[idx])
-                    review_chunk.append(
-                        self.tokenizer_gpt.decode(
-                            self.tokenizer_gpt(review).input_ids[sidx:eidx - 1]))
+                    tokenized_reviews.append(tokenzied_review[sidx:eidx - 1])
+                    sidx += self.args.window_size
+                    eidx += self.args.window_size
 
-                    sidx += self.args.max_gen_len
-                    eidx += self.args.max_gen_len
-
-                    if sidx > total_len:
+                    if sidx >= total_len:
                         break
+            tokenized_reviews = [review + [self.tokenizer_gpt.eos_token_id] for review in tokenized_reviews]
 
-
-            for idx, plot in enumerate(plots):
-                tokenized_plot = self.tokenizer_gpt.tokenize(plot)
+            tokenzied_plots_org = self.tokenizer_gpt(plots, max_length=self.args.max_plot_len,
+                                                     truncation=True).input_ids
+            for idx, tokenized_plot in enumerate(tokenzied_plots_org):
                 total_len = len(tokenized_plot)
                 sidx = 0
-                eidx = max_plot_len
+                eidx = self.args.max_gen_len
                 while True:
-
                     plot_meta_chunk.append(plots_meta[idx])
-                    plot_chunk.append(
-                        self.tokenizer_gpt.decode(
-                            self.tokenizer_gpt(plot).input_ids[sidx:eidx - 1]))
+                    tokenized_plots.append(tokenized_plot[sidx:eidx - 1])
 
-                    sidx += self.args.max_gen_len
-                    eidx += self.args.max_gen_len
+                    sidx += self.args.window_size
+                    eidx += self.args.window_size
 
-                    if sidx > total_len:
+                    if sidx >= total_len:
                         break
+            tokenized_plots = [plot + [self.tokenizer_gpt.eos_token_id] for plot in tokenized_plots]
 
             # Title
             tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
             # tokenized_review_title += self.tokenizer_gpt(':').input_ids
-
             tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
             # tokenized_plot_title += self.tokenizer_gpt(':').input_ids
-
-            # GPT - review & plot
-            tokenized_reviews = self.tokenizer_gpt([review for review in reviews],
-                                                   max_length=self.args.max_gen_len, truncation=True).input_ids
-            tokenized_reviews = [review + [self.tokenizer_gpt.eos_token_id] for review in tokenized_reviews]
-            tokenized_plots = self.tokenizer_gpt([plot for plot in plots],
-                                                 max_length=self.args.max_gen_len, truncation=True).input_ids
-            tokenized_plots = [plot + [self.tokenizer_gpt.eos_token_id] for plot in tokenized_plots]
 
             # BERT - review & plot
             tokenized_reviews_bert = self.tokenizer_bert(reviews, max_length=max_review_len,
