@@ -43,6 +43,8 @@ def parse_args():
     parser.add_argument('--conv_epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
     parser.add_argument('--conv_epoch_ft', type=int, default=10)  # [NEW] # epochs if fine-tuning
     parser.add_argument('--conv_batch_size', type=int, default=2)
+    parser.add_argument('--gen_batch_size', type=int, default=1)
+
     parser.add_argument('--conv_lr_pt', type=float, default=1e-4, help='Pre-training Learning rate')
     parser.add_argument('--conv_lr_ft', type=float, default=1e-4, help='Fine-tuning Learning rate')
     parser.add_argument('--context_max_length', type=int, default=128)
