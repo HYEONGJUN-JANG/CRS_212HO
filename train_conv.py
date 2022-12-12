@@ -39,11 +39,13 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             if args.conv_pretrained_type == 'none':
                 gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len)
                 gen_seqs2 = batch['context'].input_ids
+                attention_mask = batch['context'].attention_mask
                 cur_len = gen_seqs2.shape[-1]
                 unfinished_sequences = gen_seqs2.new(gen_seqs2.shape[0]).fill_(1)
 
                 for _ in range(args.max_gen_len):
-                    next_tokens_scores = gpt_model(**batch['context'], conv=True).logits[:, -1, :]
+                    next_tokens_scores = gpt_model(input_ids=gen_seqs2, attention_mask=attention_mask,
+                                                   conv=True).logits[:, -1, :]
                     next_tokens = torch.argmax(next_tokens_scores, dim=-1)
                     next_tokens = next_tokens * unfinished_sequences + tokenizer_gpt.pad_token_id * (
                             1 - unfinished_sequences)
@@ -51,7 +53,8 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                     gen_seqs2 = torch.cat([gen_seqs2, next_tokens[:, None]], dim=-1)
                     cur_len = cur_len + 1
                     unfinished_sequences = unfinished_sequences.mul((next_tokens != tokenizer_gpt.eos_token_id).long())
-
+                    attention_mask = torch.cat([attention_mask, attention_mask.new_ones((attention_mask.shape[0], 1))],
+                                               dim=-1)
                     if unfinished_sequences.max() == 0:
                         break
 
