@@ -48,7 +48,7 @@ def parse_args():
     parser.add_argument('--context_max_length', type=int, default=128)
     # parser.add_argument('--resp_max_length', type=int, default=30)
     parser.add_argument("--max_gen_len", type=int, default=25)
-    parser.add_argument("--max_title_len", type=int, default=10)
+    parser.add_argument("--max_title_len", type=int, default=15)
 
     parser.add_argument("--entity_max_length", type=int, help="max entity length in dataset.", default=32)
     parser.add_argument('--num_warmup_steps', type=int, default=6345)
