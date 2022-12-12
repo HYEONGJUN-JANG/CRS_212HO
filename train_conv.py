@@ -37,8 +37,24 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 movie_recommended_items.append([id2entity[item] for item in items if item in id2entity])
 
             if args.conv_pretrained_type == 'none':
-                gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len,
-                                              no_repeat_ngram_size=3)
+                gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len)
+                gen_seqs2 = batch['context'].input_ids
+                cur_len = gen_seqs2.shape[-1]
+                unfinished_sequences = gen_seqs2.new(gen_seqs2.shape[0]).fill_(1)
+
+                for _ in range(args.max_gen_len):
+                    next_tokens_scores = gpt_model(**batch['context'], conv=True).logits[:, -1, :]
+                    next_tokens = torch.argmax(next_tokens_scores, dim=-1)
+                    next_tokens = next_tokens * unfinished_sequences + tokenizer_gpt.pad_token_id * (
+                            1 - unfinished_sequences)
+
+                    gen_seqs2 = torch.cat([gen_seqs2, next_tokens[:, None]], dim=-1)
+                    cur_len = cur_len + 1
+                    unfinished_sequences = unfinished_sequences.mul((next_tokens != tokenizer_gpt.eos_token_id).long())
+
+                    if unfinished_sequences.max() == 0:
+                        break
+
             else:
                 entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
                     batch['context_entities'], batch['context_bert'].input_ids)
@@ -53,6 +69,13 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
                 gen_resp_ids.append(gen_seq[length:])
             evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], movie_recommended_items, log=True)
+
+            gen_resp_ids2 = []
+            for gen_seq, length in zip(gen_seqs2, batch['context_len']):
+                gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
+                gen_resp_ids2.append(gen_seq[length:])
+            evaluator.evaluate(gen_resp_ids2, batch['response'], batch['context'], movie_recommended_items, log=True)
+
     # metric
     report = evaluator.report()
     test_report = {}
