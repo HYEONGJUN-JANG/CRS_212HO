@@ -220,7 +220,7 @@ def main(args):
         # load rec fine-tuned model
         if os.path.isfile(bestrec_path):
             logger.info(f'Load pretrained file\t{bestrec_path}')
-            model.load_state_dict(torch.load(bestrec_path))
+            model.load_state_dict(torch.load(bestrec_path, map_location=f'cuda:{args.device_id}'))
         for param in model.parameters():
             param.requires_grad = False
 
@@ -295,7 +295,7 @@ def main(args):
             collate_fn=data_collator_generator,
         )
         # train & test
-        train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
+        train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt, tokenizer,
                            conv_results_file_path)
 
 
