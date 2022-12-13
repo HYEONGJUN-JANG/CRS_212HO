@@ -23,7 +23,12 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     projector.eval()
     model.eval()
     evaluator.log_file.write(f'\n*** test-{epoch} ***\n\n')
+    test_cnt = 0
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        if test_cnt == 100:
+            break
+        else:
+            test_cnt += 1
         batch = batches[0]
         movie_recommended_items = []
         with torch.no_grad():
@@ -33,7 +38,9 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
 
             # recommended_items = [id2entity[top1odx.item()] for top1odx in
             #                      torch.topk(model_scores, 3, dim=1).indices.view(-1)]
-            recommended_items = [top3 for top3 in torch.topk(model_scores, 3, dim=1).indices.view(-1, 3).tolist()]
+            top3items = torch.topk(model_scores, 3, dim=1).indices.view(-1, 3).tolist()
+            recommended_items = [[model.movie2ids[item] for top3item in top3items for item in top3item]]
+            # recommended_items = [model.movie2ids[top3] for top3 in torch.topk(model_scores, 3, dim=1).indices.view(-1, 3).tolist()]
             for items in recommended_items:
                 movie_recommended_items.append([id2entity[item] for item in items if item in id2entity])
 
@@ -50,7 +57,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 while True:
                     if gen_len > args.max_gen_len:
                         break
-                    next_token_logits = gpt_model(input_ids=gen_seqs2, attention_mask=attention_mask,
+                    next_token_logits = gpt_model(input_ids=gen_seqs2.long(), attention_mask=attention_mask,
                                                   position_ids=position_ids, conv=True).logits[:, -1, :]
                     next_tokens_scores = LogitsProcessorList()(gen_seqs2, next_token_logits)
 
