@@ -12,9 +12,11 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertM
 import json
 import os
 
-entity2id = json.load(
-    open(os.path.join('data/redial', 'entity2id.json'), 'r', encoding='utf-8'))
-id2entity = {idx: entity for entity, idx in entity2id.items()}
+# entity2id = json.load(
+#     open(os.path.join('data/redial', 'entity2id.json'), 'r', encoding='utf-8'))
+# id2entity = {idx: entity for entity, idx in entity2id.items()}
+movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
+movieidx2name = {idx: name for key, (idx, name) in movie2name.items()}
 
 
 def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
@@ -25,7 +27,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     evaluator.log_file.write(f'\n*** test-{epoch} ***\n\n')
     test_cnt = 0
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        if test_cnt == 100:
+        if test_cnt == 300:
             break
         else:
             test_cnt += 1
@@ -42,12 +44,13 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             recommended_items = [[model.movie2ids[item] for top3item in top3items for item in top3item]]
             # recommended_items = [model.movie2ids[top3] for top3 in torch.topk(model_scores, 3, dim=1).indices.view(-1, 3).tolist()]
             for items in recommended_items:
-                movie_recommended_items.append([id2entity[item] for item in items if item in id2entity])
+                movie_recommended_items.append([movie2name[item] for item in items if item in id2entity])
 
             if args.conv_pretrained_type == 'none':
                 # gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len)
                 gen_seqs2 = batch['context'].input_ids
                 attention_mask = batch['context'].attention_mask
+                # past_key_values = None
                 cur_len = gen_seqs2.shape[-1]
                 unfinished_sequences = gen_seqs2.new(gen_seqs2.shape[0]).fill_(1)
 
@@ -57,8 +60,10 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 while True:
                     if gen_len > args.max_gen_len:
                         break
-                    next_token_logits = gpt_model(input_ids=gen_seqs2.long(), attention_mask=attention_mask,
-                                                  position_ids=position_ids, conv=True).logits[:, -1, :]
+                    output = gpt_model(input_ids=gen_seqs2.long(), attention_mask=attention_mask,
+                                       position_ids=position_ids, conv=True)
+                    next_token_logits = output.logits[:, -1, :]
+                    # past_key_values = output.past_key_values
                     next_tokens_scores = LogitsProcessorList()(gen_seqs2, next_token_logits)
 
                     next_tokens = torch.argmax(next_tokens_scores, dim=-1)
