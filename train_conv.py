@@ -54,6 +54,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
             test_cnt += 1
         batch = batches[0]
         with torch.no_grad():
+            movie_recommended_items = []
             if args.conv_pretrained_type == 'none':
                 # gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len)
                 input_ids = batch['context'].input_ids
