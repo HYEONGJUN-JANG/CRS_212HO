@@ -113,7 +113,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
                 #                                         entity_padding_mask, user_representation)
                 gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=None,
-                                              max_new_tokens=None,
+                                              max_new_tokens=args.max_gen_len,
                                               no_repeat_ngram_size=3)
                 input_ids = gen_seqs
 
@@ -210,8 +210,9 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                 loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=None,
                                     conv=True).conv_loss
 
-                loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
-                                    prompt_embeds=None).conv_loss
+                # loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
+                #                     prompt_embeds=None).conv_loss
+                loss_pt = 0
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
