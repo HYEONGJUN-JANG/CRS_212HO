@@ -210,17 +210,17 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
                 loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=None,
                                     conv=True).conv_loss
 
-                # loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
-                #                     prompt_embeds=None).conv_loss
+                loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
+                                    prompt_embeds=None).conv_loss
 
-            # loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
+            loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
-            loss_ft.backward()
+            loss.backward()
             optimizer.step()
             lr_scheduler.step()
-            total_loss += loss_ft.data.float()
+            total_loss += loss.data.float()
         print('Total Loss:\t%.4f' % total_loss)
-        # print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
+        print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
 
         logger.info('[Test]')
         finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
