@@ -108,13 +108,14 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                         break
 
             else:
-                entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
-                    batch['context_entities'], batch['context_bert'].input_ids)
-                encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                                                        entity_padding_mask, user_representation)
-                gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
-                                              max_new_tokens=args.max_gen_len,
+                # entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
+                #     batch['context_entities'], batch['context_bert'].input_ids)
+                # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+                #                                         entity_padding_mask, user_representation)
+                gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=None,
+                                              max_new_tokens=None,
                                               no_repeat_ngram_size=3)
+                input_ids = gen_seqs
 
             # gen_resp_ids = []
             # for gen_seq, length in zip(gen_seqs, batch['context_len']):
