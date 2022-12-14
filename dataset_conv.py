@@ -557,6 +557,7 @@ class CRSConvDataCollator:
                 entity_batch.append(data['context_entities'])
 
                 # pre-training
+                # todo: content learning 시 eos 붙여줘야 하는거 아닌가?
                 pre_context_ids = title
                 pre_context_len_batch.append(len(pre_context_ids))
                 pre_context_batch['input_ids'].append(pre_context_ids)
