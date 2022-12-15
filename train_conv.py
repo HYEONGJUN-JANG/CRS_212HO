@@ -80,7 +80,6 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
 
                     if next_tokens == tokenizer_gpt.vocab['<movie>']:
                         # gen_seq_bert = tokenizer_bert(tokenizer_gpt.batch_decode(input_ids)).input_ids[0]
-
                         recommended_item_name = movie_recommended_items[0][0]
                         tokenized_name = tokenizer_gpt(recommended_item_name).input_ids
                         tokenized_name = torch.tensor(tokenized_name, device=args.device_id)
@@ -98,6 +97,8 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
 
                     position_ids = attention_mask.long().cumsum(-1) - 1
                     position_ids.masked_fill_(attention_mask == 0, 1)
+                    for batch_idx in range(batch):
+                        torch.cat([input_ids, next_tokens.view(input_ids.shape[0], -1)], dim=-1)
                     input_ids = torch.cat([input_ids, next_tokens.view(input_ids.shape[0], -1)], dim=-1)
                     generated.extend(tokenizer_bert(tokenizer_gpt.decode(next_tokens.view(-1).tolist()),
                                                     add_special_tokens=False).input_ids)
