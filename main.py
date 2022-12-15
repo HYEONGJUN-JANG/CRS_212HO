@@ -47,45 +47,51 @@ def createResultFile(args):
     rawFolder_path = os.path.join('./results', rawSubfolder_name)
     if not os.path.exists(rawFolder_path): os.mkdir(rawFolder_path)
 
-    results_file_path = os.path.join(rawFolder_path,
-                                     f"{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
-    conv_result_file_path = os.path.join(rawFolder_path,
-                                         f"{mdhm}_train_device_{args.device_id}_name_{args.name}_Conv.txt")
-    pre_conv_result_file_path = os.path.join(rawFolder_path,
-                                             f"{mdhm}_train_device_{args.device_id}_name_{args.name}_PreConv.txt")
+    if 'rec' in args.task:
+        results_file_path = os.path.join(rawFolder_path,
+                                         f"[REC]{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
 
-    # parameters
-    with open(results_file_path, 'a', encoding='utf-8') as result_f:
-        result_f.write(
-            '\n=================================================\n')
-        result_f.write(get_time_kst())
-        result_f.write('\n')
-        result_f.write('Argument List:' + str(sys.argv) + '\n')
-        for i, v in vars(args).items():
-            result_f.write(f'{i}:{v} || ')
-        result_f.write('\n')
-        result_f.write('Hit@1\tHit@5\tHit@10\tHit@20\tHit@50\n')
+        # parameters
+        with open(results_file_path, 'a', encoding='utf-8') as result_f:
+            result_f.write(
+                '\n=================================================\n')
+            result_f.write(get_time_kst())
+            result_f.write('\n')
+            result_f.write('Argument List:' + str(sys.argv) + '\n')
+            for i, v in vars(args).items():
+                result_f.write(f'{i}:{v} || ')
+            result_f.write('\n')
+            result_f.write('Hit@1\tHit@5\tHit@10\tHit@20\tHit@50\n')
 
-    with open(conv_result_file_path, 'a', encoding='utf-8') as result_f:
-        result_f.write(
-            '\n=================================================\n')
-        result_f.write(get_time_kst())
-        result_f.write('\n')
-        result_f.write('Argument List:' + str(sys.argv) + '\n')
-        for i, v in vars(args).items():
-            result_f.write(f'{i}:{v} || ')
-        result_f.write('\n')
+        return results_file_path
 
-    with open(pre_conv_result_file_path, 'a', encoding='utf-8') as result_f:
-        result_f.write(
-            '\n=================================================\n')
-        result_f.write(get_time_kst())
-        result_f.write('\n')
-        result_f.write('Argument List:' + str(sys.argv) + '\n')
-        for i, v in vars(args).items():
-            result_f.write(f'{i}:{v} || ')
-        result_f.write('\n')
-    return results_file_path, conv_result_file_path, pre_conv_result_file_path
+    elif 'conv' in args.task:
+        conv_result_file_path = os.path.join(rawFolder_path,
+                                             f"[CONV]{mdhm}_train_device_{args.device_id}_name_{args.name}.txt")
+        pre_conv_result_file_path = os.path.join(rawFolder_path,
+                                                 f"[PRECONV]{mdhm}_train_device_{args.device_id}_name_{args.name}.txt")
+
+        with open(conv_result_file_path, 'a', encoding='utf-8') as result_f:
+            result_f.write(
+                '\n=================================================\n')
+            result_f.write(get_time_kst())
+            result_f.write('\n')
+            result_f.write('Argument List:' + str(sys.argv) + '\n')
+            for i, v in vars(args).items():
+                result_f.write(f'{i}:{v} || ')
+            result_f.write('\n')
+
+        with open(pre_conv_result_file_path, 'a', encoding='utf-8') as result_f:
+            result_f.write(
+                '\n=================================================\n')
+            result_f.write(get_time_kst())
+            result_f.write('\n')
+            result_f.write('Argument List:' + str(sys.argv) + '\n')
+            for i, v in vars(args).items():
+                result_f.write(f'{i}:{v} || ')
+            result_f.write('\n')
+
+        return conv_result_file_path, pre_conv_result_file_path
 
 
 def randomize_model(model):
@@ -115,9 +121,6 @@ def main(args):
     if torch.cuda.device_count() > 1:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(device)
-
-    # create result file
-    results_file_path, conv_results_file_path, pre_conv_result_file_path = createResultFile(args)
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
@@ -183,6 +186,8 @@ def main(args):
                            kg_information.n_entity, args.name, n_prefix_rec=10).to(args.device_id)
 
     if 'rec' in args.task:
+        # create result file
+        results_file_path = createResultFile(args)
         content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
         crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer, kg_information)
         train_data = crs_dataset.train_data
@@ -217,6 +222,7 @@ def main(args):
         return content_hit, initial_hit, best_result
 
     if 'conv' in args.task:
+        conv_results_file_path, pre_conv_result_file_path = createResultFile(args)
         # load rec fine-tuned model
         if os.path.isfile(bestrec_path):
             logger.info(f'Load pretrained file\t{bestrec_path}')
@@ -295,7 +301,8 @@ def main(args):
             collate_fn=data_collator_generator,
         )
         # train & test
-        train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt, tokenizer,
+        train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
+                           tokenizer,
                            conv_results_file_path)
 
 
