@@ -141,6 +141,7 @@ class ContentInformationConv(Dataset):
                     meta_input.append(prefix % 'plot' + r_prompt)
                     meta_output.append(p_prompt)
 
+
             tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
                                                       truncation=True).input_ids
             tokenzied_meta_output = self.tokenizer_gpt(meta_output, max_length=self.args.max_review_len,
