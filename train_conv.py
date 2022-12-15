@@ -97,8 +97,6 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
 
                     position_ids = attention_mask.long().cumsum(-1) - 1
                     position_ids.masked_fill_(attention_mask == 0, 1)
-                    for batch_idx in range(batch):
-                        torch.cat([input_ids, next_tokens.view(input_ids.shape[0], -1)], dim=-1)
                     input_ids = torch.cat([input_ids, next_tokens.view(input_ids.shape[0], -1)], dim=-1)
                     generated.extend(tokenizer_bert(tokenizer_gpt.decode(next_tokens.view(-1).tolist()),
                                                     add_special_tokens=False).input_ids)
