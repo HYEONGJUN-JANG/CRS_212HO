@@ -19,10 +19,12 @@ movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'
 movieidx2name = {idx: name for key, (idx, name) in movie2name.items()}
 
 
-def recommend_top1_item(batch, model):
+def recommend_top1_item(batch, generated, model):
     movie_recommended_items = []
+    text_ids = torch.cat([batch['context_bert'].input_ids, torch.tensor(generated, device=model.device_id).view(1, -1)],
+                         dim=-1)
     model_scores = model(batch['context_entities'],
-                         batch['context_bert'].input_ids)  # context_entities, context_tokens
+                         text_ids)  # context_entities, context_tokens
     model_scores = model_scores[:, torch.LongTensor(model.movie2ids)]
 
     # recommended_items = [id2entity[top1odx.item()] for top1odx in
@@ -52,7 +54,6 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
         batch = batches[0]
         with torch.no_grad():
             movie_recommended_items = []
-            movie_recommended_items = recommend_top1_item(batch, model)
             if args.conv_pretrained_type == 'none':
                 # gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len)
                 input_ids = batch['context'].input_ids
@@ -79,6 +80,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                             1 - unfinished_sequences)
 
                     if next_tokens == tokenizer_gpt.vocab['<movie>']:
+                        movie_recommended_items = recommend_top1_item(batch, generated, model)
                         # gen_seq_bert = tokenizer_bert(tokenizer_gpt.batch_decode(input_ids)).input_ids[0]
                         recommended_item_name = movie_recommended_items[0][0]
                         tokenized_name = tokenizer_gpt(recommended_item_name).input_ids

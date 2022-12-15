@@ -14,6 +14,41 @@ from transformers import AutoTokenizer
 from utils import padded_tensor
 import numpy as np
 
+recommend_template = [
+    "System: You should watch  %s. <explain>",
+    "System: I recommend %s. <explain>",
+    "System: I suggest %s. <explain>",
+    "System: Have you seen %s? <explain>"
+]
+
+genre_template = [
+    "It’s a %s movie.",
+    "Its genre is %s.",
+    "It is full of %s.",
+    "It is %s film."
+]
+
+director_template = [
+    "It is directed by %s.",
+    "%s directed it.",
+    "This film is directed by %s.",
+    "%s directed this movie."
+]
+
+star_template = [
+    "It stars %s.",
+    "%s acted in this film.",
+    "%s is in this movie.",
+    "%s appears in this film.",
+]
+
+plot_template = [
+    "It is about %s.",
+    "The plot of this movie is %s.",
+    "The story of this movie is %s.",
+    "This film is mainly about %s."
+]
+
 
 class ContentInformationConv(Dataset):
     #
@@ -55,6 +90,7 @@ class ContentInformationConv(Dataset):
             meta = sample['meta']
             title = "<movie> %s (%s)" % (sample['title'], sample['year'])
             tokenized_reviews, tokenized_plots, review_meta_chunk, plot_meta_chunk = [], [], [], []
+            meta_input, meta_output = [], []
 
             # review_prefix = 'Review' + self.tokenizer_gpt.eos_token + title
             # plot_prefix = 'Plot' + self.tokenizer_gpt.eos_token + title
@@ -76,13 +112,29 @@ class ContentInformationConv(Dataset):
             # meta_info = [('The %s of %s is ' % (info, title), ', '.join(meta[info])) for info in meta]
             # if plots[0] != '':
             #     meta_info.append(('The plot of %s is that ' % title, plots[0]))
+            # meta_input = ['<explain> The %s of %s is ' % (info, title) for info in meta]
 
-            meta_input = ['<explain> The %s of %s is ' % (info, title) for info in meta]
-            meta_output = [', '.join(meta[info]) for info in meta]
-            if plots[0] != '':
-                # meta_info.append(('The plot of %s is that ' % title, plots[0]))
-                meta_input.append('<explain> The plot of %s is ' % title)
-                meta_output.append(plots[0])
+            rec_prompt = [template % title for template in recommend_template]
+            genre_prompt = [template % ', '.join(meta['genre']) for template in genre_template]
+            star_prompt = [template % ', '.join(meta['stars']) for template in star_template]
+            director_prompt = [template % ', '.join(meta['director']) for template in director_template]
+            plot_prompt = [template % plots[0] for template in plot_template]
+
+            # GENRE
+            for r_prompt in rec_prompt:
+                prefix = 'User: Recommend me a movie with its %s.<|endoftext|>'
+                for g_prompt in genre_prompt:
+                    meta_input.append(prefix % 'genre' + r_prompt)
+                    meta_output.append(g_prompt)
+                for s_prompt in star_prompt:
+                    meta_input.append(prefix % 'star' + r_prompt)
+                    meta_output.append(s_prompt)
+                for d_prompt in director_prompt:
+                    meta_input.append(prefix % 'director' + r_prompt)
+                    meta_output.append(d_prompt)
+                for p_prompt in plot_prompt:
+                    meta_input.append(prefix % 'plot' + r_prompt)
+                    meta_output.append(p_prompt)
 
             tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
                                                       truncation=True).input_ids
