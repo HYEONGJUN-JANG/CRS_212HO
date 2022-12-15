@@ -15,38 +15,43 @@ from utils import padded_tensor
 import numpy as np
 
 recommend_template = [
-    "System: You should watch  %s. <explain>",
-    "System: I recommend %s. <explain>",
-    "System: I suggest %s. <explain>",
-    "System: Have you seen %s? <explain>"
+    "System: You should watch  %s. <explain>"
+    # ,
+    # "System: I recommend %s. <explain>",
+    # "System: I suggest %s. <explain>",
+    # "System: Have you seen %s? <explain>"
 ]
 
 genre_template = [
-    "It’s a %s movie.",
-    "Its genre is %s.",
-    "It is full of %s.",
-    "It is %s film."
+    "It’s a %s movie."
+    # ,
+    # "Its genre is %s.",
+    # "It is full of %s.",
+    # "It is %s film."
 ]
 
 director_template = [
-    "It is directed by %s.",
-    "%s directed it.",
-    "This film is directed by %s.",
-    "%s directed this movie."
+    "It is directed by %s."
+    # ,
+    # "%s directed it.",
+    # "This film is directed by %s.",
+    # "%s directed this movie."
 ]
 
 star_template = [
-    "It stars %s.",
-    "%s acted in this film.",
-    "%s is in this movie.",
-    "%s appears in this film.",
+    "It stars %s."
+    # ,
+    # "%s acted in this film.",
+    # "%s is in this movie.",
+    # "%s appears in this film.",
 ]
 
 plot_template = [
-    "It is about %s.",
-    "The plot of this movie is %s.",
-    "The story of this movie is %s.",
-    "This film is mainly about %s."
+    "It is about %s."
+    # ,
+    # "The plot of this movie is %s.",
+    # "The story of this movie is %s.",
+    # "This film is mainly about %s."
 ]
 
 
