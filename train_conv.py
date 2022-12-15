@@ -31,7 +31,7 @@ def recommend_top1_item(batch, model):
     recommended_items = [[model.movie2ids[item] for top3item in top3items for item in top3item]]
     # recommended_items = [model.movie2ids[top3] for top3 in torch.topk(model_scores, 3, dim=1).indices.view(-1, 3).tolist()]
     for items in recommended_items:
-        movie_recommended_items.append([movieidx2name[item] for item in items if item in movieidx2name])
+        movie_recommended_items.append([movieidx2name[item] + '<explain>' for item in items if item in movieidx2name])
 
     return movie_recommended_items
 

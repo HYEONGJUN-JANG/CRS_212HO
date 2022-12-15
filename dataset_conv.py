@@ -77,11 +77,11 @@ class ContentInformationConv(Dataset):
             # if plots[0] != '':
             #     meta_info.append(('The plot of %s is that ' % title, plots[0]))
 
-            meta_input = ['The %s of %s is ' % (info, title) for info in meta]
+            meta_input = ['<explain> The %s of %s is ' % (info, title) for info in meta]
             meta_output = [', '.join(meta[info]) for info in meta]
             if plots[0] != '':
                 # meta_info.append(('The plot of %s is that ' % title, plots[0]))
-                meta_input.append('The plot of %s is ' % title)
+                meta_input.append('<explain> The plot of %s is ' % title)
                 meta_output.append(plots[0])
 
             tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
