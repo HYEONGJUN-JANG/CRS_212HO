@@ -19,12 +19,17 @@ movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'
 movieidx2name = {idx: name for key, (idx, name) in movie2name.items()}
 
 
-def recommend_top1_item(batch, generated, model):
+
+def recommend_top1_item(batch, gen_seq_bert, model):
     movie_recommended_items = []
-    text_ids = torch.cat([batch['context_bert'].input_ids, torch.tensor(generated, device=model.device_id).view(1, -1)],
-                         dim=-1)
-    model_scores = model(batch['context_entities'],
-                         text_ids)  # context_entities, context_tokens
+
+    context_len = torch.sum(batch['context_bert'].attention_mask, dim=1, keepdim=True)
+    gen_seq_bert = torch.tensor(gen_seq_bert, device=model.device_id).long()
+
+    input_text = batch['context_bert'].input_ids[0].clone()
+    input_text[context_len:context_len + len(gen_seq_bert)] = torch.tensor(gen_seq_bert, device=model.device_id).long()
+    model_scores = model(batch['context_entities'], input_text.view(1, -1))  # context_entities, context_tokens
+
     model_scores = model_scores[:, torch.LongTensor(model.movie2ids)]
 
     # recommended_items = [id2entity[top1odx.item()] for top1odx in
@@ -35,7 +40,7 @@ def recommend_top1_item(batch, generated, model):
     for items in recommended_items:
         movie_recommended_items.append([movieidx2name[item] + '<explain>' for item in items if item in movieidx2name])
 
-    return movie_recommended_items
+    return movie_recommended_items, items
 
 
 def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
@@ -80,8 +85,11 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                             1 - unfinished_sequences)
 
                     if next_tokens == tokenizer_gpt.vocab['<movie>']:
-                        movie_recommended_items = recommend_top1_item(batch, generated, model)
-                        # gen_seq_bert = tokenizer_bert(tokenizer_gpt.batch_decode(input_ids)).input_ids[0]
+                        movie_recommended_items, movie_recommended_item_ids = recommend_top1_item(batch, generated,
+                                                                                                  model)
+                        batch['context_entities'][
+                            0, torch.sum(batch['context_entities'] != 0, dim=1, keepdim=True)] = torch.tensor(
+                            movie_recommended_item_ids[0]).view(1, -1)
                         recommended_item_name = movie_recommended_items[0][0]
                         tokenized_name = tokenizer_gpt(recommended_item_name).input_ids
                         tokenized_name = torch.tensor(tokenized_name, device=args.device_id)
