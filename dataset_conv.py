@@ -23,7 +23,7 @@ recommend_template = [
 ]
 
 genre_template = [
-    "It’s a %s movie."
+    "Its genre is a %s movie."
     # ,
     # "Its genre is %s.",
     # "It is full of %s.",
@@ -88,12 +88,15 @@ class ContentInformationConv(Dataset):
 
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             crs_id = sample['crs_id']
+            if self.movie2name[crs_id][0] == -1:
+                continue
+
             reviews = sample['reviews']
             plots = sample['plots']
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
             meta = sample['meta']
-            title = "<movie> %s (%s)" % (sample['title'], sample['year'])
+            title = "<movie> %d: %s (%s)" % (self.movie2name[crs_id][0], sample['title'], sample['year'])
             tokenized_reviews, tokenized_plots, review_meta_chunk, plot_meta_chunk = [], [], [], []
             meta_input, meta_output = [], []
 
@@ -103,8 +106,6 @@ class ContentInformationConv(Dataset):
             plot_prefix = f'The plot of {title} is '
 
             # Exception
-            if self.movie2name[crs_id][0] == -1:
-                continue
 
             if len(reviews) == 0:
                 reviews = ['']
@@ -141,14 +142,17 @@ class ContentInformationConv(Dataset):
                     meta_input.append(prefix % 'plot' + r_prompt)
                     meta_output.append(p_prompt)
 
-
             tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
+                                                      padding='max_length',
                                                       truncation=True).input_ids
             tokenzied_meta_output = self.tokenizer_gpt(meta_output, max_length=self.args.max_review_len,
+                                                       padding='max_length',
                                                        truncation=True).input_ids
 
-            for t_input, t_output in zip(tokenzied_meta_input, tokenzied_meta_output):
-                self.meta_samples.append((t_input, t_output))
+            # for t_input, t_output in zip(tokenzied_meta_input, tokenzied_meta_output):
+            #     self.meta_samples.append((t_input, t_output))
+
+            self.meta_samples.append((tokenzied_meta_input, tokenzied_meta_output))
 
             tokenzied_reviews_org = self.tokenizer_gpt(reviews, max_length=self.args.max_review_len,
                                                        truncation=True).input_ids
@@ -257,8 +261,15 @@ class ContentConvCollator:
 
         resp_batch = []
         context_len_batch = []
+        meta_inputs, meta_outputs = [], []
+        for data in data_batch:
+            meta_inputs.append(data[0])
+            meta_outputs.append(data[1])
 
-        for meta_input, meta_output in data_batch:
+        meta_inputs = [e for sl in meta_inputs for e in sl]
+        meta_outputs = [e for sl in meta_outputs for e in sl]
+
+        for meta_input, meta_output in zip(meta_inputs, meta_outputs):
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
                 input_ids = meta_input + meta_output
@@ -418,7 +429,7 @@ class CRSConvDataset(Dataset):
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
             for idx, word in enumerate(utt['text']):
                 if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = '<movie> %s' % self.movie2name[word[1:]][1]
+                    utt['text'][idx] = '<movie> %d: %s' % (self.movie2name[word[1:]][0], self.movie2name[word[1:]][1])
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
@@ -593,7 +604,30 @@ class CRSConvDataCollator:
         resp_batch, pre_resp_batch = [], []
         context_len_batch, pre_context_len_batch = [], []
 
-        for meta_input, meta_output, data in data_batch:
+        meta_inputs, meta_outputs = [], []
+        for data in data_batch:
+            meta_inputs.append(data[0])
+            meta_outputs.append(data[1])
+
+        meta_inputs = [e for sl in meta_inputs for e in sl]
+        meta_outputs = [e for sl in meta_outputs for e in sl]
+
+        for meta_input, meta_output in zip(meta_inputs, meta_outputs):
+            if self.gen:
+                self.tokenizer.padding_side = 'left'
+                pre_context_ids = meta_input
+                pre_context_len_batch.append(len(pre_context_ids))
+                pre_context_batch['input_ids'].append(pre_context_ids)
+                pre_resp_batch.append(meta_output)
+
+            else:
+                # pre-training
+                pre_input_ids = meta_input + meta_output
+                pre_input_ids = pre_input_ids[:self.args.max_title_len + self.args.max_gen_len]
+                pre_input_ids.append(self.tokenizer.eos_token_id)
+                pre_context_batch['input_ids'].append(pre_input_ids)
+
+        for _, _, data in data_batch:
             if self.gen:
                 self.tokenizer.padding_side = 'left'
                 # dialog history
@@ -614,13 +648,6 @@ class CRSConvDataCollator:
                 # fine-tuning context entities
                 entity_batch.append(data['context_entities'])
 
-                # pre-training
-                # todo: content learning 시 eos 붙여줘야 하는거 아닌가?
-                pre_context_ids = meta_input
-                pre_context_len_batch.append(len(pre_context_ids))
-                pre_context_batch['input_ids'].append(pre_context_ids)
-
-                pre_resp_batch.append(meta_output)
             else:
                 self.tokenizer.padding_side = 'right'
                 # dialog history
@@ -636,11 +663,6 @@ class CRSConvDataCollator:
 
                 # context entities
                 entity_batch.append(data['context_entities'])
-
-                # pre-training
-                pre_input_ids = meta_input + meta_output
-                pre_input_ids = pre_input_ids[:self.args.max_title_len + self.args.max_gen_len]
-                pre_context_batch['input_ids'].append(pre_input_ids)
 
         input_batch = {}
         pre_input_batch = {}
