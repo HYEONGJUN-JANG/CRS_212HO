@@ -13,45 +13,41 @@ from transformers import AutoTokenizer
 # from config import gpt2_special_tokens_dict
 from utils import padded_tensor
 import numpy as np
+import random
 
 recommend_template = [
-    "System: You should watch  %s. <explain>"
-    # ,
-    # "System: I recommend %s. <explain>",
-    # "System: I suggest %s. <explain>",
-    # "System: Have you seen %s? <explain>"
+    "System: You should watch  %s. <explain>",
+    "System: I recommend %s. <explain>",
+    "System: I suggest %s. <explain>",
+    "System: Have you seen %s? <explain>"
 ]
 
 genre_template = [
-    "Its genre is a %s movie."
-    # ,
-    # "Its genre is %s.",
-    # "It is full of %s.",
-    # "It is %s film."
+    "Its genre is a %s movie.",
+    "Its genre is %s.",
+    "It is full of %s.",
+    "It is %s film."
 ]
 
 director_template = [
-    "It is directed by %s."
-    # ,
-    # "%s directed it.",
-    # "This film is directed by %s.",
-    # "%s directed this movie."
+    "It is directed by %s.",
+    "%s directed it.",
+    "This film is directed by %s.",
+    "%s directed this movie."
 ]
 
 star_template = [
-    "It stars %s."
-    # ,
-    # "%s acted in this film.",
-    # "%s is in this movie.",
-    # "%s appears in this film.",
+    "It stars %s.",
+    "%s acted in this film.",
+    "%s is in this movie.",
+    "%s appears in this film.",
 ]
 
 plot_template = [
-    "It is about %s."
-    # ,
-    # "The plot of this movie is %s.",
-    # "The story of this movie is %s.",
-    # "This film is mainly about %s."
+    "It is about %s.",
+    "The plot of this movie is %s.",
+    "The story of this movie is %s.",
+    "This film is mainly about %s."
 ]
 
 
@@ -120,107 +116,147 @@ class ContentInformationConv(Dataset):
             #     meta_info.append(('The plot of %s is that ' % title, plots[0]))
             # meta_input = ['<explain> The %s of %s is ' % (info, title) for info in meta]
 
-            rec_prompt = [template % title for template in recommend_template]
-            genre_prompt = [template % ', '.join(meta['genre']) for template in genre_template]
-            star_prompt = [template % ', '.join(meta['stars']) for template in star_template]
-            director_prompt = [template % ', '.join(meta['director']) for template in director_template]
-            plot_prompt = [template % plots[0] for template in plot_template]
+            prefix = 'User: Recommend me a movie with its %s.<|endoftext|>'
+            # rec_prompt = [template % title for template in recommend_template]
 
-            # GENRE
-            for r_prompt in rec_prompt:
-                prefix = 'User: Recommend me a movie with its %s.<|endoftext|>'
-                for g_prompt in genre_prompt:
-                    meta_input.append(prefix % 'genre' + r_prompt)
-                    meta_output.append(g_prompt)
-                for s_prompt in star_prompt:
-                    meta_input.append(prefix % 'star' + r_prompt)
-                    meta_output.append(s_prompt)
-                for d_prompt in director_prompt:
-                    meta_input.append(prefix % 'director' + r_prompt)
-                    meta_output.append(d_prompt)
-                for p_prompt in plot_prompt:
-                    meta_input.append(prefix % 'plot' + r_prompt)
-                    meta_output.append(p_prompt)
+            genre_input_prompt = [prefix % 'genre' + template % title for template in recommend_template]
+            star_input_prompt = [prefix % 'star' + template % title for template in recommend_template]
+            director_input_prompt = [prefix % 'director' + template % title for template in recommend_template]
+            plot_input_prompt = [prefix % 'plot' + template % title for template in recommend_template]
 
-            tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
-                                                      padding='max_length',
-                                                      truncation=True).input_ids
-            tokenzied_meta_output = self.tokenizer_gpt(meta_output, max_length=self.args.max_review_len,
-                                                       padding='max_length',
-                                                       truncation=True).input_ids
+            genre_output_prompt = [template % ', '.join(meta['genre']) for template in genre_template]
+            star_output_prompt = [template % ', '.join(meta['stars']) for template in star_template]
+            director_output_prompt = [template % ', '.join(meta['director']) for template in director_template]
+            plot_output_prompt = [template % plots[0] for template in plot_template]
 
-            # for t_input, t_output in zip(tokenzied_meta_input, tokenzied_meta_output):
-            #     self.meta_samples.append((t_input, t_output))
+            tokenized_genre_input_prompt = self.tokenizer_gpt(genre_input_prompt, max_length=self.args.max_title_len,
+                                                              padding='max_length',
+                                                              truncation=True).input_ids
+            tokenized_star_input_prompt = self.tokenizer_gpt(star_input_prompt, max_length=self.args.max_title_len,
+                                                             padding='max_length',
+                                                             truncation=True).input_ids
+            tokenized_director_input_prompt = self.tokenizer_gpt(director_input_prompt,
+                                                                 max_length=self.args.max_title_len,
+                                                                 padding='max_length',
+                                                                 truncation=True).input_ids
+            tokenized_plot_input_prompt = self.tokenizer_gpt(plot_input_prompt, max_length=self.args.max_review_len,
+                                                             padding='max_length',
+                                                             truncation=True).input_ids
 
-            self.meta_samples.append((tokenzied_meta_input, tokenzied_meta_output))
+            tokenized_genre_output_prompt = self.tokenizer_gpt(genre_output_prompt, max_length=self.args.max_title_len,
+                                                               padding='max_length',
+                                                               truncation=True).input_ids
+            tokenized_star_output_prompt = self.tokenizer_gpt(star_output_prompt, max_length=self.args.max_title_len,
+                                                              padding='max_length',
+                                                              truncation=True).input_ids
+            tokenized_director_output_prompt = self.tokenizer_gpt(director_output_prompt,
+                                                                  max_length=self.args.max_title_len,
+                                                                  padding='max_length',
+                                                                  truncation=True).input_ids
+            tokenized_plot_output_prompt = self.tokenizer_gpt(plot_output_prompt, max_length=self.args.max_review_len,
+                                                              padding='max_length',
+                                                              truncation=True).input_ids
 
-            tokenzied_reviews_org = self.tokenizer_gpt(reviews, max_length=self.args.max_review_len,
-                                                       truncation=True).input_ids
-            for idx, tokenzied_review in enumerate(tokenzied_reviews_org):
-                # tokenized_review = self.tokenizer_gpt.tokenize(review)
-                total_len = len(tokenzied_review)
-                sidx = 0
-                eidx = self.args.max_gen_len
-                while True:
-                    review_meta_chunk.append(reviews_meta[idx])
-                    tokenized_reviews.append(tokenzied_review[sidx:eidx - 1])
-                    sidx += self.args.window_size
-                    eidx += self.args.window_size
+            self.meta_samples.append((tokenized_genre_input_prompt, tokenized_star_input_prompt,
+                                      tokenized_director_input_prompt, tokenized_plot_input_prompt,
+                                      tokenized_genre_output_prompt, tokenized_star_output_prompt,
+                                      tokenized_director_output_prompt, tokenized_plot_output_prompt))
 
-                    if sidx >= total_len:
-                        break
-            tokenized_reviews = [review + [self.tokenizer_gpt.eos_token_id] for review in tokenized_reviews]
+            # # GENRE
+            # for r_prompt in rec_prompt:
+            #     prefix = 'User: Recommend me a movie with its %s.<|endoftext|>'
+            #     for g_prompt in genre_prompt:
+            #         meta_input.append(prefix % 'genre' + r_prompt)
+            #         meta_output.append(g_prompt)
+            #     for s_prompt in star_prompt:
+            #         meta_input.append(prefix % 'star' + r_prompt)
+            #         meta_output.append(s_prompt)
+            #     for d_prompt in director_prompt:
+            #         meta_input.append(prefix % 'director' + r_prompt)
+            #         meta_output.append(d_prompt)
+            #     for p_prompt in plot_prompt:
+            #         meta_input.append(prefix % 'plot' + r_prompt)
+            #         meta_output.append(p_prompt)
+            #
+            # tokenized_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
+            #                                           padding='max_length',
+            #                                           truncation=True).input_ids
+            # tokenized_meta_output = self.tokenizer_gpt(meta_output, max_length=self.args.max_review_len,
+            #                                            padding='max_length',
+            #                                            truncation=True).input_ids
+            #
+            # # for t_input, t_output in zip(tokenzied_meta_input, tokenzied_meta_output):
+            # #     self.meta_samples.append((t_input, t_output))
+            #
+            # self.meta_samples.append((tokenized_meta_input, tokenized_meta_output))
 
-            tokenzied_plots_org = self.tokenizer_gpt(plots, max_length=self.args.max_plot_len,
-                                                     truncation=True).input_ids
-            for idx, tokenized_plot in enumerate(tokenzied_plots_org):
-                total_len = len(tokenized_plot)
-                sidx = 0
-                eidx = self.args.max_gen_len
-                while True:
-                    plot_meta_chunk.append(plots_meta[idx])
-                    tokenized_plots.append(tokenized_plot[sidx:eidx - 1])
-
-                    sidx += self.args.window_size
-                    eidx += self.args.window_size
-
-                    if sidx >= total_len:
-                        break
-            tokenized_plots = [plot + [self.tokenizer_gpt.eos_token_id] for plot in tokenized_plots]
-
-            # Title
-            tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
-            # tokenized_review_title += self.tokenizer_gpt(':').input_ids
-            tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
-            # tokenized_plot_title += self.tokenizer_gpt(':').input_ids
-
-            # BERT - review & plot
-            tokenized_reviews_bert = self.tokenizer_bert(reviews, max_length=max_review_len,
-                                                         truncation=True,
-                                                         add_special_tokens=True).input_ids
-            tokenized_plots_bert = self.tokenizer_bert(plots, max_length=max_plot_len,
-                                                       truncation=True,
-                                                       add_special_tokens=True).input_ids
-            # Context entities
-            for idx, meta in enumerate(reviews_meta):
-                reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
-                reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))  # padding
-
-            for idx, meta in enumerate(plots_meta):
-                plots_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
-                plots_meta[idx] = plots_meta[idx] + [0] * (self.args.n_meta - len(meta))  # padding
-
-            for i in range(min(len(reviews), self.args.n_review)):
-                self.data_samples.append(
-                    {"text": tokenized_reviews[i], "title": tokenized_review_title,
-                     "text_bert": tokenized_reviews_bert[i], "context_entities": reviews_meta[i]})
-
-            for i in range(min(len(plots), self.args.n_plot)):
-                self.data_samples.append(
-                    {"text": tokenized_plots[i], "title": tokenized_plot_title,
-                     "text_bert": tokenized_plots_bert[i], "context_entities": plots_meta[i]})
-
-        logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
+        #     tokenzied_reviews_org = self.tokenizer_gpt(reviews, max_length=self.args.max_review_len,
+        #                                                truncation=True).input_ids
+        #     for idx, tokenzied_review in enumerate(tokenzied_reviews_org):
+        #         # tokenized_review = self.tokenizer_gpt.tokenize(review)
+        #         total_len = len(tokenzied_review)
+        #         sidx = 0
+        #         eidx = self.args.max_gen_len
+        #         while True:
+        #             review_meta_chunk.append(reviews_meta[idx])
+        #             tokenized_reviews.append(tokenzied_review[sidx:eidx - 1])
+        #             sidx += self.args.window_size
+        #             eidx += self.args.window_size
+        #
+        #             if sidx >= total_len:
+        #                 break
+        #     tokenized_reviews = [review + [self.tokenizer_gpt.eos_token_id] for review in tokenized_reviews]
+        #
+        #     tokenzied_plots_org = self.tokenizer_gpt(plots, max_length=self.args.max_plot_len,
+        #                                              truncation=True).input_ids
+        #     for idx, tokenized_plot in enumerate(tokenzied_plots_org):
+        #         total_len = len(tokenized_plot)
+        #         sidx = 0
+        #         eidx = self.args.max_gen_len
+        #         while True:
+        #             plot_meta_chunk.append(plots_meta[idx])
+        #             tokenized_plots.append(tokenized_plot[sidx:eidx - 1])
+        #
+        #             sidx += self.args.window_size
+        #             eidx += self.args.window_size
+        #
+        #             if sidx >= total_len:
+        #                 break
+        #     tokenized_plots = [plot + [self.tokenizer_gpt.eos_token_id] for plot in tokenized_plots]
+        #
+        #     # Title
+        #     tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
+        #     # tokenized_review_title += self.tokenizer_gpt(':').input_ids
+        #     tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
+        #     # tokenized_plot_title += self.tokenizer_gpt(':').input_ids
+        #
+        #     # BERT - review & plot
+        #     tokenized_reviews_bert = self.tokenizer_bert(reviews, max_length=max_review_len,
+        #                                                  truncation=True,
+        #                                                  add_special_tokens=True).input_ids
+        #     tokenized_plots_bert = self.tokenizer_bert(plots, max_length=max_plot_len,
+        #                                                truncation=True,
+        #                                                add_special_tokens=True).input_ids
+        #     # Context entities
+        #     for idx, meta in enumerate(reviews_meta):
+        #         reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+        #         reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))  # padding
+        #
+        #     for idx, meta in enumerate(plots_meta):
+        #         plots_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
+        #         plots_meta[idx] = plots_meta[idx] + [0] * (self.args.n_meta - len(meta))  # padding
+        #
+        #     for i in range(min(len(reviews), self.args.n_review)):
+        #         self.data_samples.append(
+        #             {"text": tokenized_reviews[i], "title": tokenized_review_title,
+        #              "text_bert": tokenized_reviews_bert[i], "context_entities": reviews_meta[i]})
+        #
+        #     for i in range(min(len(plots), self.args.n_plot)):
+        #         self.data_samples.append(
+        #             {"text": tokenized_plots[i], "title": tokenized_plot_title,
+        #              "text_bert": tokenized_plots_bert[i], "context_entities": plots_meta[i]})
+        #
+        # logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     # def __getitem__(self, idx):
     #     text = self.data_samples[idx]['text']
@@ -239,8 +275,18 @@ class ContentInformationConv(Dataset):
         # text_bert = self.data_samples[idx]['text_bert']
         # context_entities = self.data_samples[idx]['context_entities']
 
-        meta_input = self.meta_samples[idx][0]
-        meta_output = self.meta_samples[idx][1]
+        genre_input_prompt = self.meta_samples[idx][0][random.randint(0, len(recommend_template) - 1)]
+        star_input_prompt = self.meta_samples[idx][1][random.randint(0, len(recommend_template) - 1)]
+        director_input_prompt = self.meta_samples[idx][2][random.randint(0, len(recommend_template) - 1)]
+        plot_input_prompt = self.meta_samples[idx][3][random.randint(0, len(recommend_template) - 1)]
+
+        genre_output_prompt = self.meta_samples[idx][4][random.randint(0, len(genre_template) - 1)]
+        star_output_prompt = self.meta_samples[idx][5][random.randint(0, len(star_template) - 1)]
+        director_output_prompt = self.meta_samples[idx][6][random.randint(0, len(director_template) - 1)]
+        plot_output_prompt = self.meta_samples[idx][7][random.randint(0, len(plot_template) - 1)]
+
+        meta_input = [genre_input_prompt, star_input_prompt, director_input_prompt, plot_input_prompt]
+        meta_output = [genre_output_prompt, star_output_prompt, director_output_prompt, plot_output_prompt]
 
         return meta_input, meta_output
 
