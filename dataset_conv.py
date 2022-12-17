@@ -96,7 +96,7 @@ class ContentInformationConv(Dataset):
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
             meta = sample['meta']
-            title = "<movie> %d: %s (%s)" % (self.movie2name[crs_id][0], sample['title'], sample['year'])
+            title = "<movie> %s (%s)" % (sample['title'], sample['year'])
             tokenized_reviews, tokenized_plots, review_meta_chunk, plot_meta_chunk = [], [], [], []
             meta_input, meta_output = [], []
 
@@ -429,7 +429,7 @@ class CRSConvDataset(Dataset):
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
             for idx, word in enumerate(utt['text']):
                 if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = '<movie> %d: %s' % (self.movie2name[word[1:]][0], self.movie2name[word[1:]][1])
+                    utt['text'][idx] = '<movie> %s' % (self.movie2name[word[1:]][1])
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
