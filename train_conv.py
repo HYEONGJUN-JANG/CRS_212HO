@@ -27,7 +27,7 @@ def recommend_top1_item(batch, gen_seq_bert, model):
     gen_seq_bert = torch.tensor(gen_seq_bert, device=model.device_id).long()
 
     input_text = batch['context_bert'].input_ids[0].clone()
-    input_text[context_len:context_len + len(gen_seq_bert)] = torch.tensor(gen_seq_bert, device=model.device_id).long()
+    input_text[context_len:context_len + len(gen_seq_bert)] = gen_seq_bert
     model_scores = model(batch['context_entities'], input_text.view(1, -1))  # context_entities, context_tokens
 
     model_scores = model_scores[:, torch.LongTensor(model.movie2ids)]
