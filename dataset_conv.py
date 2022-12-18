@@ -139,21 +139,21 @@ class ContentInformationConv(Dataset):
                                                                  max_length=self.args.max_title_len,
                                                                  padding='max_length',
                                                                  truncation=True).input_ids
-            tokenized_plot_input_prompt = self.tokenizer_gpt(plot_input_prompt, max_length=self.args.max_review_len,
+            tokenized_plot_input_prompt = self.tokenizer_gpt(plot_input_prompt, max_length=self.args.max_title_len,
                                                              padding='max_length',
                                                              truncation=True).input_ids
 
-            tokenized_genre_output_prompt = self.tokenizer_gpt(genre_output_prompt, max_length=self.args.max_title_len,
+            tokenized_genre_output_prompt = self.tokenizer_gpt(genre_output_prompt, max_length=self.args.max_gen_len,
                                                                padding='max_length',
                                                                truncation=True).input_ids
-            tokenized_star_output_prompt = self.tokenizer_gpt(star_output_prompt, max_length=self.args.max_title_len,
+            tokenized_star_output_prompt = self.tokenizer_gpt(star_output_prompt, max_length=self.args.max_gen_len,
                                                               padding='max_length',
                                                               truncation=True).input_ids
             tokenized_director_output_prompt = self.tokenizer_gpt(director_output_prompt,
-                                                                  max_length=self.args.max_title_len,
+                                                                  max_length=self.args.max_gen_len,
                                                                   padding='max_length',
                                                                   truncation=True).input_ids
-            tokenized_plot_output_prompt = self.tokenizer_gpt(plot_output_prompt, max_length=self.args.max_review_len,
+            tokenized_plot_output_prompt = self.tokenizer_gpt(plot_output_prompt, max_length=self.args.max_gen_len,
                                                               padding='max_length',
                                                               truncation=True).input_ids
 
