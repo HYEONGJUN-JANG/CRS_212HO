@@ -16,38 +16,43 @@ import numpy as np
 import random
 
 recommend_template = [
-    "System: You should watch  %s. <explain>",
-    "System: I recommend %s. <explain>",
-    "System: I suggest %s. <explain>",
-    "System: Have you seen %s? <explain>"
+    "System: You should watch  %s. <explain>"
+    # ,
+    # "System: I recommend %s. <explain>",
+    # "System: I suggest %s. <explain>",
+    # "System: Have you seen %s? <explain>"
 ]
 
 genre_template = [
-    "Its genre is a %s movie.",
-    "Its genre is %s.",
-    "It is full of %s.",
-    "It is %s film."
+    "Its genre is a %s movie."
+    # ,
+    # "Its genre is %s.",
+    # "It is full of %s.",
+    # "It is %s film."
 ]
 
 director_template = [
-    "It is directed by %s.",
-    "%s directed it.",
-    "This film is directed by %s.",
-    "%s directed this movie."
+    "It is directed by %s."
+    # ,
+    # "%s directed it.",
+    # "This film is directed by %s.",
+    # "%s directed this movie."
 ]
 
 star_template = [
-    "It stars %s.",
-    "%s acted in this film.",
-    "%s is in this movie.",
-    "%s appears in this film.",
+    "It stars %s."
+    # ,
+    # "%s acted in this film.",
+    # "%s is in this movie.",
+    # "%s appears in this film.",
 ]
 
 plot_template = [
-    "It is about %s.",
-    "The plot of this movie is %s.",
-    "The story of this movie is %s.",
-    "This film is mainly about %s."
+    "It is about %s."
+    # ,
+    # "The plot of this movie is %s.",
+    # "The story of this movie is %s.",
+    # "This film is mainly about %s."
 ]
 
 
@@ -111,56 +116,35 @@ class ContentInformationConv(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
-            # meta_info = [('The %s of %s is ' % (info, title), ', '.join(meta[info])) for info in meta]
-            # if plots[0] != '':
-            #     meta_info.append(('The plot of %s is that ' % title, plots[0]))
-            # meta_input = ['<explain> The %s of %s is ' % (info, title) for info in meta]
+            rec_prompt = [template % title for template in recommend_template]
+            genre_prompt = [template % ', '.join(meta['genre']) for template in genre_template]
+            star_prompt = [template % ', '.join(meta['stars']) for template in star_template]
+            director_prompt = [template % ', '.join(meta['director']) for template in director_template]
+            plot_prompt = [template % plots[0] for template in plot_template]
 
-            prefix = 'User: Recommend me a movie with its %s.<|endoftext|>'
-            # rec_prompt = [template % title for template in recommend_template]
+            # GENRE
+            for r_prompt in rec_prompt:
+                prefix = 'User: Recommend me a movie with its %s.<|endoftext|>'
+                for g_prompt in genre_prompt:
+                    meta_input.append(prefix % 'genre' + r_prompt)
+                    meta_output.append(g_prompt)
+                for s_prompt in star_prompt:
+                    meta_input.append(prefix % 'star' + r_prompt)
+                    meta_output.append(s_prompt)
+                for d_prompt in director_prompt:
+                    meta_input.append(prefix % 'director' + r_prompt)
+                    meta_output.append(d_prompt)
+                for p_prompt in plot_prompt:
+                    meta_input.append(prefix % 'plot' + r_prompt)
+                    meta_output.append(p_prompt)
 
-            genre_input_prompt = [prefix % 'genre' + template % title for template in recommend_template]
-            star_input_prompt = [prefix % 'star' + template % title for template in recommend_template]
-            director_input_prompt = [prefix % 'director' + template % title for template in recommend_template]
-            plot_input_prompt = [prefix % 'plot' + template % title for template in recommend_template]
+            tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
+                                                      truncation=True).input_ids
+            tokenzied_meta_output = self.tokenizer_gpt(meta_output, max_length=self.args.max_review_len,
+                                                       truncation=True).input_ids
 
-            genre_output_prompt = [template % ', '.join(meta['genre']) for template in genre_template]
-            star_output_prompt = [template % ', '.join(meta['stars']) for template in star_template]
-            director_output_prompt = [template % ', '.join(meta['director']) for template in director_template]
-            plot_output_prompt = [template % plots[0] for template in plot_template]
-
-            tokenized_genre_input_prompt = self.tokenizer_gpt(genre_input_prompt, max_length=self.args.max_title_len,
-                                                              padding='max_length',
-                                                              truncation=True).input_ids
-            tokenized_star_input_prompt = self.tokenizer_gpt(star_input_prompt, max_length=self.args.max_title_len,
-                                                             padding='max_length',
-                                                             truncation=True).input_ids
-            tokenized_director_input_prompt = self.tokenizer_gpt(director_input_prompt,
-                                                                 max_length=self.args.max_title_len,
-                                                                 padding='max_length',
-                                                                 truncation=True).input_ids
-            tokenized_plot_input_prompt = self.tokenizer_gpt(plot_input_prompt, max_length=self.args.max_title_len,
-                                                             padding='max_length',
-                                                             truncation=True).input_ids
-
-            tokenized_genre_output_prompt = self.tokenizer_gpt(genre_output_prompt, max_length=self.args.max_gen_len,
-                                                               padding='max_length',
-                                                               truncation=True).input_ids
-            tokenized_star_output_prompt = self.tokenizer_gpt(star_output_prompt, max_length=self.args.max_gen_len,
-                                                              padding='max_length',
-                                                              truncation=True).input_ids
-            tokenized_director_output_prompt = self.tokenizer_gpt(director_output_prompt,
-                                                                  max_length=self.args.max_gen_len,
-                                                                  padding='max_length',
-                                                                  truncation=True).input_ids
-            tokenized_plot_output_prompt = self.tokenizer_gpt(plot_output_prompt, max_length=self.args.max_gen_len,
-                                                              padding='max_length',
-                                                              truncation=True).input_ids
-
-            self.meta_samples.append((tokenized_genre_input_prompt, tokenized_star_input_prompt,
-                                      tokenized_director_input_prompt, tokenized_plot_input_prompt,
-                                      tokenized_genre_output_prompt, tokenized_star_output_prompt,
-                                      tokenized_director_output_prompt, tokenized_plot_output_prompt))
+            for t_input, t_output in zip(tokenzied_meta_input, tokenzied_meta_output):
+                self.meta_samples.append((t_input, t_output))
 
             # # GENRE
             # for r_prompt in rec_prompt:
@@ -275,18 +259,8 @@ class ContentInformationConv(Dataset):
         # text_bert = self.data_samples[idx]['text_bert']
         # context_entities = self.data_samples[idx]['context_entities']
 
-        genre_input_prompt = self.meta_samples[idx][0][random.randint(0, len(recommend_template) - 1)]
-        star_input_prompt = self.meta_samples[idx][1][random.randint(0, len(recommend_template) - 1)]
-        director_input_prompt = self.meta_samples[idx][2][random.randint(0, len(recommend_template) - 1)]
-        plot_input_prompt = self.meta_samples[idx][3][random.randint(0, len(recommend_template) - 1)]
-
-        genre_output_prompt = self.meta_samples[idx][4][random.randint(0, len(genre_template) - 1)]
-        star_output_prompt = self.meta_samples[idx][5][random.randint(0, len(star_template) - 1)]
-        director_output_prompt = self.meta_samples[idx][6][random.randint(0, len(director_template) - 1)]
-        plot_output_prompt = self.meta_samples[idx][7][random.randint(0, len(plot_template) - 1)]
-
-        meta_input = [genre_input_prompt, star_input_prompt, director_input_prompt, plot_input_prompt]
-        meta_output = [genre_output_prompt, star_output_prompt, director_output_prompt, plot_output_prompt]
+        meta_input = self.meta_samples[idx][0]
+        meta_output = self.meta_samples[idx][1]
 
         return meta_input, meta_output
 
@@ -307,15 +281,8 @@ class ContentConvCollator:
 
         resp_batch = []
         context_len_batch = []
-        meta_inputs, meta_outputs = [], []
-        for data in data_batch:
-            meta_inputs.append(data[0])
-            meta_outputs.append(data[1])
 
-        meta_inputs = [e for sl in meta_inputs for e in sl]
-        meta_outputs = [e for sl in meta_outputs for e in sl]
-
-        for meta_input, meta_output in zip(meta_inputs, meta_outputs):
+        for meta_input, meta_output in data_batch:
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
                 input_ids = meta_input + meta_output
@@ -475,7 +442,7 @@ class CRSConvDataset(Dataset):
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
             for idx, word in enumerate(utt['text']):
                 if word[0] == '@' and word[1:].isnumeric():
-                    # utt['text'][idx] = '<movie> %s' % (self.movie2name[word[1:]][1])
+                    # utt['text'][idx] = '<movie> %s' % self.movie2name[word[1:]][1]
                     utt['text'][idx] = '<movie>'
 
             text = ' '.join(utt['text'])
@@ -651,30 +618,7 @@ class CRSConvDataCollator:
         resp_batch, pre_resp_batch = [], []
         context_len_batch, pre_context_len_batch = [], []
 
-        meta_inputs, meta_outputs = [], []
-        for data in data_batch:
-            meta_inputs.append(data[0])
-            meta_outputs.append(data[1])
-
-        meta_inputs = [e for sl in meta_inputs for e in sl]
-        meta_outputs = [e for sl in meta_outputs for e in sl]
-
-        for meta_input, meta_output in zip(meta_inputs, meta_outputs):
-            if self.gen:
-                self.tokenizer.padding_side = 'left'
-                pre_context_ids = meta_input
-                pre_context_len_batch.append(len(pre_context_ids))
-                pre_context_batch['input_ids'].append(pre_context_ids)
-                pre_resp_batch.append(meta_output)
-
-            else:
-                # pre-training
-                pre_input_ids = meta_input + meta_output
-                pre_input_ids = pre_input_ids[:self.args.max_title_len + self.args.max_gen_len]
-                pre_input_ids.append(self.tokenizer.eos_token_id)
-                pre_context_batch['input_ids'].append(pre_input_ids)
-
-        for _, _, data in data_batch:
+        for meta_input, meta_output, data in data_batch:
             if self.gen:
                 self.tokenizer.padding_side = 'left'
                 # dialog history
@@ -695,6 +639,13 @@ class CRSConvDataCollator:
                 # fine-tuning context entities
                 entity_batch.append(data['context_entities'])
 
+                # pre-training
+                # todo: content learning 시 eos 붙여줘야 하는거 아닌가?
+                pre_context_ids = meta_input
+                pre_context_len_batch.append(len(pre_context_ids))
+                pre_context_batch['input_ids'].append(pre_context_ids)
+
+                pre_resp_batch.append(meta_output)
             else:
                 self.tokenizer.padding_side = 'right'
                 # dialog history
@@ -710,6 +661,11 @@ class CRSConvDataCollator:
 
                 # context entities
                 entity_batch.append(data['context_entities'])
+
+                # pre-training
+                pre_input_ids = meta_input + meta_output
+                pre_input_ids = pre_input_ids[:self.args.max_title_len + self.args.max_gen_len]
+                pre_context_batch['input_ids'].append(pre_input_ids)
 
         input_batch = {}
         pre_input_batch = {}
