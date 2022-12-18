@@ -43,6 +43,37 @@ def recommend_top1_item(batch, gen_seq_bert, model):
     return movie_recommended_items, items
 
 
+def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test, model, args, epoch, evaluator):
+    test_cnt = 0
+    evaluator.log_file.write(f'\n*** test-{epoch} ***\n\n')
+    # test
+    logger.info('[Conv - Pre-training] Test')
+    gpt_model.eval()
+    # projector.eval()
+    for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        if test_cnt == 100:
+            break
+        else:
+            test_cnt += 1
+        # with torch.no_grad():
+        #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
+        #         batch['context_entities'], batch['context_bert'].input_ids)
+        #
+        # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+        #                                         entity_padding_mask, user_representation)
+
+        if args.conv_pretrained_type == 'none':
+            gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
+        # else:
+        #     gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
+        #                                   max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
+        gen_resp_ids = []
+        for gen_seq, length in zip(gen_seqs, batch['context_len']):
+            gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
+            gen_resp_ids.append(gen_seq)
+        evaluator.evaluate_pretrain(batch['context'].input_ids, batch['response'], gen_resp_ids, log=True)
+
+
 def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                         tokenizer_bert,
                         total_report):
@@ -150,7 +181,8 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     evaluator.reset_metric()
 
 
-def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
+def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretrain_dataloader_test, gpt_model,
+                       gpt_config, tokenizer_gpt,
                        tokenizer_bert,
                        conv_results_file_path):
     total_report = []
@@ -232,6 +264,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_m
         print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
 
         logger.info('[Test]')
+        pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch, evaluator)
         finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                             tokenizer_bert,
                             total_report)

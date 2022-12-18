@@ -49,6 +49,29 @@ class ConvEvaluator:
         self.compute_bleu(decoded_preds, decoded_labels)
         self.sent_cnt += len([pred for pred in decoded_preds if len(pred) > 0])
 
+    def evaluate_pretrain(self, titles, response, preds, log=False):
+        decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=False)
+        decoded_preds = [decoded_pred.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_pred in
+                         decoded_preds]
+        decoded_preds = [pred.strip() for pred in decoded_preds]
+
+        decoded_responses = self.tokenizer.batch_decode(response, skip_special_tokens=False)
+        decoded_responses = [decoded_response.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_response in
+                             decoded_responses]
+        decoded_responses = [response.strip() for response in decoded_responses]
+
+        decoded_titles = self.tokenizer.batch_decode(titles, skip_special_tokens=False)
+        decoded_titles = [decoded_title.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_title in
+                          decoded_titles]
+        decoded_titles = [title.strip() for title in decoded_titles]
+
+        if log and hasattr(self, 'log_file'):
+            for response, pred, title in zip(decoded_responses, decoded_preds, decoded_titles):
+                self.log_file.write(json.dumps({
+                    'pred': pred,
+                    'label': title + ' ' + response
+                }, ensure_ascii=False) + '\n')
+
     def collect_ngram(self, strs):
         for str in strs:
             str = str.split()
