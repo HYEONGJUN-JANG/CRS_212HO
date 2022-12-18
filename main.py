@@ -301,7 +301,8 @@ def main(args):
             collate_fn=data_collator_generator,
         )
         # train & test
-        train_conversation(args, model, train_dataloader, test_gen_dataloader, gpt_model, gpt_config, tokenizer_gpt,
+        train_conversation(args, model, train_dataloader, test_gen_dataloader, pretrain_conv_dataloader_test, gpt_model,
+                           gpt_config, tokenizer_gpt,
                            tokenizer,
                            conv_results_file_path)
 
