@@ -44,7 +44,7 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
     gpt_model.eval()
     # projector.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        if test_cnt == 100:
+        if test_cnt == 200:
             break
         else:
             test_cnt += 1
@@ -100,7 +100,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-    pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0, log_file)
+    # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0, log_file)
 
     # train
     for epoch in range(args.conv_epoch_pt):
@@ -128,8 +128,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             lr_scheduler.step()
             total_loss += loss.data.float()
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
-        pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
-                          log_file)
+    pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
+                      log_file)
 
-        if save_path is not None:
-            torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식
+    if save_path is not None:
+        torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식

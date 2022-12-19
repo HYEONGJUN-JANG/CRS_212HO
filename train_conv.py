@@ -50,7 +50,7 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
     gpt_model.eval()
     # projector.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        if test_cnt == 100:
+        if test_cnt == 200:
             break
         else:
             test_cnt += 1

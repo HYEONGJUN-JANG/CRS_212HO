@@ -40,6 +40,7 @@ def parse_args():
     parser.add_argument('--window_size', type=int, default=25, help='content sliding window size')
 
     # conv
+    parser.add_argument('--n_template_sample', type=int, default=2, help='sampling')
     parser.add_argument('--conv_epoch_pt', type=int, default=10)  # [NEW] # epochs of pre-training
     parser.add_argument('--conv_epoch_ft', type=int, default=10)  # [NEW] # epochs if fine-tuning
     parser.add_argument('--conv_batch_size', type=int, default=2)
