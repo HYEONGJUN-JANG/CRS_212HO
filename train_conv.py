@@ -19,7 +19,6 @@ movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'
 movieidx2name = {idx: name for key, (idx, name) in movie2name.items()}
 
 
-
 def recommend_top1_item(batch, gen_seq_bert, model):
     movie_recommended_items = []
 
@@ -45,7 +44,7 @@ def recommend_top1_item(batch, gen_seq_bert, model):
 
 def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test, model, args, epoch, evaluator):
     test_cnt = 0
-    evaluator.log_file.write(f'\n*** test-{epoch} ***\n\n')
+    evaluator.log_file.write(f'\n*** Pre-train test-{epoch} ***\n\n')
     # test
     logger.info('[Conv - Pre-training] Test')
     gpt_model.eval()
@@ -80,7 +79,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     gpt_model.eval()
     projector.eval()
     model.eval()
-    evaluator.log_file.write(f'\n*** test-{epoch} ***\n\n')
+    evaluator.log_file.write(f'\n*** Fine-tuning test-{epoch} ***\n\n')
     test_cnt = 0
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         if test_cnt == 300:
@@ -264,7 +263,8 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
         print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
 
         logger.info('[Test]')
-        pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch, evaluator)
+        pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
+                          evaluator)
         finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                             tokenizer_bert,
                             total_report)
