@@ -15,44 +15,45 @@ from utils import padded_tensor
 import numpy as np
 import random
 
+user_template = [
+    "User: What movie would you suggest to watch? And tell me about its %s. <|endoftext|>",
+    "User: Which movies do you suggest to watch? And tell me about its %s. <|endoftext|>",
+    "User: I'm looking for suggestion for good movie with its %s. <|endoftext|>",
+    "User: Can you recommend me a movie with its %s? <|endoftext|>"
+]
 recommend_template = [
-    "System: You should watch  %s. <explain>"
-    # ,
-    # "System: I recommend %s. <explain>",
-    # "System: I suggest %s. <explain>",
-    # "System: Have you seen %s? <explain>"
+    "System: You should watch  %s. <explain>",
+    "System: I recommend %s. <explain>",
+    "System: I suggest %s. <explain>",
+    "System: Have you seen %s? <explain>"
 ]
 
 genre_template = [
-    "Its genre is a %s movie."
-    # ,
-    # "Its genre is %s.",
-    # "It is full of %s.",
-    # "It is %s film."
+    "Its genre is %s.",
+    "Its genre is %s.",
+    "It is full of %s.",
+    "It is %s film."
 ]
 
 director_template = [
-    "It is directed by %s."
-    # ,
-    # "%s directed it.",
-    # "This film is directed by %s.",
-    # "%s directed this movie."
+    "It is directed by %s.",
+    "%s directed it.",
+    "This film is directed by %s.",
+    "%s directed this movie."
 ]
 
 star_template = [
-    "It stars %s."
-    # ,
-    # "%s acted in this film.",
-    # "%s is in this movie.",
-    # "%s appears in this film.",
+    "It stars %s.",
+    "%s acted in this film.",
+    "%s is in this movie.",
+    "%s appears in this film.",
 ]
 
 plot_template = [
-    "It is about %s."
-    # ,
-    # "The plot of this movie is %s.",
-    # "The story of this movie is %s.",
-    # "This film is mainly about %s."
+    "It is about %s.",
+    "The plot of this movie is %s.",
+    "The story of this movie is %s.",
+    "This film is mainly about %s."
 ]
 
 
@@ -116,27 +117,40 @@ class ContentInformationConv(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
-            rec_prompt = [template % title for template in recommend_template]
-            genre_prompt = [template % ', '.join(meta['genre']) for template in genre_template]
-            star_prompt = [template % ', '.join(meta['stars']) for template in star_template]
-            director_prompt = [template % ', '.join(meta['director']) for template in director_template]
-            plot_prompt = [template % plots[0] for template in plot_template]
 
-            # GENRE
-            for r_prompt in rec_prompt:
-                prefix = 'User: Recommend me a movie with its %s.<|endoftext|>'
-                for g_prompt in genre_prompt:
-                    meta_input.append(prefix % 'genre' + r_prompt)
-                    meta_output.append(g_prompt)
-                for s_prompt in star_prompt:
-                    meta_input.append(prefix % 'star' + r_prompt)
-                    meta_output.append(s_prompt)
-                for d_prompt in director_prompt:
-                    meta_input.append(prefix % 'director' + r_prompt)
-                    meta_output.append(d_prompt)
-                for p_prompt in plot_prompt:
-                    meta_input.append(prefix % 'plot' + r_prompt)
-                    meta_output.append(p_prompt)
+            idx_user = rand.sample(range(0,len(user_template)),self.args.n_template_sample)
+            idx_rec = rand.sample(range(0, len(recommend_template)), self.args.n_template_sample)
+            idx_genre = rand.sample(range(0, len(genre_template)), self.args.n_template_sample)
+            idx_star = rand.sample(range(0, len(star_template)), self.args.n_template_sample)
+            idx_director = rand.sample(range(0, len(director_template)), self.args.n_template_sample)
+            idx_plot = rand.sample(range(0, len(plot_template)), self.args.n_template_sample)
+
+            user_prompt = [user_template[i] for i in idx_user]
+            rec_prompt = [template % title for template in recommend_template]
+            rec_prompt = [rec_prompt[i] for i in idx_rec]
+            genre_prompt = [template % ', '.join(meta['genre']) for template in genre_template]
+            genre_prompt = [genre_prompt[i] for i in idx_genre]
+            star_prompt = [template % ', '.join(meta['stars']) for template in star_template]
+            star_prompt = [star_prompt[i] for i in idx_star]
+            director_prompt = [template % ', '.join(meta['director']) for template in director_template]
+            director_prompt = [director_prompt[i] for i in idx_director]
+            plot_prompt = [template % plots[0] for template in plot_template]
+            plot_prompt = [plot_prompt[i] for i in idx_plot]
+
+            for prefix in user_prompt:
+                for r_prompt in rec_prompt:
+                    for g_prompt in genre_prompt:
+                        meta_input.append(prefix % 'genre' + r_prompt)
+                        meta_output.append(g_prompt)
+                    for s_prompt in star_prompt:
+                        meta_input.append(prefix % 'star' + r_prompt)
+                        meta_output.append(s_prompt)
+                    for d_prompt in director_prompt:
+                        meta_input.append(prefix % 'director' + r_prompt)
+                        meta_output.append(d_prompt)
+                    for p_prompt in plot_prompt:
+                        meta_input.append(prefix % 'plot' + r_prompt)
+                        meta_output.append(p_prompt)
 
             tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
                                                       truncation=True).input_ids
@@ -462,6 +476,7 @@ class CRSConvDataset(Dataset):
                 augmented_convs[-1]["movie"] += movie_ids
                 augmented_convs[-1]["entity"] += entity_ids
             else:
+
                 augmented_convs.append({
                     "role": utt["role"],
                     "text": f'{append_role}: {text}',  # role + text
