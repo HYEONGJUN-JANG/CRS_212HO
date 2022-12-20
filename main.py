@@ -226,7 +226,7 @@ def main(args):
         # load rec fine-tuned model
         if os.path.isfile(bestrec_path):
             logger.info(f'Load pretrained file\t{bestrec_path}')
-            model.load_state_dict(torch.load(bestrec_path))
+            model.load_state_dict(torch.load(bestrec_path, map_location='cuda:%d' % args.device_id))
         for param in model.parameters():
             param.requires_grad = False
 
