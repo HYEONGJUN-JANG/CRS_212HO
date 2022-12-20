@@ -22,7 +22,7 @@ user_template = [
     "User: Can you recommend me a movie with its %s? <|endoftext|>"
 ]
 recommend_template = [
-    "System: You should watch  %s. <explain>",
+    "System: You should watch %s. <explain>",
     "System: I recommend %s. <explain>",
     "System: I suggest %s. <explain>",
     "System: Have you seen %s? <explain>"
@@ -117,8 +117,7 @@ class ContentInformationConv(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
-
-            idx_user = rand.sample(range(0,len(user_template)),self.args.n_template_sample)
+            idx_user = rand.sample(range(0, len(user_template)), self.args.n_template_sample)
             idx_rec = rand.sample(range(0, len(recommend_template)), self.args.n_template_sample)
             idx_genre = rand.sample(range(0, len(genre_template)), self.args.n_template_sample)
             idx_star = rand.sample(range(0, len(star_template)), self.args.n_template_sample)
@@ -272,11 +271,18 @@ class ContentInformationConv(Dataset):
         # title = self.data_samples[idx]['title']
         # text_bert = self.data_samples[idx]['text_bert']
         # context_entities = self.data_samples[idx]['context_entities']
+        while True:
+            prev_idx = rand.randint(0, len(self.meta_samples) - 1)
+            if prev_idx != idx:
+                break
+
+        prev_meta_input = self.meta_samples[prev_idx][0]
+        prev_meta_output = self.meta_samples[prev_idx][1]
 
         meta_input = self.meta_samples[idx][0]
         meta_output = self.meta_samples[idx][1]
 
-        return meta_input, meta_output
+        return meta_input, meta_output, prev_meta_input, prev_meta_output
 
     def __len__(self):
         return len(self.meta_samples)
@@ -296,18 +302,23 @@ class ContentConvCollator:
         resp_batch = []
         context_len_batch = []
 
-        for meta_input, meta_output in data_batch:
+        for meta_input, meta_output, prev_meta_input, prev_meta_output in data_batch:
+            prev_input_ids = prev_meta_input + prev_meta_output
+            prev_input_ids = prev_input_ids[:self.args.max_title_len + self.args.max_gen_len - 1]
+            prev_input_ids.append(self.tokenizer.eos_token_id)
             if self.mode == 'train':
                 self.tokenizer.padding_side = 'right'
+
                 input_ids = meta_input + meta_output
                 input_ids = input_ids[:self.args.max_title_len + self.args.max_gen_len - 1]
                 input_ids.append(self.tokenizer.eos_token_id)
 
-                context_batch['input_ids'].append(input_ids)
+                context_batch['input_ids'].append(prev_input_ids + input_ids)
 
             elif self.mode == 'test':
                 self.tokenizer.padding_side = 'left'
-                context_ids = meta_input
+
+                context_ids = prev_input_ids + meta_input
                 context_len_batch.append(len(context_ids))
                 context_batch['input_ids'].append(context_ids)
                 resp_batch.append(meta_output)
@@ -315,7 +326,7 @@ class ContentConvCollator:
         input_batch = {}
 
         context_batch = self.tokenizer.pad(context_batch, padding="max_length",
-                                           max_length=self.args.max_title_len + self.args.max_gen_len)
+                                           max_length=2 * (self.args.max_title_len + self.args.max_gen_len))
         if self.mode == 'train':
             resp_batch = context_batch['input_ids']
             resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for resp
@@ -579,12 +590,15 @@ class CRSConvDataset(Dataset):
 
     def __getitem__(self, item):
         idx = rand.randint(0, len(self.content_conv_dataset) - 1)
-        text = self.content_conv_dataset[idx][0]
-        title = self.content_conv_dataset[idx][1]
+        meta_input = self.content_conv_dataset[idx][0]
+        meta_output = self.content_conv_dataset[idx][1]
+        prev_meta_input = self.content_conv_dataset[idx][2]
+        prev_meta_output = self.content_conv_dataset[idx][3]
+
         # text_bert = self.content_conv_dataset[idx][2]
         # context_entities = self.content_conv_dataset[idx][3]
 
-        return text, title, self.data[item]
+        return meta_input, meta_output, prev_meta_input, prev_meta_output, self.data[item]
 
     def __len__(self):
         return len(self.data)
@@ -633,7 +647,10 @@ class CRSConvDataCollator:
         resp_batch, pre_resp_batch = [], []
         context_len_batch, pre_context_len_batch = [], []
 
-        for meta_input, meta_output, data in data_batch:
+        for meta_input, meta_output, prev_meta_input, prev_meta_output, data in data_batch:
+            prev_input_ids = prev_meta_input + prev_meta_output
+            prev_input_ids = prev_input_ids[:self.args.max_title_len + self.args.max_gen_len - 1]
+            prev_input_ids.append(self.tokenizer.eos_token_id)
             if self.gen:
                 self.tokenizer.padding_side = 'left'
                 # dialog history
@@ -656,11 +673,12 @@ class CRSConvDataCollator:
 
                 # pre-training
                 # todo: content learning 시 eos 붙여줘야 하는거 아닌가?
-                pre_context_ids = meta_input
+
+                pre_context_ids = prev_input_ids + meta_input
                 pre_context_len_batch.append(len(pre_context_ids))
                 pre_context_batch['input_ids'].append(pre_context_ids)
-
                 pre_resp_batch.append(meta_output)
+
             else:
                 self.tokenizer.padding_side = 'right'
                 # dialog history
@@ -680,7 +698,7 @@ class CRSConvDataCollator:
                 # pre-training
                 pre_input_ids = meta_input + meta_output
                 pre_input_ids = pre_input_ids[:self.args.max_title_len + self.args.max_gen_len]
-                pre_context_batch['input_ids'].append(pre_input_ids)
+                pre_context_batch['input_ids'].append(prev_input_ids + pre_input_ids)
 
         input_batch = {}
         pre_input_batch = {}
@@ -693,7 +711,7 @@ class CRSConvDataCollator:
             context_batch_bert, padding="max_length", max_length=self.context_max_length + self.args.max_gen_len)
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
-                                               max_length=self.args.max_title_len + self.args.max_gen_len)
+                                               max_length=2 * (self.args.max_title_len + self.args.max_gen_len))
 
         # pre_context_batch_bert = self.tokenizer_bert.pad(pre_context_batch_bert, padding="max_length",
         #                                                  max_length=self.args.max_review_len)
