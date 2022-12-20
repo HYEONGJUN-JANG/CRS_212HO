@@ -37,9 +37,9 @@ class ConvEvaluator:
         decoded_contexts = [context.strip() for context in decoded_contexts]
 
         if log and hasattr(self, 'log_file'):
-            for context, pred, label, item in zip(decoded_contexts, decoded_preds, decoded_labels, recommended_items):
+            for context, pred, label in zip(decoded_contexts, decoded_preds, decoded_labels):
                 self.log_file.write(json.dumps({
-                    'Rec': item,
+                    'context': context,
                     'pred': pred,
                     'label': label
                 }, ensure_ascii=False) + '\n')
