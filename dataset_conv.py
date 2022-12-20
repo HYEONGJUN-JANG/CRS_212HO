@@ -678,7 +678,8 @@ class CRSConvDataCollator:
 
                 # pre-training
                 pre_input_ids = meta_input + meta_output
-                pre_input_ids = pre_input_ids[:self.args.max_title_len + self.args.max_gen_len]
+                pre_input_ids = pre_input_ids[:self.args.max_title_len + self.args.max_gen_len-1]
+                pre_input_ids.append(self.tokenizer.eos_token_id)
                 pre_context_batch['input_ids'].append(pre_input_ids)
 
         input_batch = {}
