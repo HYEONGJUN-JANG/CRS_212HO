@@ -117,8 +117,7 @@ class ContentInformationConv(Dataset):
                 plots = ['']
                 plots_meta = [[]]
 
-
-            idx_user = rand.sample(range(0,len(user_template)),self.args.n_template_sample)
+            idx_user = rand.sample(range(0, len(user_template)), self.args.n_template_sample)
             idx_rec = rand.sample(range(0, len(recommend_template)), self.args.n_template_sample)
             idx_genre = rand.sample(range(0, len(genre_template)), self.args.n_template_sample)
             idx_star = rand.sample(range(0, len(star_template)), self.args.n_template_sample)
@@ -647,7 +646,7 @@ class CRSConvDataCollator:
 
                 # fine-tuning context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
-                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]
+                input_ids_bert = input_ids_bert[-self.args.context_max_length + 1:]
                 input_ids_bert = [self.tokenizer_bert.cls_token_id] + input_ids_bert
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
