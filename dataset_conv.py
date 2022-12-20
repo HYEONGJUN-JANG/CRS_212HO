@@ -326,7 +326,7 @@ class ContentConvCollator:
         input_batch = {}
 
         context_batch = self.tokenizer.pad(context_batch, padding="max_length",
-                                           max_length=2 * (self.args.max_title_len + self.args.max_gen_len))
+                                           max_length=2 * self.args.max_title_len + self.args.max_gen_len)
         if self.mode == 'train':
             resp_batch = context_batch['input_ids']
             resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for resp
@@ -711,7 +711,7 @@ class CRSConvDataCollator:
             context_batch_bert, padding="max_length", max_length=self.context_max_length + self.args.max_gen_len)
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
-                                               max_length=2 * (self.args.max_title_len + self.args.max_gen_len))
+                                               max_length=2 * self.args.max_title_len + self.args.max_gen_len)
 
         # pre_context_batch_bert = self.tokenizer_bert.pad(pre_context_batch_bert, padding="max_length",
         #                                                  max_length=self.args.max_review_len)
