@@ -453,10 +453,10 @@ class CRSConvDataset(Dataset):
 
         for utt in dialog:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
-            for idx, word in enumerate(utt['text']):
-                if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = '<movie> %s ' % self.movie2name[word[1:]][1]
-                    # utt['text'][idx] = '<movie>'
+            # for idx, word in enumerate(utt['text']):
+            # if word[0] == '@' and word[1:].isnumeric():
+            # utt['text'][idx] = '<movie> %s ' % self.movie2name[word[1:]][1]
+            # utt['text_context'][idx] = '<movie>'
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
@@ -497,28 +497,30 @@ class CRSConvDataset(Dataset):
             text_token_ids_bert = self.tokenizer_bert(
                 text_tokens + self.tokenizer_bert.sep_token,
                 add_special_tokens=False).input_ids
-            text_token_ids = self.tokenizer(text_tokens + self.tokenizer.eos_token,
-                                            add_special_tokens=False).input_ids  # movie name 으로 하고 싶을 경우
+            # text_token_ids = self.tokenizer(text_tokens + self.tokenizer.eos_token,
+            #                                 add_special_tokens=False).input_ids  # movie name 으로 하고 싶을 경우
+            text_tokens = text_tokens + self.tokenizer.eos_token
+            processed_text_tokens = self.process_utt(text_tokens, self.movie2name,
+                                                     replace_movieId=True,
+                                                     remove_movie=False)
 
             plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
                 # mask name 으로 하고 싶은 경우
-                # mask_text_token = self.process_utt(text_tokens, self.movie2name, replace_movieId=True,
-                #                                    remove_movie=True)
-                # context_tokens[-1] = self.process_utt(context_tokens[-1], self.movie2name, replace_movieId=True,
-                #                                       remove_movie=False)
+
+                context_tokens[-1] = self.process_utt(context_tokens[-1], self.movie2name, replace_movieId=True,
+                                                      remove_movie=True)
 
                 conv_dict = {
                     "role": conv['role'],
-                    "context_tokens": copy(context_tokens),
-                    # self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
+                    "context_tokens": self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
                     "context_tokens_bert": copy(context_tokens_bert),
-                    "response": text_token_ids,  # self.tokenizer(mask_text_token, add_special_tokens=False).input_ids
+                    "response": self.tokenizer(processed_text_tokens, add_special_tokens=False).input_ids,
                     "context_entities": copy(context_entities)
                 }
                 if conv['role'] == 'Recommender':
                     augmented_conv_dicts.append(conv_dict)
-            context_tokens.append(text_token_ids)  # text_tokens
+            context_tokens.append(text_tokens)  # text_tokens
             context_tokens_bert.append(text_token_ids_bert)
 
             context_items += movies
@@ -555,9 +557,10 @@ class CRSConvDataset(Dataset):
             'n_relation': len(relation2id),
             'entity': list(entities)
         }
+        # <movie> 영화id
 
     def process_utt(self, utt, movie2name, replace_movieId, remove_movie=False):
-        movie_pattern = re.compile(r'@\d+')
+        movie_pattern = re.compile(r'@\d+')  # regex
 
         def convert(match):
             movieid = match.group(0)[1:]
@@ -565,9 +568,9 @@ class CRSConvDataset(Dataset):
                 if remove_movie:
                     return '<movie>'
                 movie_name = movie2name[movieid][1]
-                return movie_name
+                return '<movie> ' + movie_name
             else:
-                return match.group(0)
+                return '<movie>'
 
         if replace_movieId:
             utt = re.sub(movie_pattern, convert, utt)
