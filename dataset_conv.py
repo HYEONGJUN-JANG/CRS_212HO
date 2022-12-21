@@ -29,17 +29,17 @@ recommend_template = [
 ]
 
 genre_template = [
-    "Its genre is %s.",
-    "Its genre is %s.",
-    "It is full of %s.",
-    "It is %s film."
+    "This movie's genre is %s.",
+    "The genre of this movie is %s.",
+    "This film is full of %s genre.",
+    "Its genre is %s."
 ]
 
 director_template = [
-    "It is directed by %s.",
-    "%s directed it.",
-    "This film is directed by %s.",
-    "%s directed this movie."
+    "This movie is directed by %s.",
+    "%s directed this movie.",
+    "Director of this movie is %s.",
+    "%s directed this film."
 ]
 
 star_template = [
@@ -50,7 +50,7 @@ star_template = [
 ]
 
 plot_template = [
-    "It is about %s.",
+    "This movie is about %s.",
     "The plot of this movie is %s.",
     "The story of this movie is %s.",
     "This film is mainly about %s."
