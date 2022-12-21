@@ -513,7 +513,7 @@ class CRSConvDataset(Dataset):
 
                 conv_dict = {
                     "role": conv['role'],
-                    "context_tokens": self.tokenizer(copy(context_tokens), add_special_tokens=False).input_ids,
+                    "context_tokens": self.tokenizer(copy(context_tokens[-1]), add_special_tokens=False).input_ids,
                     "context_tokens_bert": copy(context_tokens_bert),
                     "response": self.tokenizer(processed_text_tokens, add_special_tokens=False).input_ids,
                     "context_entities": copy(context_entities)
