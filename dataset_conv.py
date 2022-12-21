@@ -645,7 +645,7 @@ class CRSConvDataCollator:
 
                 # fine-tuning context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
-                input_ids_bert = input_ids_bert[-self.max_dialog_len + 1:]  # todo
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]  # todo
                 input_ids_bert = [self.tokenizer_bert.cls_token_id] + input_ids_bert
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
@@ -668,7 +668,7 @@ class CRSConvDataCollator:
 
                 # context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
-                input_ids_bert = input_ids_bert[-self.max_dialog_len + 1:]
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]
                 input_ids_bert = [self.tokenizer_bert.cls_token_id] + input_ids_bert
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
@@ -689,7 +689,7 @@ class CRSConvDataCollator:
             context_batch, padding="max_length", max_length=self.context_max_length)
 
         context_batch_bert = self.tokenizer_bert.pad(
-            context_batch_bert, padding="max_length", max_length=self.max_dialog_len)
+            context_batch_bert, padding="max_length", max_length=self.args.max_dialog_len)
 
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
                                                max_length=self.args.max_title_len + self.args.max_gen_len)
