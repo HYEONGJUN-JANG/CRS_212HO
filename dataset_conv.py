@@ -56,9 +56,38 @@ recommend_template = [
 #     "This film is mainly about %s."
 # ]
 # V1
+# genre_template = [
+#     "Its genre is %s.",
+#     "Its genre is %s.",
+#     "It is full of %s.",
+#     "It is %s film."
+# ]
+#
+# director_template = [
+#     "It is directed by %s.",
+#     "%s directed it.",
+#     "This film is directed by %s.",
+#     "%s directed this movie."
+# ]
+#
+# star_template = [
+#     "It stars %s.",
+#     "%s acted in this film.",
+#     "%s is in this movie.",
+#     "%s appears in this film.",
+# ]
+#
+# plot_template = [
+#     "It is about %s.",
+#     "The plot of this movie is %s.",
+#     "The story of this movie is %s.",
+#     "This film is mainly about %s."
+# ]
+
+# V3
 genre_template = [
     "Its genre is %s.",
-    "Its genre is %s.",
+    "The genre of this movie is %s.",
     "It is full of %s.",
     "It is %s film."
 ]
@@ -71,19 +100,18 @@ director_template = [
 ]
 
 star_template = [
-    "It stars %s.",
+    "%s are main actors of this film.",
     "%s acted in this film.",
-    "%s is in this movie.",
-    "%s appears in this film.",
+    "%s are in this movie.",
+    "%s appear in this film.",
 ]
 
 plot_template = [
-    "It is about %s.",
+    "This movie is about %s.",
     "The plot of this movie is %s.",
     "The story of this movie is %s.",
     "This film is mainly about %s."
 ]
-
 
 class ContentInformationConv(Dataset):
     #
