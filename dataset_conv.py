@@ -27,19 +27,47 @@ recommend_template = [
     "System: I suggest %s. <explain>",
     "System: Have you seen %s? <explain>"
 ]
-
+# V2
+# genre_template = [
+#     "This movie's genre is %s.",
+#     "The genre of this movie is %s.",
+#     "This film is full of %s genre.",
+#     "Its genre is %s."
+# ]
+#
+# director_template = [
+#     "This movie is directed by %s.",
+#     "%s directed this movie.",
+#     "Director of this movie is %s.",
+#     "%s directed this film."
+# ]
+#
+# star_template = [
+#     "It stars %s.",
+#     "%s acted in this film.",
+#     "%s is in this movie.",
+#     "%s appears in this film.",
+# ]
+#
+# plot_template = [
+#     "This movie is about %s.",
+#     "The plot of this movie is %s.",
+#     "The story of this movie is %s.",
+#     "This film is mainly about %s."
+# ]
+# V1
 genre_template = [
-    "This movie's genre is %s.",
-    "The genre of this movie is %s.",
-    "This film is full of %s genre.",
-    "Its genre is %s."
+    "Its genre is %s.",
+    "Its genre is %s.",
+    "It is full of %s.",
+    "It is %s film."
 ]
 
 director_template = [
-    "This movie is directed by %s.",
-    "%s directed this movie.",
-    "Director of this movie is %s.",
-    "%s directed this film."
+    "It is directed by %s.",
+    "%s directed it.",
+    "This film is directed by %s.",
+    "%s directed this movie."
 ]
 
 star_template = [
@@ -50,7 +78,7 @@ star_template = [
 ]
 
 plot_template = [
-    "This movie is about %s.",
+    "It is about %s.",
     "The plot of this movie is %s.",
     "The story of this movie is %s.",
     "This film is mainly about %s."
