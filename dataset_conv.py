@@ -57,10 +57,11 @@ recommend_template = [
 # ]
 # V1
 genre_template = [
-    "Its genre is %s."
+    # "Its genre is %s."
     # ,
     # "Its genre is %s.",
-    # "It is full of %s.",
+    "It is full of %s."
+    # ,
     # "It is %s film."
 ]
 
