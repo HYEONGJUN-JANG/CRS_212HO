@@ -57,36 +57,31 @@ recommend_template = [
 # ]
 # V1
 genre_template = [
-    # "Its genre is %s."
-    # ,
-    # "Its genre is %s.",
-    "It is full of %s."
-    # ,
-    # "It is %s film."
+    "Its genre is %s.",
+    "Its genre is %s.",
+    "It is full of %s.",
+    "It is %s film."
 ]
 
 director_template = [
-    "It is directed by %s."
-    # ,
-    # "%s directed it.",
-    # "This film is directed by %s.",
-    # "%s directed this movie."
+    "It is directed by %s.",
+    "%s directed it.",
+    "This film is directed by %s.",
+    "%s directed this movie."
 ]
 
 star_template = [
-    # "It stars %s.",
-    # "%s acted in this film.",
-    # "%s is in this movie.",
+    "It stars %s.",
+    "%s acted in this film.",
+    "%s is in this movie.",
     "%s appears in this film."
-    # ,
 ]
 
 plot_template = [
-    "It is about %s."
-    # ,
-    # "The plot of this movie is %s.",
-    # "The story of this movie is %s.",
-    # "This film is mainly about %s."
+    "It is about %s.",
+    "The plot of this movie is %s.",
+    "The story of this movie is %s.",
+    "This film is mainly about %s."
 ]
 
 # V3
@@ -180,10 +175,10 @@ class ContentInformationConv(Dataset):
 
             idx_user = rand.sample(range(0, len(user_template)), self.args.n_template_sample)
             idx_rec = rand.sample(range(0, len(recommend_template)), self.args.n_template_sample)
-            idx_genre = rand.sample(range(0, len(genre_template)),1)
-            idx_star = rand.sample(range(0, len(star_template)), 1)
-            idx_director = rand.sample(range(0, len(director_template)),1)
-            idx_plot = rand.sample(range(0, len(plot_template)), 1)
+            idx_genre = rand.sample(range(0, len(genre_template)),self.args.n_template_sample)
+            idx_star = rand.sample(range(0, len(star_template)), self.args.n_template_sample)
+            idx_director = rand.sample(range(0, len(director_template)),self.args.n_template_sample)
+            idx_plot = rand.sample(range(0, len(plot_template)), self.args.n_template_sample)
 
             user_prompt = [user_template[i] for i in idx_user]
             rec_prompt = [template % title for template in recommend_template]
