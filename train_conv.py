@@ -263,8 +263,8 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
         print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
 
         logger.info('[Test]')
-        pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
-                          evaluator)
+        # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
+        #                   evaluator)
         finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                             tokenizer_bert,
                             total_report)
