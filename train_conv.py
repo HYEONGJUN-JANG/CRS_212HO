@@ -16,7 +16,7 @@ import os
 #     open(os.path.join('data/redial', 'entity2id.json'), 'r', encoding='utf-8'))
 # id2entity = {idx: entity for entity, idx in entity2id.items()}
 movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
-movieidx2name = {idx: name for key, (idx, name) in movie2name.items()}
+movieidx2name = {value[0]: "%s %s" % (value[1], value[2]) for key, value in movie2name.items()}
 
 
 def recommend_top1_item(batch, gen_seq_bert, model):
@@ -50,10 +50,10 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
     gpt_model.eval()
     # projector.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        # if test_cnt == 200:
-        #     break
-        # else:
-        #     test_cnt += 1
+        if test_cnt == 200:
+            break
+        else:
+            test_cnt += 1
         # with torch.no_grad():
         #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
         #         batch['context_entities'], batch['context_bert'].input_ids)

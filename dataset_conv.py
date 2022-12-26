@@ -84,6 +84,7 @@ plot_template = [
     "This film is mainly about %s."
 ]
 
+
 # V3
 # genre_template = [
 #     "Its genre is %s.",
@@ -154,14 +155,15 @@ class ContentInformationConv(Dataset):
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
             meta = sample['meta']
-            title = "<movie> %s (%s) " % (sample['title'], sample['year'])
+            # title = "<movie> %s (%s) " % (sample['title'], sample['year'])
+            title = "<movie> %s %s" % (self.movie2name[crs_id][1], self.movie2name[crs_id][2])
             tokenized_reviews, tokenized_plots, review_meta_chunk, plot_meta_chunk = [], [], [], []
             meta_input, meta_output = [], []
 
             # review_prefix = 'Review' + self.tokenizer_gpt.eos_token + title
             # plot_prefix = 'Plot' + self.tokenizer_gpt.eos_token + title
-            review_prefix = f'The review of {title} is '
-            plot_prefix = f'The plot of {title} is '
+            # review_prefix = f'The review of {title} is '
+            # plot_prefix = f'The plot of {title} is '
 
             # Exception
 
@@ -175,9 +177,9 @@ class ContentInformationConv(Dataset):
 
             idx_user = rand.sample(range(0, len(user_template)), self.args.n_template_sample)
             idx_rec = rand.sample(range(0, len(recommend_template)), self.args.n_template_sample)
-            idx_genre = rand.sample(range(0, len(genre_template)),self.args.n_template_sample)
+            idx_genre = rand.sample(range(0, len(genre_template)), self.args.n_template_sample)
             idx_star = rand.sample(range(0, len(star_template)), self.args.n_template_sample)
-            idx_director = rand.sample(range(0, len(director_template)),self.args.n_template_sample)
+            idx_director = rand.sample(range(0, len(director_template)), self.args.n_template_sample)
             idx_plot = rand.sample(range(0, len(plot_template)), self.args.n_template_sample)
 
             user_prompt = [user_template[i] for i in idx_user]
