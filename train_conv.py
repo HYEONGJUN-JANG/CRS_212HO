@@ -117,10 +117,12 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                     if next_tokens == tokenizer_gpt.vocab['<movie>']:
                         movie_recommended_items, movie_recommended_item_ids = recommend_top1_item(batch, generated,
                                                                                                   model)
+                        movie_recommended_items = 'It (2017). <explain>'
+                        movie_recommended_item_ids = 950
                         batch['context_entities'][
                             0, torch.sum(batch['context_entities'] != 0, dim=1, keepdim=True)] = torch.tensor(
-                            movie_recommended_item_ids[0]).view(1, -1)
-                        recommended_item_name = movie_recommended_items[0][0]
+                            movie_recommended_item_ids).view(1, -1)
+                        recommended_item_name = movie_recommended_items
                         tokenized_name = tokenizer_gpt(recommended_item_name).input_ids
                         tokenized_name = torch.tensor(tokenized_name, device=args.device_id)
                         next_tokens = torch.cat([next_tokens.view(-1), tokenized_name])
