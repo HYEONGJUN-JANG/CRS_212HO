@@ -50,10 +50,10 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
     gpt_model.eval()
     # projector.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        if test_cnt == 200:
-            break
-        else:
-            test_cnt += 1
+        # if test_cnt == 200:
+        #     break
+        # else:
+        #     test_cnt += 1
         # with torch.no_grad():
         #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
         #         batch['context_entities'], batch['context_bert'].input_ids)
@@ -117,12 +117,10 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                     if next_tokens == tokenizer_gpt.vocab['<movie>']:
                         movie_recommended_items, movie_recommended_item_ids = recommend_top1_item(batch, generated,
                                                                                                   model)
-                        movie_recommended_items = 'It (2017). <explain>'
-                        movie_recommended_item_ids = 950
                         batch['context_entities'][
                             0, torch.sum(batch['context_entities'] != 0, dim=1, keepdim=True)] = torch.tensor(
-                            movie_recommended_item_ids).view(1, -1)
-                        recommended_item_name = movie_recommended_items
+                            movie_recommended_item_ids[0]).view(1, -1)
+                        recommended_item_name = movie_recommended_items[0][0]
                         tokenized_name = tokenizer_gpt(recommended_item_name).input_ids
                         tokenized_name = torch.tensor(tokenized_name, device=args.device_id)
                         next_tokens = torch.cat([next_tokens.view(-1), tokenized_name])
@@ -218,6 +216,8 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
     evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
 
     # train loop
+    pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0,
+                      evaluator)
     finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                         tokenizer_bert,
                         total_report)
@@ -265,8 +265,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
         print('Loss_pt:\t%.4f\t\t Loss_ft:\t%.4f' % (loss_pt, loss_ft))
 
         logger.info('[Test]')
-        # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
-        #                   evaluator)
+
         finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                             tokenizer_bert,
                             total_report)
