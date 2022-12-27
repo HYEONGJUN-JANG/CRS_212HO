@@ -18,20 +18,22 @@ class ConvEvaluator:
 
     def evaluate(self, preds, labels, contexts, recommended_items, log=False):
         decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=False)
-        decoded_preds = [decoded_pred.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '') for
-                         decoded_pred in
-                         decoded_preds]
+        decoded_preds = [
+            decoded_pred.replace(self.tokenizer.pad_token, '')
+            .replace(self.tokenizer.eos_token, ' ')
+            .replace('<movie>', '').replace('<explain>', '')
+            .replace(decoded_pred[decoded_pred.find('{'):decoded_pred.find('}')+1], '') for decoded_pred in decoded_preds]
         decoded_preds = [pred.strip() for pred in decoded_preds]
 
         decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=False)
-        decoded_labels = [decoded_label.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '') for
+        decoded_labels = [decoded_label.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, ' ') for
                           decoded_label in
                           decoded_labels]
 
         decoded_labels = [label.strip() for label in decoded_labels]
 
         decoded_contexts = self.tokenizer.batch_decode(contexts.input_ids, skip_special_tokens=False)
-        decoded_contexts = [decoded_context.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, '')
+        decoded_contexts = [decoded_context.replace(self.tokenizer.pad_token, '').replace(self.tokenizer.eos_token, ' ')
                             for decoded_context in
                             decoded_contexts]
         decoded_contexts = [context.strip() for context in decoded_contexts]
