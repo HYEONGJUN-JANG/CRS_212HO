@@ -69,7 +69,7 @@ def pretrain(args, model, pretrain_dataloader, path):
                 y = model.movie2ids.index(label)
                 hit[k].append(np.isin(y, score))
 
-    print('Epoch %d : pre-train test done' % (epoch + 1))
+    print('Pre-train test done')
     for k in range(len(topk)):
         hit_score = np.mean(hit[k])
         print('[pre-train] hit@%d:\t%.4f' % (topk[k], hit_score))
