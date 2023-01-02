@@ -216,8 +216,8 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
     evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
 
     # train loop
-    pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0,
-                      evaluator)
+    # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0,
+    #                   evaluator)
     finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                         tokenizer_bert,
                         total_report)

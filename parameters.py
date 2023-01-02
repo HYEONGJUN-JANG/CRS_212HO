@@ -23,6 +23,7 @@ def parse_args():
     parser.add_argument('--meta', type=str, default='word',
                         choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
     parser.add_argument('--test', action='store_false')
+    parser.add_argument('--dataset_path', type=str, default='data/inspired', choices=['data/redial','data/inspired'])
 
     # rec
     parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training

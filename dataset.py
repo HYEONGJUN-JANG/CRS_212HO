@@ -24,8 +24,8 @@ class ContentInformation(Dataset):
         self.device = device
         self.entity2id = json.load(
             open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
-        self.movie2id = json.load(open('data/redial/movie_ids.json', 'r', encoding='utf-8'))
-        self.movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
+        self.movie2id = json.load(open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))
+        self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r', encoding='utf-8'))
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
         self.key_list = list(self.data_samples.keys())  # entity id list
 
@@ -42,7 +42,7 @@ class ContentInformation(Dataset):
             review_list, plot_list = [], []
             review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
-            crs_id = sample['crs_id']
+            crs_id = str(sample['crs_id']) # TODO: Redial dataset 체크
             reviews = sample['reviews']
             plots = sample['plots']
             plots_meta = sample['plots_meta']
