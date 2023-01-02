@@ -111,7 +111,10 @@ def main(args):
     pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
     trained_path = f'./saved_model/trained_model_{args.name}.pt'
     conv_pretrained_path = f'./saved_model/conv_pretrained_model_{args.name}.pt'
-    bestrec_path = 'saved_model/trained_model_bestrec.pt'
+    if 'redial' in args.dataset_path:
+        bestrec_path = 'saved_model/trained_model_bestrec_redial.pt'
+    elif 'inspired' in args.dataset_path:
+        bestrec_path = 'saved_model/trained_model_bestrec_inspired.pt'
     if args.conv_pretrained_path == 'best':
         best_conv_pretrained_path = './saved_model/conv_pretrained_model_best.pt'
     else:
@@ -124,8 +127,8 @@ def main(args):
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
-    DATA_PATH = os.path.join(ROOT_PATH, 'data')
-    REDIAL_DATASET_PATH = os.path.join(DATA_PATH, 'redial')
+    DATASET_PATH =  os.path.join(ROOT_PATH, args.dataset_path)
+
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
@@ -179,7 +182,7 @@ def main(args):
         for param in module.parameters():
             param.requires_grad = False
 
-    kg_information = KGInformation(args, REDIAL_DATASET_PATH)
+    kg_information = KGInformation(args, DATASET_PATH)
 
     # Load expert model
     model = MovieExpertCRS(args, bert_model, bert_config, kg_information.movie2id, kg_information.entity_kg,
@@ -188,8 +191,8 @@ def main(args):
     if 'rec' in args.task:
         # create result file
         results_file_path = createResultFile(args)
-        content_dataset = ContentInformation(args, REDIAL_DATASET_PATH, tokenizer, args.device_id)
-        crs_dataset = ReDialDataset(args, REDIAL_DATASET_PATH, content_dataset, tokenizer, kg_information)
+        content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
+        crs_dataset = ReDialDataset(args, DATASET_PATH, content_dataset, tokenizer, kg_information)
         train_data = crs_dataset.train_data
         valid_data = crs_dataset.valid_data
         test_data = crs_dataset.test_data
@@ -232,7 +235,7 @@ def main(args):
 
         # [pretrain]
         # dataset
-        content_conv_dataset = ContentInformationConv(args, REDIAL_DATASET_PATH, tokenizer_gpt, tokenizer,
+        content_conv_dataset = ContentInformationConv(args, DATASET_PATH, tokenizer_gpt, tokenizer,
                                                       args.device_id)
         content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
         content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
@@ -253,13 +256,13 @@ def main(args):
         # [fine-tuning]
         # dataset
         conv_train_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'train', tokenizer_gpt, tokenizer, content_conv_dataset,
+            DATASET_PATH, 'train', tokenizer_gpt, tokenizer, content_conv_dataset,
         )
         conv_valid_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'valid', tokenizer_gpt, tokenizer, content_conv_dataset,
+            DATASET_PATH, 'valid', tokenizer_gpt, tokenizer, content_conv_dataset,
         )
         conv_test_dataset = CRSConvDataset(
-            REDIAL_DATASET_PATH, 'test', tokenizer_gpt, tokenizer, content_conv_dataset,
+            DATASET_PATH, 'test', tokenizer_gpt, tokenizer, content_conv_dataset,
         )
         # dataloader
         data_collator_teacher = CRSConvDataCollator(
