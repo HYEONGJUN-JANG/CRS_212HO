@@ -243,7 +243,7 @@ class ReDialDataset:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
             for idx, word in enumerate(utt['text']):
                 if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = '<movie> %s' % (self.movie2name[word[1:]][1])
+                    utt['text'][idx] = '%s' % (self.movie2name[word[1:]][1])
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
