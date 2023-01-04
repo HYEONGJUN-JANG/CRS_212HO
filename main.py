@@ -211,6 +211,10 @@ def main(args):
         else:
             type = 'bert'
 
+        if args.dataset_path == 'data/inspired':
+            for param in model.word_encoder.parameters():
+                param.requires_grad = False
+
         train_rec_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size,
                                                 word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
                                                 task='rec', type=type)
