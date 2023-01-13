@@ -82,10 +82,10 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     evaluator.log_file.write(f'\n*** Fine-tuning test-{epoch} ***\n\n')
     test_cnt = 0
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        if test_cnt == 300:
-            break
-        else:
-            test_cnt += 1
+        # if test_cnt == 300:
+        #     break
+        # else:
+        #     test_cnt += 1
         batch = batches[0]
         with torch.no_grad():
             movie_recommended_items = []
@@ -218,9 +218,9 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
     # train loop
     # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0,
     #                   evaluator)
-    finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
-                        tokenizer_bert,
-                        total_report)
+    # finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+    #                     tokenizer_bert,
+    #                     total_report)
     for epoch in range(args.conv_epoch_ft):
         logger.info(f'[Conversation epoch {str(epoch)}]')
         logger.info('[Train]')
@@ -266,6 +266,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
 
         logger.info('[Test]')
 
-        finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
-                            tokenizer_bert,
-                            total_report)
+    finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+                        tokenizer_bert,
+                        total_report)
