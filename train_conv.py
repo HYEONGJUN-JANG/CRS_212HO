@@ -268,6 +268,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
 
         logger.info('[Test]')
 
-    finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
-                        tokenizer_bert,
-                        total_report)
+        finetuning_evaluate(args, evaluator, epoch+1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+                            tokenizer_bert,
+                            total_report)
