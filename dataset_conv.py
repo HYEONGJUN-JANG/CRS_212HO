@@ -146,7 +146,7 @@ class ContentInformationConv(Dataset):
         logger.info(f'[Conv] content information load')
 
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            crs_id = sample['crs_id']
+            crs_id =str(sample['crs_id'])
             if self.movie2name[crs_id][0] == -1:
                 continue
 
