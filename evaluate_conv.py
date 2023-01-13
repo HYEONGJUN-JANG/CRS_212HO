@@ -20,9 +20,9 @@ class ConvEvaluator:
         decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=False)
         decoded_preds = [
             decoded_pred.replace(self.tokenizer.pad_token, '')
-            .replace(self.tokenizer.eos_token, ' ')
-            .replace('<movie>', '').replace('<explain>', '')
-            .replace(decoded_pred[decoded_pred.find('{'):decoded_pred.find('}')+1], '') for decoded_pred in decoded_preds]
+            .replace(self.tokenizer.eos_token, ' ') for decoded_pred in decoded_preds]
+            # .replace('<movie>', '').replace('<explain>', '')
+            # .replace(decoded_pred[decoded_pred.find('{'):decoded_pred.find('}')+1], '') for decoded_pred in decoded_preds]
         decoded_preds = [pred.strip() for pred in decoded_preds]
 
         decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=False)
