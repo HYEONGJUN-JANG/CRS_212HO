@@ -116,7 +116,11 @@ def main(args):
     elif 'inspired' in args.dataset_path:
         bestrec_path = 'saved_model/trained_model_bestrec_inspired.pt'
     if args.conv_pretrained_path == 'best':
-        best_conv_pretrained_path = './saved_model/conv_pretrained_model_best.pt'
+        if 'redial' in args.dataset_path:
+            best_conv_pretrained_path = './saved_model/conv_pretrained_model_best_redial.pt'
+        elif 'inspired' in args.dataset_path:
+            best_conv_pretrained_path = './saved_model/conv_pretrained_model_best_inspired.pt'
+
     else:
         best_conv_pretrained_path = conv_pretrained_path
 
