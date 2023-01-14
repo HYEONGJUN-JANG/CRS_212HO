@@ -280,7 +280,7 @@ class MovieExpertCRS(nn.Module):
             text_emb = self.word_encoder(input_ids=text,
                                          attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
             proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            content_emb = self.token_attention(text_emb, mask=mask)  # [B, d] -> [B * N, d]
+            content_emb = self.token_attention(proj_text_emb, mask=mask)  # [B, d] -> [B * N, d]
             # content_emb = proj_text_emb[:, 0, :]
         elif self.args.word_encoder == 2:
 
