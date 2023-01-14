@@ -80,6 +80,7 @@ class ContentInformation(Dataset):
 
                 for idx, _ in enumerate(reviews_meta):
                     reviews_meta[idx] = all_meta
+
             # Filter out movie name in plots, reviews
             # reviews = [review.replace(sample['title'], self.tokenizer.mask_token) for review in reviews]
             # plots = [plot.replace(sample['title'], self.tokenizer.mask_token) for plot in plots]

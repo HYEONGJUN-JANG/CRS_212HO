@@ -16,14 +16,14 @@ def parse_args():
     parser.add_argument('--kg_emb_dim', type=int, default=128)  # 128
     parser.add_argument('--num_bases', type=int, default=8)
     parser.add_argument('--head_num', type=int, default=8)
-    parser.add_argument('--task', type=str, default='conv')
+    parser.add_argument('--task', type=str, default='rec')
     # parser.add_argument('--max_title_len', type=int, default=20)
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
     parser.add_argument('--meta', type=str, default='word',
                         choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
     parser.add_argument('--test', action='store_false')
-    parser.add_argument('--dataset_path', type=str, default='data/inspired', choices=['data/redial','data/inspired'])
+    parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
 
     # rec
     parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
