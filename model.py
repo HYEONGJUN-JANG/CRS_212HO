@@ -355,16 +355,16 @@ class MovieExpertCRS(nn.Module):
         token_attn_rep = self.dropout_ft(token_attn_rep)
         entity_attn_rep = self.dropout_ft(entity_attn_rep)
 
-        # if 'word' in self.args.meta and 'meta' in self.args.meta:
-        #     gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
-        #     user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
-        # elif 'word' in self.args.meta:
-        #     user_embedding = token_attn_rep
-        # elif 'meta' in self.args.meta:
-        #     user_embedding = entity_attn_rep
+        if 'word' in self.args.meta and 'meta' in self.args.meta:
+            gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+            user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
+        elif 'word' in self.args.meta:
+            user_embedding = token_attn_rep
+        elif 'meta' in self.args.meta:
+            user_embedding = entity_attn_rep
 
-        gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
-        user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
+        # gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
+        # user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
 
         return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
 
