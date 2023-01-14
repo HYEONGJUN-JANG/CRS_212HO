@@ -280,8 +280,8 @@ class MovieExpertCRS(nn.Module):
             text_emb = self.word_encoder(input_ids=text,
                                          attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
             proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
-            content_emb = proj_text_emb[:, 0, :]
+            content_emb = self.token_attention(text_emb, mask=mask)  # [B, d] -> [B * N, d]
+            # content_emb = proj_text_emb[:, 0, :]
         elif self.args.word_encoder == 2:
 
             text_emb = self.word_encoder(input_ids=text,
@@ -380,7 +380,9 @@ class MovieExpertCRS(nn.Module):
 
         token_embedding = self.linear_transformation(token_embedding)
         if self.args.word_encoder == 0:
-            token_attn_rep = token_embedding[:, 0, :]
+            # token_attn_rep = token_embedding[:, 0, :]
+            token_attn_rep = self.token_attention(token_embedding, mask=token_padding_mask)
+
         elif self.args.word_encoder == 2:
             sequence_len = torch.sum(token_padding_mask, dim=1) - 1
             token_attn_rep = token_embedding[torch.arange(context_tokens.shape[0]), sequence_len]
