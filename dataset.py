@@ -33,7 +33,7 @@ class ContentInformation(Dataset):
         self.key_list = list(self.data_samples.keys())  # entity id list
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
-        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
+        f = open(os.path.join(self.data_path, 'content_data_new_meta.json'), encoding='utf-8')
 
         data = json.load(f)
 
