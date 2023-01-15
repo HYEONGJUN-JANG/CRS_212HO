@@ -24,8 +24,11 @@ class ContentInformation(Dataset):
         self.device = device
         self.entity2id = json.load(
             open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
+        self.id2entity = {id: entity for entity, id in self.entity2id.items()}
         self.movie2id = json.load(open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))
         self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r', encoding='utf-8'))
+        self.kg = json.load(open(os.path.join(data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
+
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
         self.key_list = list(self.data_samples.keys())  # entity id list
 
@@ -42,11 +45,12 @@ class ContentInformation(Dataset):
             review_list, plot_list = [], []
             review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
-            crs_id = str(sample['crs_id']) # TODO: Redial dataset 체크
+            crs_id = str(sample['crs_id'])  # TODO: Redial dataset 체크
             reviews = sample['reviews']
             plots = sample['plots']
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
+            meta = sample['meta']
             title = "%s (%s)" % (sample['title'], sample['year'])
             # title = sample['title']
             # _title = title.replace(' ', '_')
@@ -61,6 +65,21 @@ class ContentInformation(Dataset):
             if len(plots) == 0:
                 plots = ['']
                 plots_meta = [[]]
+
+            # all_meta = []
+            # all_meta.extend(meta['genre'])
+            # all_meta.extend(meta['director'])
+            # all_meta.extend(meta['stars'])
+
+            if self.args.meta == "meta2":
+                if str(self.movie2name[crs_id][0]) in self.kg:
+                    all_meta = self.kg[str(self.movie2name[crs_id][0])]
+                    all_meta = [self.id2entity[t] for r, t in all_meta]
+                else:
+                    all_meta = []
+
+                for idx, _ in enumerate(reviews_meta):
+                    reviews_meta[idx] = all_meta
 
             # Filter out movie name in plots, reviews
             # reviews = [review.replace(sample['title'], self.tokenizer.mask_token) for review in reviews]
