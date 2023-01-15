@@ -10,7 +10,7 @@ from utils import get_time_kst
 from pygit2 import Repository
 import sys
 
-NUM_TRIAL = 5
+# NUM_TRIAL = 5
 content_hits, initial_hits, best_results = [], [], []
 if __name__ == '__main__':
 
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         result_f.write('\n')
 
     if 'rec' in args.task:
-        for t in range(NUM_TRIAL):
+        for t in range(args.num_trial):
             content_hit, initial_hit, best_result = main(args)
             content_hits.append(content_hit)
             initial_hits.append(initial_hit)
