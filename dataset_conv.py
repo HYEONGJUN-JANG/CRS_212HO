@@ -77,12 +77,12 @@ star_template = [
     "%s appears in this film."
 ]
 
-plot_template = [
-    "It is about %s.",
-    "The plot of this movie is %s.",
-    "The story of this movie is %s.",
-    "This film is mainly about %s."
-]
+# plot_template = [
+#     "It is about %s.",
+#     "The plot of this movie is %s.",
+#     "The story of this movie is %s.",
+#     "This film is mainly about %s."
+# ]
 
 
 # V3
@@ -180,7 +180,7 @@ class ContentInformationConv(Dataset):
             idx_genre = rand.sample(range(0, len(genre_template)), self.args.n_template_sample)
             idx_star = rand.sample(range(0, len(star_template)), self.args.n_template_sample)
             idx_director = rand.sample(range(0, len(director_template)), self.args.n_template_sample)
-            idx_plot = rand.sample(range(0, len(plot_template)), self.args.n_template_sample)
+            # idx_plot = rand.sample(range(0, len(plot_template)), self.args.n_template_sample)
 
             user_prompt = [user_template[i] for i in idx_user]
             rec_prompt = [template % title for template in recommend_template]
@@ -191,8 +191,8 @@ class ContentInformationConv(Dataset):
             star_prompt = [star_prompt[i] for i in idx_star]
             director_prompt = [template % ', '.join(meta['director']) for template in director_template]
             director_prompt = [director_prompt[i] for i in idx_director]
-            plot_prompt = [template % plots[0] for template in plot_template]
-            plot_prompt = [plot_prompt[i] for i in idx_plot]
+            # plot_prompt = [template % plots[0] for template in plot_template]
+            # plot_prompt = [plot_prompt[i] for i in idx_plot]
 
             for prefix in user_prompt:
                 for r_prompt in rec_prompt:
@@ -205,9 +205,9 @@ class ContentInformationConv(Dataset):
                     for d_prompt in director_prompt:
                         meta_input.append(prefix % 'director' + r_prompt)
                         meta_output.append(d_prompt)
-                    for p_prompt in plot_prompt:
-                        meta_input.append(prefix % 'plot' + r_prompt)
-                        meta_output.append(p_prompt)
+                    # for p_prompt in plot_prompt:
+                    #     meta_input.append(prefix % 'plot' + r_prompt)
+                    #     meta_output.append(p_prompt)
 
             tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
                                                       truncation=True).input_ids
