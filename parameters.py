@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
     parser.add_argument('--meta', type=str, default='word',
-                        choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
+                        choices=['meta', 'meta2', 'word', 'meta-word'])  # [NEW] choice among three candidates
     parser.add_argument('--test', action='store_false')
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
 
