@@ -156,7 +156,7 @@ class ContentInformationConv(Dataset):
             reviews_meta = sample['reviews_meta']
             meta = sample['meta']
             # title = "<movie> %s (%s) " % (sample['title'], sample['year'])
-            title = "<movie> %s %s" % (self.movie2name[crs_id][1], self.movie2name[crs_id][2])
+            title = "<movie> %s" % (self.movie2name[crs_id][1])
             tokenized_reviews, tokenized_plots, review_meta_chunk, plot_meta_chunk = [], [], [], []
             meta_input, meta_output = [], []
 
