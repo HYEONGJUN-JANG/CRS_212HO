@@ -12,16 +12,16 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertM
 import json
 import os
 
-# entity2id = json.load(
-#     open(os.path.join('data/redial', 'entity2id.json'), 'r', encoding='utf-8'))
-# id2entity = {idx: entity for entity, idx in entity2id.items()}
+entity2id = json.load(
+    open(os.path.join('data/redial', 'entity2id.json'), 'r', encoding='utf-8'))
+id2entity = {idx: entity for entity, idx in entity2id.items()}
 # movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
 # movieidx2name = {value[0]: "%s %s" % (value[1], value[2]) for key, value in movie2name.items()}
 
 
 def recommend_top1_item(batch, gen_seq_bert, model, dataset_path):
     movie2name = json.load(open(os.path.join(dataset_path, 'movie2name.json'), 'r', encoding='utf-8'))
-    movieidx2name = {value[0]: "%s %s" % (value[1], value[2]) for key, value in movie2name.items()}
+    movieidx2name = {value[0]: "%s" % (value[1]) for key, value in movie2name.items()}
     movie_recommended_items = []
 
     context_len = torch.sum(batch['context_bert'].attention_mask, dim=1, keepdim=True)
