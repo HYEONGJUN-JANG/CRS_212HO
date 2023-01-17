@@ -128,8 +128,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             lr_scheduler.step()
             total_loss += loss.data.float()
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
-    # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
-    #                   log_file)
+    pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
+                      log_file)
 
     if save_path is not None:
         torch.save(gpt_model.state_dict(), save_path)  # TIME_MODELNAME 형식
