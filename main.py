@@ -108,31 +108,37 @@ def randomize_model(model):
 
 def main(args):
     # 22.10.13: path of saved model
-    pretrained_path = f'./saved_model/pretrained_model_{args.name}.pt'
-    trained_path = f'./saved_model/trained_model_{args.name}.pt'
-    conv_pretrained_path = f'./saved_model/conv_pretrained_model_{args.name}.pt'
     if 'redial' in args.dataset_path:
-        bestrec_path = 'saved_model/trained_model_bestrec_redial.pt'
+        pretrained_path = f'./saved_model/{args.task}/redial/pretrained_model_{args.name}.pt'
+        trained_path = f'./saved_model/{args.task}/redial/trained_model_{args.name}.pt'
+        bestrec_path = f'.saved_model/rec/redial/trained_model_best.pt'
+        best_conv_pretrained_path = f'.saved_model/conv/redial/pretrained_model_best.pt'
     elif 'inspired' in args.dataset_path:
-        bestrec_path = 'saved_model/trained_model_bestrec_inspired.pt'
-    if args.conv_pretrained_path == 'best':
-        if 'redial' in args.dataset_path:
-            best_conv_pretrained_path = './saved_model/conv_pretrained_model_best_redial.pt'
-        elif 'inspired' in args.dataset_path:
-            best_conv_pretrained_path = './saved_model/conv_pretrained_model_best_inspired.pt'
+        pretrained_path = f'./saved_model/{args.task}/inspired/pretrained_model_{args.name}.pt'
+        trained_path = f'./saved_model/{args.task}/inspired/trained_model_{args.name}.pt'
+        bestrec_path = f'.saved_model/rec/inspired/trained_model_best.pt'
+        best_conv_pretrained_path = f'.saved_model/conv/inspired/pretrained_model_best.pt'
+    # if 'redial' in args.dataset_path:
+    #     bestrec_path = 'saved_model/{args.task}/trained_model_bestrec_redial.pt'
+    # elif 'inspired' in args.dataset_path:
+    #     bestrec_path = 'saved_model/{args.task}/trained_model_bestrec_inspired.pt'
+    # if args.conv_pretrained_path == 'best':
+    #     if 'redial' in args.dataset_path:
+    #         best_conv_pretrained_path = './saved_model/conv_pretrained_model_best_redial.pt'
+    #     elif 'inspired' in args.dataset_path:
+    #         best_conv_pretrained_path = './saved_model/conv_pretrained_model_best_inspired.pt'
+    #
+    # else:
+    #     best_conv_pretrained_path = conv_pretrained_path
 
-    else:
-        best_conv_pretrained_path = conv_pretrained_path
-
-    # todo: multi-GPU
-    if torch.cuda.device_count() > 1:
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print(device)
+    # # todo: multi-GPU
+    # if torch.cuda.device_count() > 1:
+    #     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #     print(device)
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
-    DATASET_PATH =  os.path.join(ROOT_PATH, args.dataset_path)
-
+    DATASET_PATH = os.path.join(ROOT_PATH, args.dataset_path)
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
@@ -169,7 +175,6 @@ def main(args):
     tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
     tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
     gpt_config = AutoConfig.from_pretrained(args.gpt_name)
-    # gpt_config.add_cross_attention = True
 
     gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
@@ -255,7 +260,7 @@ def main(args):
         if not args.conv_pretrained:
             pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
                           pretrain_dataloader_test=pretrain_conv_dataloader_test,
-                          path=pre_conv_result_file_path, save_path=conv_pretrained_path)
+                          path=pre_conv_result_file_path, save_path=pretrained_path)
         else:
             gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
                                                  map_location='cuda:%d' % args.device_id))  # state_dict를 불러 온 후, 모델에 저장`
