@@ -96,7 +96,7 @@ class ReDialDataLoader:
                     augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
                     augment_conv_dict['review'] = conv_dict['review'][idx]
                     augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
-                    augment_conv_dict['mask_label'] = conv_dict['mask_label'][idx]
+                    # augment_conv_dict['mask_label'] = conv_dict['mask_label'][idx]
                     augment_dataset.append(augment_conv_dict)
 
         logger.info('[Finish dataset process before rec batchify]')
@@ -124,7 +124,7 @@ class ReDialDataLoader:
 
             batch_context_tokens.append(context_tokens)
             batch_item.append(conv_dict['item'])
-            batch_mask_label.append(conv_dict['mask_label'])
+            # batch_mask_label.append(conv_dict['mask_label'])
             ### Sampling
             plot_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['plot_mask']), dim=1))
             review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
@@ -151,8 +151,8 @@ class ReDialDataLoader:
                 torch.tensor(batch_review_meta, dtype=torch.long),
                 torch.tensor(batch_review, dtype=torch.long),
                 torch.tensor(batch_review_mask, dtype=torch.long),
-                torch.tensor(batch_item, dtype=torch.long),
-                torch.tensor(batch_mask_label, dtype=torch.long)
+                torch.tensor(batch_item, dtype=torch.long)
+                # torch.tensor(batch_mask_label, dtype=torch.long)
                 )
 
     def conv_process_fn(self, dataset):
