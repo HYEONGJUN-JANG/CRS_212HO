@@ -19,7 +19,6 @@ class ContentInformation(Dataset):
         self.args = args
         self.data_path = data_path
         self.tokenizer = tokenizer
-        # self.data_samples = []
         self.data_samples = dict()
         self.device = device
         self.entity2id = json.load(
@@ -28,7 +27,6 @@ class ContentInformation(Dataset):
         self.movie2id = json.load(open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))
         self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r', encoding='utf-8'))
         self.kg = json.load(open(os.path.join(data_path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
-
         self.read_data(tokenizer, args.max_plot_len, args.max_review_len)
         self.key_list = list(self.data_samples.keys())  # entity id list
 
@@ -37,10 +35,6 @@ class ContentInformation(Dataset):
 
         data = json.load(f)
 
-        # entity2id = json.load(
-        #     open(os.path.join('data/redial/', 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
-        # id2entity = {idx: entity for entity, idx in entity2id.items()}
-        # all_entities_name = entity2id.keys()
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             review_list, plot_list = [], []
             review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
@@ -50,8 +44,8 @@ class ContentInformation(Dataset):
             plots = sample['plots']
             plots_meta = sample['plots_meta']
             reviews_meta = sample['reviews_meta']
-            meta = sample['meta']
-            title = "%s (%s)" % (sample['title'], sample['year'])
+            # meta = sample['meta']
+            # title = "%s (%s)" % (sample['title'], sample['year'])
             # title = sample['title']
             # _title = title.replace(' ', '_')
 
@@ -61,7 +55,6 @@ class ContentInformation(Dataset):
             if len(reviews) == 0:
                 reviews = ['']
                 reviews_meta = [[]]
-            # if 'plot' in args.name:
             if len(plots) == 0:
                 plots = ['']
                 plots_meta = [[]]
@@ -96,7 +89,7 @@ class ContentInformation(Dataset):
 
             # prefixed_reviews = [masked_prefix + review for review in reviews]
             # prefixed_plots = [masked_prefix + plot for plot in plots]
-            mask_label = [-100] * max_review_len
+            # mask_label = [-100] * max_review_len
             # mask_label[1:1 + len(tokenized_title)] = tokenized_title
 
             tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len,
@@ -108,14 +101,14 @@ class ContentInformation(Dataset):
                                              truncation=True,
                                              add_special_tokens=True)
 
-            if self.args.word_encoder == 2:
-                review_lens = [sum(mask) for mask in tokenized_reviews.attention_mask]
-                for tokenized_review, last_idx in zip(tokenized_reviews.input_ids, review_lens):
-                    tokenized_review[last_idx - 1] = tokenizer.cls_token_id
-
-                plot_lens = [sum(mask) for mask in tokenized_plots.attention_mask]
-                for tokenized_plot, last_idx in zip(tokenized_plots.input_ids, plot_lens):
-                    tokenized_plot[last_idx - 1] = tokenizer.cls_token_id
+            # if self.args.word_encoder == 2:
+            #     review_lens = [sum(mask) for mask in tokenized_reviews.attention_mask]
+            #     for tokenized_review, last_idx in zip(tokenized_reviews.input_ids, review_lens):
+            #         tokenized_review[last_idx - 1] = tokenizer.cls_token_id
+            #
+            #     plot_lens = [sum(mask) for mask in tokenized_plots.attention_mask]
+            #     for tokenized_plot, last_idx in zip(tokenized_plots.input_ids, plot_lens):
+            #         tokenized_plot[last_idx - 1] = tokenizer.cls_token_id
 
             for idx, meta in enumerate(reviews_meta):
                 reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
@@ -149,8 +142,8 @@ class ContentInformation(Dataset):
                                                              "review": review_list,
                                                              "review_mask": review_mask_list,
                                                              "review_meta": reviews_meta_list,
-                                                             "plot_meta": plots_meta_list,
-                                                             "mask_label": mask_label
+                                                             "plot_meta": plots_meta_list
+                                                             # "mask_label": mask_label
                                                              }
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
@@ -163,7 +156,7 @@ class ContentInformation(Dataset):
         review_mask = self.data_samples[idx]['review_mask']
         review_meta = self.data_samples[idx]['review_meta']
         plot_meta = self.data_samples[idx]['plot_meta']
-        mask_label = self.data_samples[idx]['mask_label']
+        # mask_label = self.data_samples[idx]['mask_label']
         # ### Sampling
         # if len(meta) > 0:
         #     sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
@@ -198,9 +191,9 @@ class ContentInformation(Dataset):
         review_token = torch.LongTensor(review_token)
         review_mask = torch.LongTensor(review_mask)
         review_meta = torch.LongTensor(review_meta)
-        mask_label = torch.LongTensor(mask_label)
+        # mask_label = torch.LongTensor(mask_label)
 
-        return idx, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label
+        return idx, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask
 
     def __len__(self):
         return len(self.data_samples)
@@ -310,7 +303,7 @@ class ReDialDataset:
                     review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
                     review.append(self.content_dataset.data_samples[movie]['review'])
                     review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
-                    mask_label.append(self.content_dataset.data_samples[movie]['mask_label'])
+                    # mask_label.append(self.content_dataset.data_samples[movie]['mask_label'])
 
                 conv_dict = {
                     "role": conv['role'],
@@ -324,8 +317,8 @@ class ReDialDataset:
                     "plot_mask": plot_mask,
                     "review_meta": review_meta,
                     "review": review,
-                    "review_mask": review_mask,
-                    "mask_label": mask_label
+                    "review_mask": review_mask
+                    # "mask_label": mask_label
 
                 }
                 augmented_conv_dicts.append(conv_dict)
