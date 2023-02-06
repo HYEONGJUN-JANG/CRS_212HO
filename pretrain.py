@@ -14,11 +14,11 @@ def pretrain(args, model, pretrain_dataloader, path):
         model.train()
         total_loss = 0
         total_loss_lm = 0
-        for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label in tqdm(
+        for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(
                 pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             loss = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token,
-                                     review_mask, movie_id,
-                                     mask_label)
+                                     review_mask, movie_id
+                                     )
             # scores = scores[:, torch.LongTensor(model.movie2ids)]
             # loss = model.criterion(scores, movie_id)
             # joint_loss = loss + masked_lm_loss
@@ -37,12 +37,12 @@ def pretrain(args, model, pretrain_dataloader, path):
     gen_resps = []
     ref_resps = []
 
-    for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label in tqdm(
+    for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask,
                                               review_meta, review_token,
                                               review_mask,
-                                              movie_id, mask_label,
+                                              movie_id,
                                               compute_score=True)
 
         # Moive name 예측 결과 디코딩
