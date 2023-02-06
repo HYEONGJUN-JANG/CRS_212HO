@@ -6,7 +6,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # common
     parser.add_argument('--name', type=str,
-                        default='plot-review-serial-none')  # plot-serial or review-serial or plot-review or plot-review-serial or none
+                        default='review')  # plot or review or plot-review or plot-review-serial or none
     parser.add_argument('--n_review', type=int, default=9)  # 1 or 2 or 3 or 20
     parser.add_argument('--n_plot', type=int, default=9)  # 1 or 2 or 3 or 9
     parser.add_argument('--n_meta', type=int, default=5)  # 1 or 2 or 3 or 9
@@ -18,11 +18,10 @@ def parse_args():
     parser.add_argument('--num_bases', type=int, default=8)
     parser.add_argument('--head_num', type=int, default=8)
     parser.add_argument('--task', type=str, default='rec')
-    # parser.add_argument('--max_title_len', type=int, default=20)
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--n_sample', type=int, default=1, help='sampling')
-    parser.add_argument('--meta', type=str, default='word',
-                        choices=['meta', 'meta2', 'word', 'meta-word'])  # [NEW] choice among three candidates
+    parser.add_argument('--meta', type=str, default='meta-word',
+                        choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
     parser.add_argument('--test', action='store_false')
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
 
@@ -39,7 +38,7 @@ def parse_args():
     parser.add_argument('--lr_dc_step', type=int, default=5, help='warmup_step')
     parser.add_argument('--lr_dc', type=float, default=0.1, help='warmup_gamma')
     parser.add_argument('--pretrained', action='store_true')
-    parser.add_argument('--window_size', type=int, default=25, help='content sliding window size')
+    # parser.add_argument('--window_size', type=int, default=25, help='content sliding window size')
 
     # conv
     parser.add_argument('--n_template_sample', type=int, default=2, help='sampling')
@@ -51,7 +50,6 @@ def parse_args():
     parser.add_argument('--conv_lr_pt', type=float, default=1e-4, help='Pre-training Learning rate')
     parser.add_argument('--conv_lr_ft', type=float, default=1e-4, help='Fine-tuning Learning rate')
     parser.add_argument('--context_max_length', type=int, default=128)
-    # parser.add_argument('--resp_max_length', type=int, default=30)
     parser.add_argument("--max_gen_len", type=int, default=128)
     parser.add_argument("--max_title_len", type=int, default=40)
 
