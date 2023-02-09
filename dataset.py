@@ -31,12 +31,12 @@ class ContentInformation(Dataset):
         self.key_list = list(self.data_samples.keys())  # entity id list
 
     def read_data(self, max_review_len):
-        f = open(os.path.join(self.data_path, 'content_data_new_meta.json'), encoding='utf-8')
+        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
         data = json.load(f)
 
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            review_list, plot_list = [], []
-            review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
+            review_list = []
+            review_mask_list, reviews_meta_list = [], []
 
             crs_id = str(sample['crs_id'])
             reviews = sample['reviews']
