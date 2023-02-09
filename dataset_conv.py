@@ -21,41 +21,14 @@ user_template = [
     "User: I'm looking for suggestion for good movie with its %s. <|endoftext|>",
     "User: Can you recommend me a movie with its %s? <|endoftext|>"
 ]
+
 recommend_template = [
     "System: You should watch %s. <explain>",
     "System: I recommend %s. <explain>",
     "System: I suggest %s. <explain>",
     "System: Have you seen %s? <explain>"
 ]
-# V2
-# genre_template = [
-#     "This movie's genre is %s.",
-#     "The genre of this movie is %s.",
-#     "This film is full of %s genre.",
-#     "Its genre is %s."
-# ]
-#
-# director_template = [
-#     "This movie is directed by %s.",
-#     "%s directed this movie.",
-#     "Director of this movie is %s.",
-#     "%s directed this film."
-# ]
-#
-# star_template = [
-#     "It stars %s.",
-#     "%s acted in this film.",
-#     "%s is in this movie.",
-#     "%s appears in this film.",
-# ]
-#
-# plot_template = [
-#     "This movie is about %s.",
-#     "The plot of this movie is %s.",
-#     "The story of this movie is %s.",
-#     "This film is mainly about %s."
-# ]
-# V1
+
 genre_template = [
     "Its genre is %s.",
     "Its genre is %s.",
@@ -77,42 +50,6 @@ star_template = [
     "%s appears in this film."
 ]
 
-# plot_template = [
-#     "It is about %s.",
-#     "The plot of this movie is %s.",
-#     "The story of this movie is %s.",
-#     "This film is mainly about %s."
-# ]
-
-
-# V3
-# genre_template = [
-#     "Its genre is %s.",
-#     "The genre of this movie is %s.",
-#     "It is full of %s.",
-#     "It is %s film."
-# ]
-#
-# director_template = [
-#     "It is directed by %s.",
-#     "%s directed it.",
-#     "This film is directed by %s.",
-#     "%s directed this movie."
-# ]
-#
-# star_template = [
-#     "%s are main actors of this film.",
-#     "%s acted in this film.",
-#     "%s are in this movie.",
-#     "%s appear in this film.",
-# ]
-#
-# plot_template = [
-#     "This movie is about %s.",
-#     "The plot of this movie is %s.",
-#     "The story of this movie is %s.",
-#     "This film is mainly about %s."
-# ]
 
 class ContentInformationConv(Dataset):
     #
@@ -146,41 +83,19 @@ class ContentInformationConv(Dataset):
         logger.info(f'[Conv] content information load')
 
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            crs_id =str(sample['crs_id'])
+            crs_id = str(sample['crs_id'])
             if self.movie2name[crs_id][0] == -1:
                 continue
 
-            reviews = sample['reviews']
-            plots = sample['plots']
-            plots_meta = sample['plots_meta']
-            reviews_meta = sample['reviews_meta']
             meta = sample['meta']
-            # title = "<movie> %s (%s) " % (sample['title'], sample['year'])
             title = "<movie> %s %s" % (self.movie2name[crs_id][1], self.movie2name[crs_id][2])
-            tokenized_reviews, tokenized_plots, review_meta_chunk, plot_meta_chunk = [], [], [], []
             meta_input, meta_output = [], []
-
-            # review_prefix = 'Review' + self.tokenizer_gpt.eos_token + title
-            # plot_prefix = 'Plot' + self.tokenizer_gpt.eos_token + title
-            # review_prefix = f'The review of {title} is '
-            # plot_prefix = f'The plot of {title} is '
-
-            # Exception
-
-            if len(reviews) == 0:
-                reviews = ['']
-                reviews_meta = [[]]
-
-            if len(plots) == 0:
-                plots = ['']
-                plots_meta = [[]]
 
             idx_user = rand.sample(range(0, len(user_template)), self.args.n_template_sample)
             idx_rec = rand.sample(range(0, len(recommend_template)), self.args.n_template_sample)
             idx_genre = rand.sample(range(0, len(genre_template)), self.args.n_template_sample)
             idx_star = rand.sample(range(0, len(star_template)), self.args.n_template_sample)
             idx_director = rand.sample(range(0, len(director_template)), self.args.n_template_sample)
-            # idx_plot = rand.sample(range(0, len(plot_template)), self.args.n_template_sample)
 
             user_prompt = [user_template[i] for i in idx_user]
             rec_prompt = [template % title for template in recommend_template]
@@ -191,8 +106,6 @@ class ContentInformationConv(Dataset):
             star_prompt = [star_prompt[i] for i in idx_star]
             director_prompt = [template % ', '.join(meta['director']) for template in director_template]
             director_prompt = [director_prompt[i] for i in idx_director]
-            # plot_prompt = [template % plots[0] for template in plot_template]
-            # plot_prompt = [plot_prompt[i] for i in idx_plot]
 
             for prefix in user_prompt:
                 for r_prompt in rec_prompt:
@@ -205,9 +118,6 @@ class ContentInformationConv(Dataset):
                     for d_prompt in director_prompt:
                         meta_input.append(prefix % 'director' + r_prompt)
                         meta_output.append(d_prompt)
-                    # for p_prompt in plot_prompt:
-                    #     meta_input.append(prefix % 'plot' + r_prompt)
-                    #     meta_output.append(p_prompt)
 
             tokenzied_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
                                                       truncation=True).input_ids
@@ -217,118 +127,7 @@ class ContentInformationConv(Dataset):
             for t_input, t_output in zip(tokenzied_meta_input, tokenzied_meta_output):
                 self.meta_samples.append((t_input, t_output))
 
-            # # GENRE
-            # for r_prompt in rec_prompt:
-            #     prefix = 'User: Recommend me a movie with its %s.<|endoftext|>'
-            #     for g_prompt in genre_prompt:
-            #         meta_input.append(prefix % 'genre' + r_prompt)
-            #         meta_output.append(g_prompt)
-            #     for s_prompt in star_prompt:
-            #         meta_input.append(prefix % 'star' + r_prompt)
-            #         meta_output.append(s_prompt)
-            #     for d_prompt in director_prompt:
-            #         meta_input.append(prefix % 'director' + r_prompt)
-            #         meta_output.append(d_prompt)
-            #     for p_prompt in plot_prompt:
-            #         meta_input.append(prefix % 'plot' + r_prompt)
-            #         meta_output.append(p_prompt)
-            #
-            # tokenized_meta_input = self.tokenizer_gpt(meta_input, max_length=self.args.max_title_len,
-            #                                           padding='max_length',
-            #                                           truncation=True).input_ids
-            # tokenized_meta_output = self.tokenizer_gpt(meta_output, max_length=self.args.max_review_len,
-            #                                            padding='max_length',
-            #                                            truncation=True).input_ids
-            #
-            # # for t_input, t_output in zip(tokenzied_meta_input, tokenzied_meta_output):
-            # #     self.meta_samples.append((t_input, t_output))
-            #
-            # self.meta_samples.append((tokenized_meta_input, tokenized_meta_output))
-
-        #     tokenzied_reviews_org = self.tokenizer_gpt(reviews, max_length=self.args.max_review_len,
-        #                                                truncation=True).input_ids
-        #     for idx, tokenzied_review in enumerate(tokenzied_reviews_org):
-        #         # tokenized_review = self.tokenizer_gpt.tokenize(review)
-        #         total_len = len(tokenzied_review)
-        #         sidx = 0
-        #         eidx = self.args.max_gen_len
-        #         while True:
-        #             review_meta_chunk.append(reviews_meta[idx])
-        #             tokenized_reviews.append(tokenzied_review[sidx:eidx - 1])
-        #             sidx += self.args.window_size
-        #             eidx += self.args.window_size
-        #
-        #             if sidx >= total_len:
-        #                 break
-        #     tokenized_reviews = [review + [self.tokenizer_gpt.eos_token_id] for review in tokenized_reviews]
-        #
-        #     tokenzied_plots_org = self.tokenizer_gpt(plots, max_length=self.args.max_plot_len,
-        #                                              truncation=True).input_ids
-        #     for idx, tokenized_plot in enumerate(tokenzied_plots_org):
-        #         total_len = len(tokenized_plot)
-        #         sidx = 0
-        #         eidx = self.args.max_gen_len
-        #         while True:
-        #             plot_meta_chunk.append(plots_meta[idx])
-        #             tokenized_plots.append(tokenized_plot[sidx:eidx - 1])
-        #
-        #             sidx += self.args.window_size
-        #             eidx += self.args.window_size
-        #
-        #             if sidx >= total_len:
-        #                 break
-        #     tokenized_plots = [plot + [self.tokenizer_gpt.eos_token_id] for plot in tokenized_plots]
-        #
-        #     # Title
-        #     tokenized_review_title = self.tokenizer_gpt(review_prefix).input_ids
-        #     # tokenized_review_title += self.tokenizer_gpt(':').input_ids
-        #     tokenized_plot_title = self.tokenizer_gpt(plot_prefix).input_ids
-        #     # tokenized_plot_title += self.tokenizer_gpt(':').input_ids
-        #
-        #     # BERT - review & plot
-        #     tokenized_reviews_bert = self.tokenizer_bert(reviews, max_length=max_review_len,
-        #                                                  truncation=True,
-        #                                                  add_special_tokens=True).input_ids
-        #     tokenized_plots_bert = self.tokenizer_bert(plots, max_length=max_plot_len,
-        #                                                truncation=True,
-        #                                                add_special_tokens=True).input_ids
-        #     # Context entities
-        #     for idx, meta in enumerate(reviews_meta):
-        #         reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
-        #         reviews_meta[idx] = reviews_meta[idx] + [0] * (self.args.n_meta - len(meta))  # padding
-        #
-        #     for idx, meta in enumerate(plots_meta):
-        #         plots_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
-        #         plots_meta[idx] = plots_meta[idx] + [0] * (self.args.n_meta - len(meta))  # padding
-        #
-        #     for i in range(min(len(reviews), self.args.n_review)):
-        #         self.data_samples.append(
-        #             {"text": tokenized_reviews[i], "title": tokenized_review_title,
-        #              "text_bert": tokenized_reviews_bert[i], "context_entities": reviews_meta[i]})
-        #
-        #     for i in range(min(len(plots), self.args.n_plot)):
-        #         self.data_samples.append(
-        #             {"text": tokenized_plots[i], "title": tokenized_plot_title,
-        #              "text_bert": tokenized_plots_bert[i], "context_entities": plots_meta[i]})
-        #
-        # logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
-
-    # def __getitem__(self, idx):
-    #     text = self.data_samples[idx]['text']
-    #     title = self.data_samples[idx]['title']
-    #     text_bert = self.data_samples[idx]['text_bert']
-    #     context_entities = self.data_samples[idx]['context_entities']
-    #
-    #     return text, title, text_bert, context_entities
-    #
-    # def __len__(self):
-    #     return len(self.data_samples)
-
     def __getitem__(self, idx):
-        # text = self.data_samples[idx]['text']
-        # title = self.data_samples[idx]['title']
-        # text_bert = self.data_samples[idx]['text_bert']
-        # context_entities = self.data_samples[idx]['context_entities']
 
         meta_input = self.meta_samples[idx][0]
         meta_output = self.meta_samples[idx][1]
@@ -391,74 +190,6 @@ class ContentConvCollator:
         return input_batch
 
 
-# class ContentConvCollator:
-#     def __init__(self, mode, args, tokenizer, tokenizer_bert):
-#         self.mode = mode
-#         self.args = args
-#         self.device = args.device_id
-#         self.tokenizer = tokenizer
-#         self.tokenizer_bert = tokenizer_bert
-#
-#     def __call__(self, data_batch):
-#         context_batch = defaultdict(list)  # title, content (plot & review)
-#         context_batch_bert = defaultdict(list)  # context entities, context words
-#
-#         resp_batch = []
-#         context_len_batch = []
-#         entity_batch = []
-#
-#         for text, title, text_bert, context_entities in data_batch:
-#             if self.mode == 'train':
-#                 self.tokenizer.padding_side = 'right'
-#                 input_ids = title + text
-#                 input_ids = input_ids[:self.args.max_title_len + self.args.max_gen_len - 1]
-#                 input_ids.append(self.tokenizer.eos_token_id)
-#
-#                 context_batch['input_ids'].append(input_ids)
-#
-#                 context_batch_bert['input_ids'].append(text_bert)
-#                 entity_batch.append(context_entities)
-#
-#             elif self.mode == 'test':
-#                 self.tokenizer.padding_side = 'left'
-#                 context_ids = title
-#                 context_len_batch.append(len(context_ids))
-#                 context_batch['input_ids'].append(context_ids)
-#                 resp_batch.append(text)
-#                 context_batch_bert['input_ids'].append(text_bert)
-#                 entity_batch.append(context_entities)
-#
-#         input_batch = {}
-#
-#         context_batch = self.tokenizer.pad(context_batch, padding="max_length",
-#                                            max_length=self.args.max_title_len + self.args.max_gen_len)
-#         context_batch_bert = self.tokenizer_bert.pad(context_batch_bert, padding="max_length",
-#                                                      max_length=self.args.max_review_len)
-#         #
-#         if self.mode == 'train':
-#             resp_batch = context_batch['input_ids']
-#             resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for resp
-#                           in resp_batch]
-#             input_batch['response'] = torch.as_tensor(resp_batch, device=self.device)
-#         else:
-#             input_batch['response'] = resp_batch
-#             input_batch['context_len'] = context_len_batch
-#
-#         for k, v in context_batch.items():
-#             if not isinstance(v, torch.Tensor):
-#                 context_batch[k] = torch.as_tensor(v, device=self.device)
-#         for k, v in context_batch_bert.items():
-#             if not isinstance(v, torch.Tensor):
-#                 context_batch_bert[k] = torch.as_tensor(v, device=self.device)
-#         entity_batch = torch.LongTensor(entity_batch)
-#
-#         input_batch['context'] = context_batch
-#         input_batch['context_bert'] = context_batch_bert
-#         input_batch['context_entities'] = entity_batch
-#
-#         return input_batch
-
-
 class CRSConvDataset(Dataset):
     #
     # Need to bring three datas
@@ -510,12 +241,6 @@ class CRSConvDataset(Dataset):
         append_role = None
 
         for utt in dialog:
-            # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
-            # for idx, word in enumerate(utt['text']):
-            # if word[0] == '@' and word[1:].isnumeric():
-            # utt['text'][idx] = '<movie> %s ' % self.movie2name[word[1:]][1]
-            # utt['text_context'][idx] = '<movie>'
-
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
             movie_ids = [self.entity2id[movie] for movie in utt['movies'] if
@@ -555,17 +280,11 @@ class CRSConvDataset(Dataset):
             text_token_ids_bert = self.tokenizer_bert(
                 text_tokens + self.tokenizer_bert.sep_token,
                 add_special_tokens=False).input_ids
-            # text_token_ids = self.tokenizer(text_tokens + self.tokenizer.eos_token,
-            #                                 add_special_tokens=False).input_ids  # movie name 으로 하고 싶을 경우
             text_tokens = text_tokens + self.tokenizer.eos_token
             processed_text_tokens = self.process_utt(text_tokens, self.movie2name,
                                                      replace_movieId=True,
                                                      remove_movie=True)
-
-            plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
-                # mask name 으로 하고 싶은 경우
-
                 context_tokens[-1] = self.process_utt(context_tokens[-1], self.movie2name, replace_movieId=True,
                                                       remove_movie=True)
 
@@ -615,7 +334,6 @@ class CRSConvDataset(Dataset):
             'n_relation': len(relation2id),
             'entity': list(entities)
         }
-        # <movie> 영화id
 
     def process_utt(self, utt, movie2name, replace_movieId, remove_movie=False):
         movie_pattern = re.compile(r'@\d+')  # regex
@@ -641,8 +359,6 @@ class CRSConvDataset(Dataset):
         idx = rand.randint(0, len(self.content_conv_dataset) - 1)
         text = self.content_conv_dataset[idx][0]
         title = self.content_conv_dataset[idx][1]
-        # text_bert = self.content_conv_dataset[idx][2]
-        # context_entities = self.content_conv_dataset[idx][3]
 
         return text, title, self.data[item]
 
@@ -673,10 +389,6 @@ class CRSConvDataCollator:
         if self.context_max_length is None:
             self.context_max_length = self.tokenizer.model_max_length
 
-        # self.resp_max_length = resp_max_length
-        # if self.resp_max_length is None:
-        #     self.resp_max_length = self.tokenizer.model_max_length
-
         self.entity_max_length = entity_max_length
         if self.entity_max_length is None:
             self.entity_max_length = self.args.n_meta
@@ -706,7 +418,7 @@ class CRSConvDataCollator:
 
                 # fine-tuning context words
                 input_ids_bert = sum(data['context_tokens_bert'], [])
-                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]  # todo
+                input_ids_bert = input_ids_bert[-self.args.max_dialog_len + 1:]
                 input_ids_bert = [self.tokenizer_bert.cls_token_id] + input_ids_bert
                 context_batch_bert['input_ids'].append(input_ids_bert)
 
@@ -755,9 +467,6 @@ class CRSConvDataCollator:
         pre_context_batch = self.tokenizer.pad(pre_context_batch, padding="max_length",
                                                max_length=self.args.max_title_len + self.args.max_gen_len)
 
-        # pre_context_batch_bert = self.tokenizer_bert.pad(pre_context_batch_bert, padding="max_length",
-        #                                                  max_length=self.args.max_review_len)
-
         if not self.gen:
             resp_batch = context_batch['input_ids']
             resp_batch = [[token_id if token_id != self.tokenizer.pad_token_id else -100 for token_id in resp] for resp
@@ -799,17 +508,5 @@ class CRSConvDataCollator:
             if not isinstance(v, torch.Tensor):
                 pre_context_batch[k] = torch.as_tensor(v, device=self.device)
         pre_input_batch['context'] = pre_context_batch
-
-        # # pre-training: context words
-        # for k, v in pre_context_batch_bert.items():
-        #     if not isinstance(v, torch.Tensor):
-        #         pre_context_batch_bert[k] = torch.as_tensor(v, device=self.device)
-        # pre_input_batch['context_bert'] = pre_context_batch_bert
-
-        # # pre-training: context entities
-        # pre_entity_batch = padded_tensor(
-        #     pre_entity_batch, max_len=self.entity_max_length
-        # )
-        # pre_input_batch['context_entities'] = pre_entity_batch
 
         return input_batch, pre_input_batch

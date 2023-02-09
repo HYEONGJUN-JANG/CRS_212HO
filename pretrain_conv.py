@@ -74,9 +74,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
-    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.projection_order,
-                          args.device_id).to(
-        args.device_id)
+    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.device_id).to(args.device_id)
 
     optimizer_grouped_parameters = [
         {

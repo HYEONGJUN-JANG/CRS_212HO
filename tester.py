@@ -73,5 +73,4 @@ if __name__ == '__main__':
             result_f.write('best_hits:\t' + '\t'.join(format(x, ".2f") for x in avg_best_results) + '\n')
     elif 'conv' in args.task:
         for t in range(args.num_trial):
-            total_report = main(args)
-            # TODO: result 적을지 말지
+            main(args)

@@ -13,7 +13,7 @@ class ConvEvaluator:
 
         self.reset_metric()
         if log_file_path:
-            self.log_file = open(log_file_path, 'w', buffering=1, encoding='UTF-8')
+            self.log_file = open(log_file_path, 'a', buffering=1, encoding='UTF-8')
             self.log_cnt = 0
 
     def evaluate(self, preds, labels, contexts, recommended_items, log=False):

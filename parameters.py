@@ -8,10 +8,10 @@ def parse_args():
     parser.add_argument('--name', type=str,
                         default='review')  # plot or review or plot-review or plot-review-serial or none
     parser.add_argument('--n_review', type=int, default=9)  # 1 or 2 or 3 or 20
-    parser.add_argument('--n_plot', type=int, default=9)  # 1 or 2 or 3 or 9
+    # parser.add_argument('--n_plot', type=int, default=9)  # 1 or 2 or 3 or 9
     parser.add_argument('--n_meta', type=int, default=5)  # 1 or 2 or 3 or 9
     parser.add_argument('--num_trial', type=int, default=3)
-    parser.add_argument('--max_plot_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
+    # parser.add_argument('--max_plot_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--max_review_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--max_dialog_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--kg_emb_dim', type=int, default=128)  # 128
@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument('--conv_loss_lambda', type=float, default=0.1, help='conv lambda')
     parser.add_argument("--conv_pre_eval_batch_size", type=int, default=2, help="conv pre-training eval batch size")
     parser.add_argument('--conv_pretrained', action='store_true')
-    parser.add_argument("--projection_order", type=int, default=3, help="1:t, 2:t+e, 3:t+e+u, 4:e")
+    # parser.add_argument("--projection_order", type=int, default=3, help="1:t, 2:t+e, 3:t+e+u, 4:e")
     parser.add_argument('--conv_pretrained_path', default='none', type=str)
     parser.add_argument('--conv_pretrained_type', default='none', type=str)
 
