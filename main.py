@@ -34,7 +34,7 @@ from pretrain import pretrain
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
     get_linear_schedule_with_warmup, AutoModelForCausalLM
 
-## HJ Branch Test
+
 from utils import get_time_kst
 
 
@@ -49,7 +49,7 @@ def createResultFile(args):
 
     if 'rec' in args.task:
         results_file_path = os.path.join(rawFolder_path,
-                                         f"[REC]{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}.txt")
+                                         f"[REC]{mdhm}_train_device_{args.device_id}_name_{args.name}_{args.n_review}_samples_RLength_{args.max_review_len}.txt")
 
         # parameters
         with open(results_file_path, 'a', encoding='utf-8') as result_f:
@@ -111,12 +111,12 @@ def main(args):
     if 'redial' in args.dataset_path:
         pretrained_path = f'./saved_model/{args.task}/redial/pretrained_model_{args.name}.pt'
         trained_path = f'./saved_model/{args.task}/redial/trained_model_{args.name}.pt'
-        bestrec_path = f'.saved_model/rec/redial/trained_model_best.pt'
+        best_rec_path = f'.saved_model/rec/redial/trained_model_best.pt'
         best_conv_pretrained_path = f'.saved_model/conv/redial/pretrained_model_best.pt'
     elif 'inspired' in args.dataset_path:
         pretrained_path = f'./saved_model/{args.task}/inspired/pretrained_model_{args.name}.pt'
         trained_path = f'./saved_model/{args.task}/inspired/trained_model_{args.name}.pt'
-        bestrec_path = f'.saved_model/rec/inspired/trained_model_best.pt'
+        best_rec_path = f'.saved_model/rec/inspired/trained_model_best.pt'
         best_conv_pretrained_path = f'.saved_model/conv/inspired/pretrained_model_best.pt'
     # if 'redial' in args.dataset_path:
     #     bestrec_path = 'saved_model/{args.task}/trained_model_bestrec_redial.pt'
@@ -210,15 +210,9 @@ def main(args):
 
         # For pre-training
         if not args.pretrained:
-            if 'none' not in args.name:
-                pretrain(args, model, pretrain_dataloader, pretrained_path)
+            pretrain(args, model, pretrain_dataloader, pretrained_path)
         else:
             model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
-
-        if args.word_encoder == 2:
-            type = 'gpt'
-        else:
-            type = 'bert'
 
         if args.dataset_path == 'data/inspired':
             for param in model.word_encoder.parameters():
@@ -226,10 +220,10 @@ def main(args):
 
         train_rec_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size,
                                                 word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
-                                                task='rec', type=type)
+                                                task='rec', type='bert')
         test_rec_dataloader = ReDialDataLoader(test_data, args.n_sample, args.batch_size,
                                                word_truncate=args.max_dialog_len,
-                                               cls_token=tokenizer.cls_token_id, task='rec', type=type)
+                                               cls_token=tokenizer.cls_token_id, task='rec', type='bert')
 
         content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
                                                                   test_rec_dataloader,
@@ -240,9 +234,9 @@ def main(args):
     if 'conv' in args.task:
         conv_results_file_path, pre_conv_result_file_path = createResultFile(args)
         # load rec fine-tuned model
-        if os.path.isfile(bestrec_path):
-            logger.info(f'Load pretrained file\t{bestrec_path}')
-            model.load_state_dict(torch.load(bestrec_path, map_location='cuda:%d' % args.device_id))
+        if os.path.isfile(best_rec_path):
+            logger.info(f'Load pretrained file\t{best_rec_path}')
+            model.load_state_dict(torch.load(best_rec_path, map_location='cuda:%d' % args.device_id))
         for param in model.parameters():
             param.requires_grad = False
 
