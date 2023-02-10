@@ -12,6 +12,7 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertM
 import json
 import os
 
+
 # entity2id = json.load(
 #     open(os.path.join('data/redial', 'entity2id.json'), 'r', encoding='utf-8'))
 # id2entity = {idx: entity for entity, idx in entity2id.items()}
@@ -178,7 +179,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader))
     max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
-    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.projection_order,
+    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim,
                           args.device_id).to(args.device_id)
 
     modules = [gpt_model]
@@ -256,6 +257,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
 
         logger.info('[Test]')
 
-    finetuning_evaluate(args, evaluator, epoch+1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+    finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
                         tokenizer_bert,
                         total_report)

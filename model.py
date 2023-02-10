@@ -21,12 +21,12 @@ class MultiOutput(ModelOutput):
 
 
 class Projector(nn.Module):
-    def __init__(self, gpt2_config, bert_hidden_size, entity_dim_size, projection_order, device):
+    def __init__(self, gpt2_config, bert_hidden_size, entity_dim_size, device):
         super(Projector, self).__init__()
         self.gpt_hidden_size = gpt2_config.hidden_size
         self.bert_hidden_size = bert_hidden_size
         self.entity_dim_size = entity_dim_size
-        self.projection_order = projection_order
+        # self.projection_order = projection_order
         self.device = device
 
         self.token_proj = nn.Sequential(
