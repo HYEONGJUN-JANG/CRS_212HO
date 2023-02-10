@@ -58,20 +58,9 @@ class Projector(nn.Module):
         entity_emb = self.entity_proj(entity_emb)
         user_emb = self.user_proj(user_representation)
 
-        if self.projection_order == 1:
-            encoder_state = token_emb
-            encoder_mask = token_mask
-        elif self.projection_order == 2:
-            encoder_state = torch.cat([token_emb, entity_emb], dim=1)
-            encoder_mask = torch.cat([token_mask, entity_mask], dim=1)
-        elif self.projection_order == 3:
-            encoder_state = torch.cat([token_emb, entity_emb, user_emb.unsqueeze(1)], dim=1)
-            encoder_mask = torch.cat([token_mask, entity_mask, torch.ones(token_mask.shape[0], 1, device=self.device)],
-                                     dim=1)
-        elif self.projection_order == 4:
-            encoder_state = user_emb.unsqueeze(1)
-            encoder_mask = torch.ones(token_mask.shape[0], 1, device=self.device)
-
+        encoder_state = torch.cat([token_emb, entity_emb, user_emb.unsqueeze(1)], dim=1)
+        encoder_mask = torch.cat([token_mask, entity_mask, torch.ones(token_mask.shape[0], 1, device=self.device)],
+                                 dim=1)
         batch_size = encoder_state.shape[0]
         prompt_len = encoder_state.shape[1]
         prompt_embeds = self.prompt_proj2(encoder_state)
@@ -134,10 +123,8 @@ class MovieExpertCRS(nn.Module):
         self.entity_attention.initialize()
         self.token_attention.initialize()
 
-    # Input # todo: meta information (entitiy)도 같이 입력
-    # plot_token    :   [batch_size, n_plot, max_plot_len]
-    # review_token    :   [batch_size, n_plot, max_review_len]
-    # plot_meta    :   [batch_size, n_plot, n_meta]
+    # review_token    :   [batch_size, n_review, max_review_len]
+    # review_meta    :   [batch_size, n_review, n_meta]
     # target_item   :   [batch_size]
     def pre_forward(self, review_meta, review_token, review_mask, target_item,
                     mask_label,
@@ -175,21 +162,14 @@ class MovieExpertCRS(nn.Module):
         text = text.view(-1, max_len)
         mask = mask.view(-1, max_len)
 
-        # if self.args.word_encoder == 0:
         text_emb = self.word_encoder(input_ids=text,
                                      attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
         proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-        # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
         content_emb = proj_text_emb[:, 0, :]
         content_emb = self.dropout_pt(content_emb)
 
-        if 'word' in self.args.meta and 'meta' in self.args.meta:
-            gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
-            user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep
-        elif 'word' in self.args.meta:
-            user_embedding = content_emb
-        elif 'meta' in self.args.meta:
-            user_embedding = entity_attn_rep
+        gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
+        user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep
 
         scores = F.linear(user_embedding, kg_embedding)
 
@@ -246,6 +226,5 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
 
-        # user_embedding = token_attn_rep
         scores = F.linear(user_embedding, kg_embedding)
         return scores

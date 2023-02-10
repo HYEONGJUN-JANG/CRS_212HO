@@ -7,9 +7,6 @@ def parse_args():
     # common
     parser.add_argument('--name', type=str,
                         default='plot-review-serial-none')
-    parser.add_argument('--n_review', type=int, default=9)
-    parser.add_argument('--n_meta', type=int, default=5)
-    parser.add_argument('--max_review_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--max_dialog_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--kg_emb_dim', type=int, default=128)
     parser.add_argument('--num_bases', type=int, default=8)
@@ -17,13 +14,16 @@ def parse_args():
     parser.add_argument('--task', type=str, default='rec')
     parser.add_argument('--num_trial', type=int, default=3)
     parser.add_argument('--device_id', type=int, default=0)
-    parser.add_argument('--n_sample', type=int, default=1, help='sampling')
-    parser.add_argument('--meta', type=str, default='word',
-                        choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
     parser.add_argument('--mode', type=str, default='test', choices=['valid','test'])
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
 
     # rec
+    parser.add_argument('--n_review', type=int, default=9)
+    parser.add_argument('--n_meta', type=int, default=5)
+    # parser.add_argument('--meta', type=str, default='word',
+    #                     choices=['meta', 'word', 'meta-word'])  # [NEW] choice among three candidates
+    parser.add_argument('--n_sample', type=int, default=1, help='sampling')
+    parser.add_argument('--max_review_len', type=int, default=128)  # 50, 100, 150, 200, 250, (300)
     parser.add_argument('--epoch_pt', type=int, default=30)  # [NEW] # epochs of pre-training
     parser.add_argument('--epoch_ft', type=int, default=10)  # [NEW] # epochs if fine-tuning
     parser.add_argument('--batch_size', type=int, default=2)
@@ -57,7 +57,7 @@ def parse_args():
     parser.add_argument('--conv_loss_lambda', type=float, default=0.1, help='conv lambda')
     parser.add_argument("--conv_pre_eval_batch_size", type=int, default=2, help="conv pre-training eval batch size")
     parser.add_argument('--conv_pretrained', action='store_true')
-    parser.add_argument("--projection_order", type=int, default=3, help="1:t, 2:t+e, 3:t+e+u, 4:e")
+    # parser.add_argument("--projection_order", type=int, default=3, help="1:t, 2:t+e, 3:t+e+u, 4:e")
     parser.add_argument('--conv_pretrained_path', default='none', type=str)
     parser.add_argument('--conv_pretrained_type', default='none', type=str)
 
