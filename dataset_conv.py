@@ -74,9 +74,9 @@ class ContentInformationConv(Dataset):
             open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.movie2id = json.load(open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))
         self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r', encoding='utf-8'))
-        self.read_data(args.max_plot_len, args.max_review_len)
+        self.read_data()
 
-    def read_data(self, max_plot_len, max_review_len):
+    def read_data(self):
         f = open(os.path.join(self.data_path, 'content_data_new_meta.json'), encoding='utf-8')
 
         data = json.load(f)

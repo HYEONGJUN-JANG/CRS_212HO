@@ -43,23 +43,19 @@ def parse_args():
     parser.add_argument('--conv_epoch_ft', type=int, default=10)  # [NEW] # epochs if fine-tuning
     parser.add_argument('--conv_batch_size', type=int, default=2)
     parser.add_argument('--gen_batch_size', type=int, default=1)
-
     parser.add_argument('--conv_lr_pt', type=float, default=1e-4, help='Pre-training Learning rate')
     parser.add_argument('--conv_lr_ft', type=float, default=1e-4, help='Fine-tuning Learning rate')
     parser.add_argument('--context_max_length', type=int, default=128)
-    # parser.add_argument('--resp_max_length', type=int, default=30)
     parser.add_argument("--max_gen_len", type=int, default=128)
     parser.add_argument("--max_title_len", type=int, default=40)
-
     parser.add_argument("--entity_max_length", type=int, help="max entity length in dataset.", default=32)
     parser.add_argument('--num_warmup_steps', type=int, default=6345)
     parser.add_argument("--weight_decay", type=float, default=0.01, help="Weight decay to use.")
     parser.add_argument('--conv_loss_lambda', type=float, default=0.1, help='conv lambda')
     parser.add_argument("--conv_pre_eval_batch_size", type=int, default=2, help="conv pre-training eval batch size")
     parser.add_argument('--conv_pretrained', action='store_true')
-    # parser.add_argument("--projection_order", type=int, default=3, help="1:t, 2:t+e, 3:t+e+u, 4:e")
-    parser.add_argument('--conv_pretrained_path', default='none', type=str)
-    parser.add_argument('--conv_pretrained_type', default='none', type=str)
+    # parser.add_argument('--conv_pretrained_path', default='none', type=str)
+    # parser.add_argument('--conv_pretrained_type', default='none', type=str)
 
     # GPT
     parser.add_argument('--gpt_name', type=str, default='gpt2',
