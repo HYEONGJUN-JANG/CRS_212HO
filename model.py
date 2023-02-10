@@ -117,55 +117,55 @@ class MovieExpertCRS(nn.Module):
         #         nn.Linear(hidden_size // 2, hidden_size)
         #     )
 
-        if args.word_encoder == 0:
-            self.word_encoder = bert_model  # bert or transformer or bart
-            self.cls = BertOnlyMLMHead(bert_config)
-
-            if 'bart' in args.bert_name:
-                self.word_encoder = bert_model.encoder
-
-        elif args.word_encoder == 1:
-            self.token_emb_dim = self.kg_emb_dim
-            self.token_embedding = nn.Embedding(self.args.vocab_size, self.token_emb_dim,
-                                                self.args.pad_token_id)
-            nn.init.normal_(self.token_embedding.weight, mean=0, std=self.token_emb_dim ** -0.5)
-            nn.init.constant_(self.token_embedding.weight[self.args.pad_token_id], 0)
-
-            self.word_encoder = TransformerEncoder(
-                self.args.n_heads,
-                self.args.n_layers,
-                self.token_emb_dim,
-                self.args.ffn_size,
-                self.args.vocab_size,
-                self.token_embedding,
-                self.args.dropout,
-                self.args.attention_dropout,
-                self.args.relu_dropout,
-                self.args.pad_token_id,
-                self.args.learn_positional_embeddings,
-                self.args.embeddings_scale,
-                self.args.reduction,
-                self.args.n_positions
-            )
-        elif args.word_encoder == 2:
-            self.word_encoder = bert_model  # bert or transformer or bart
-            self.n_layer = self.word_encoder.config.n_layer
-            self.n_block = 2
-            self.rec_prefix_embeds = nn.Parameter(torch.empty(n_prefix_rec, self.token_emb_dim))
-            nn.init.normal_(self.rec_prefix_embeds)
-            self.rec_prefix_proj = nn.Sequential(
-                nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
-                nn.ReLU(),
-                nn.Linear(self.token_emb_dim // 2, self.token_emb_dim)
-            )
-
-            self.prompt_proj1 = nn.Sequential(
-                nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
-                nn.ReLU(),
-                nn.Linear(self.token_emb_dim // 2, self.token_emb_dim),
-            )
-
-            self.prompt_proj2 = nn.Linear(self.token_emb_dim, self.n_layer * self.n_block * self.token_emb_dim)
+        # if args.word_encoder == 0:
+        self.word_encoder = bert_model  # bert or transformer or bart
+        self.cls = BertOnlyMLMHead(bert_config)
+        #
+        #     if 'bart' in args.bert_name:
+        #         self.word_encoder = bert_model.encoder
+        #
+        # elif args.word_encoder == 1:
+        #     self.token_emb_dim = self.kg_emb_dim
+        #     self.token_embedding = nn.Embedding(self.args.vocab_size, self.token_emb_dim,
+        #                                         self.args.pad_token_id)
+        #     nn.init.normal_(self.token_embedding.weight, mean=0, std=self.token_emb_dim ** -0.5)
+        #     nn.init.constant_(self.token_embedding.weight[self.args.pad_token_id], 0)
+        #
+        #     self.word_encoder = TransformerEncoder(
+        #         self.args.n_heads,
+        #         self.args.n_layers,
+        #         self.token_emb_dim,
+        #         self.args.ffn_size,
+        #         self.args.vocab_size,
+        #         self.token_embedding,
+        #         self.args.dropout,
+        #         self.args.attention_dropout,
+        #         self.args.relu_dropout,
+        #         self.args.pad_token_id,
+        #         self.args.learn_positional_embeddings,
+        #         self.args.embeddings_scale,
+        #         self.args.reduction,
+        #         self.args.n_positions
+        #     )
+        # elif args.word_encoder == 2:
+        #     self.word_encoder = bert_model  # bert or transformer or bart
+        #     self.n_layer = self.word_encoder.config.n_layer
+        #     self.n_block = 2
+        #     self.rec_prefix_embeds = nn.Parameter(torch.empty(n_prefix_rec, self.token_emb_dim))
+        #     nn.init.normal_(self.rec_prefix_embeds)
+        #     self.rec_prefix_proj = nn.Sequential(
+        #         nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
+        #         nn.ReLU(),
+        #         nn.Linear(self.token_emb_dim // 2, self.token_emb_dim)
+        #     )
+        #
+        #     self.prompt_proj1 = nn.Sequential(
+        #         nn.Linear(self.token_emb_dim, self.token_emb_dim // 2),
+        #         nn.ReLU(),
+        #         nn.Linear(self.token_emb_dim // 2, self.token_emb_dim),
+        #     )
+        #
+        #     self.prompt_proj2 = nn.Linear(self.token_emb_dim, self.n_layer * self.n_block * self.token_emb_dim)
 
         self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
@@ -239,21 +239,21 @@ class MovieExpertCRS(nn.Module):
         text = text.view(-1, max_len)
         mask = mask.view(-1, max_len)
 
-        if self.args.word_encoder == 0:
-            text_emb = self.word_encoder(input_ids=text,
-                                         attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
-            proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
-            content_emb = proj_text_emb[:, 0, :]
-        elif self.args.word_encoder == 2:
-
-            text_emb = self.word_encoder(input_ids=text,
-                                         attention_mask=mask)[0]  # [B, L, d] -> [B * N, L, d]
-
-            text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-            # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
-            sequence_len = torch.sum(mask, dim=1) - 1
-            content_emb = text_emb[torch.arange(text.shape[0]), sequence_len]
+        # if self.args.word_encoder == 0:
+        text_emb = self.word_encoder(input_ids=text,
+                                     attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
+        proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
+        # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
+        content_emb = proj_text_emb[:, 0, :]
+        # elif self.args.word_encoder == 2:
+        #
+        #     text_emb = self.word_encoder(input_ids=text,
+        #                                  attention_mask=mask)[0]  # [B, L, d] -> [B * N, L, d]
+        #
+        #     text_emb = self.linear_transformation(text_emb)  # [B * N, d']
+        #     # content_emb = self.token_attention(text_emb, query=entity_attn_rep, mask=mask)  # [B, d] -> [B * N, d]
+        #     sequence_len = torch.sum(mask, dim=1) - 1
+        #     content_emb = text_emb[torch.arange(text.shape[0]), sequence_len]
 
         # prediction_scores = self.cls(text_emb)  # [B * N, L, V]
         # masked_lm_loss = None
@@ -305,11 +305,11 @@ class MovieExpertCRS(nn.Module):
             context_tokens)
 
         token_embedding = self.linear_transformation(token_embedding_prev)
-        if self.args.word_encoder == 0:
-            token_attn_rep = token_embedding[:, 0, :]
-        elif self.args.word_encoder == 2:
-            sequence_len = torch.sum(token_padding_mask, dim=1) - 1
-            token_attn_rep = token_embedding[torch.arange(context_tokens.shape[0]), sequence_len]
+        # if self.args.word_encoder == 0:
+        token_attn_rep = token_embedding[:, 0, :]
+        # elif self.args.word_encoder == 2:
+        #     sequence_len = torch.sum(token_padding_mask, dim=1) - 1
+        #     token_attn_rep = token_embedding[torch.arange(context_tokens.shape[0]), sequence_len]
 
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
                                                 position=self.args.position)  # (bs, entity_dim)
@@ -342,11 +342,11 @@ class MovieExpertCRS(nn.Module):
             context_tokens)
 
         token_embedding = self.linear_transformation(token_embedding)
-        if self.args.word_encoder == 0:
-            token_attn_rep = token_embedding[:, 0, :]
-        elif self.args.word_encoder == 2:
-            sequence_len = torch.sum(token_padding_mask, dim=1) - 1
-            token_attn_rep = token_embedding[torch.arange(context_tokens.shape[0]), sequence_len]
+        # if self.args.word_encoder == 0:
+        token_attn_rep = token_embedding[:, 0, :]
+        # elif self.args.word_encoder == 2:
+        #     sequence_len = torch.sum(token_padding_mask, dim=1) - 1
+        #     token_attn_rep = token_embedding[torch.arange(context_tokens.shape[0]), sequence_len]
 
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
                                                 position=self.args.position)  # (bs, entity_dim)

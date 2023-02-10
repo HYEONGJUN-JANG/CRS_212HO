@@ -55,10 +55,10 @@ class ContentInformation(Dataset):
                                                truncation=True,
                                                add_special_tokens=True)
 
-            if self.args.word_encoder == 2:
-                review_lens = [sum(mask) for mask in tokenized_reviews.attention_mask]
-                for tokenized_review, last_idx in zip(tokenized_reviews.input_ids, review_lens):
-                    tokenized_review[last_idx - 1] = tokenizer.cls_token_id
+            # if self.args.word_encoder == 2:
+            #     review_lens = [sum(mask) for mask in tokenized_reviews.attention_mask]
+            #     for tokenized_review, last_idx in zip(tokenized_reviews.input_ids, review_lens):
+            #         tokenized_review[last_idx - 1] = tokenizer.cls_token_id
 
             for idx, meta in enumerate(reviews_meta):
                 reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
