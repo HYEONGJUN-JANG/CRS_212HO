@@ -222,7 +222,7 @@ class MovieExpertCRS(nn.Module):
         # [B, 1] -> [N, B] -> [N X B]
         target_item = target_item.unsqueeze(1).repeat(1, n_text).view(-1).to(self.device_id)
         # [B, L]
-        mask_label = mask_label.repeat(1, n_text).view(-1, max_plot_len).to(self.device_id)
+        mask_label = mask_label.repeat(1, n_text).view(-1, max_review_len).to(self.device_id)
 
         # todo: entitiy 활용해서 pre-train
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
