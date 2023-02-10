@@ -55,11 +55,9 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
         # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
         #                                         entity_padding_mask, user_representation)
 
-        if args.conv_pretrained_type == 'none':
-            gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
-        # else:
-        #     gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
-        #                                   max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
+
+        gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
+
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
@@ -113,9 +111,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             #
             # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
             #                                         entity_padding_mask, user_representation)
-
-            if args.conv_pretrained_type == 'none':
-                loss = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
+            loss = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
             # else:
             #     loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
             #                      conv=True).conv_loss
