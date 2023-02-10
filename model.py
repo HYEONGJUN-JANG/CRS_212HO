@@ -199,60 +199,23 @@ class MovieExpertCRS(nn.Module):
     # review_token    :   [batch_size, n_plot, max_review_len]
     # plot_meta    :   [batch_size, n_plot, n_meta]
     # target_item   :   [batch_size]
-    def pre_forward(self, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, target_item,
+    def pre_forward(self, review_meta, review_token, review_mask, target_item,
                     mask_label,
                     compute_score=False):
         # text = torch.cat([meta_token, plot_token], dim=1)
         # mask = torch.cat([meta_mask, plot_mask], dim=1)
-        batch_size = plot_token.shape[0]
-        n_plot = plot_token.shape[1]
-        max_plot_len = plot_token.shape[2]
+        batch_size = review_token.shape[0]
         n_review = review_token.shape[1]
         max_review_len = review_token.shape[2]
-        n_meta = plot_meta.shape[2]
+        n_meta = review_meta.shape[2]
 
-        if 'plot' in self.name and 'review' in self.name:
-            if 'serial' in self.name:  # Cand.3: Review | Plot
-                text = torch.cat([plot_token, review_token], dim=1)  # [B, 2N, L]
-                mask = torch.cat([plot_mask, review_mask], dim=1)  # [B, 2N, L]
-                meta = torch.cat([plot_meta, review_meta], dim=1)  # [B, 2N, L']
-                max_len = max_plot_len
-                max_meta_len = n_meta
-                n_text = n_plot * 2
 
-            else:  # Cand.4: Review & Plot
-                plot_token = plot_token.repeat(1, 1, n_plot).view(batch_size, -1, max_plot_len)
-                review_token = review_token.repeat(1, n_plot, 1).view(batch_size, -1, max_plot_len)
-                text = torch.cat([plot_token, review_token], dim=2)
-
-                plot_mask = plot_mask.repeat(1, 1, n_plot).view(batch_size, -1, max_plot_len)
-                review_mask = review_mask.repeat(1, n_plot, 1).view(batch_size, -1, max_plot_len)
-                mask = torch.cat([plot_mask, review_mask], dim=2)
-
-                plot_meta = plot_meta.repeat(1, 1, n_plot).view(batch_size, -1, n_meta)
-                review_meta = review_meta.repeat(1, n_plot, 1).view(batch_size, -1, n_meta)
-                meta = torch.cat([plot_meta, review_meta], dim=2)
-                max_len = max_plot_len * 2
-                max_meta_len = n_meta * 2
-                n_text = n_plot ** 2
-
-                # text = torch.cat([plot_token, review_token], dim=1)
-                # mask = torch.cat([plot_mask, review_mask], dim=1)
-        elif 'plot' in self.name:  # cand.1: Plot
-            text = plot_token
-            mask = plot_mask
-            meta = plot_meta
-            max_len = max_plot_len
-            max_meta_len = n_meta
-            n_text = n_plot
-
-        elif 'review' in self.name:  # Cand.2: Review
-            text = review_token
-            mask = review_mask
-            meta = review_meta
-            max_len = max_plot_len
-            max_meta_len = n_meta
-            n_text = n_plot
+        text = review_token
+        mask = review_mask
+        meta = review_meta
+        max_len = max_review_len
+        max_meta_len = n_meta
+        n_text = n_review
         text = text.to(self.device_id)
         mask = mask.to(self.device_id)
 
