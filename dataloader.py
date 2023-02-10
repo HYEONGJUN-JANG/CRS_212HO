@@ -90,9 +90,6 @@ class ReDialDataLoader:
                 for idx, movie in enumerate(conv_dict['items']):
                     augment_conv_dict = deepcopy(conv_dict)
                     augment_conv_dict['item'] = movie
-                    augment_conv_dict['plot_meta'] = conv_dict['plot_meta'][idx]
-                    augment_conv_dict['plot'] = conv_dict['plot'][idx]
-                    augment_conv_dict['plot_mask'] = conv_dict['plot_mask'][idx]
                     augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
                     augment_conv_dict['review'] = conv_dict['review'][idx]
                     augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
@@ -107,7 +104,7 @@ class ReDialDataLoader:
     def rec_batchify(self, batch):
         batch_context_entities = []
         batch_context_tokens = []
-        batch_plot, batch_plot_mask, batch_review, batch_plot_meta, batch_review_meta, batch_review_mask = [], [], [], [], [], []
+        batch_review, batch_review_meta, batch_review_mask = [], [], []
         batch_item = []
         batch_mask_label = []
 
@@ -126,28 +123,19 @@ class ReDialDataLoader:
             batch_item.append(conv_dict['item'])
             batch_mask_label.append(conv_dict['mask_label'])
             ### Sampling
-            plot_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['plot_mask']), dim=1))
             review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
 
-            if plot_exist_num == 0 or review_exist_num == 0:
-                plot_exist_num = 1
+            if review_exist_num == 0:
                 review_exist_num = 1
 
-            plot_sample_idx = [random.randint(0, plot_exist_num - 1) for _ in range(self.n_sample)]
             review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.n_sample)]
 
-            batch_plot_meta.append([conv_dict['plot_meta'][k] for k in plot_sample_idx])
-            batch_plot.append([conv_dict['plot'][k] for k in plot_sample_idx])
-            batch_plot_mask.append([conv_dict['plot_mask'][k] for k in plot_sample_idx])
             batch_review_meta.append([conv_dict['review_meta'][k] for k in review_sample_idx])
             batch_review.append([conv_dict['review'][k] for k in review_sample_idx])
             batch_review_mask.append([conv_dict['review_mask'][k] for k in review_sample_idx])
 
         return (padded_tensor(batch_context_entities, 0, pad_tail=False),
                 padded_tensor(batch_context_tokens, 0, pad_tail=False),
-                torch.tensor(batch_plot_meta, dtype=torch.long),
-                torch.tensor(batch_plot, dtype=torch.long),
-                torch.tensor(batch_plot_mask, dtype=torch.long),
                 torch.tensor(batch_review_meta, dtype=torch.long),
                 torch.tensor(batch_review, dtype=torch.long),
                 torch.tensor(batch_review_mask, dtype=torch.long),
