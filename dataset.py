@@ -26,10 +26,10 @@ class ContentInformation(Dataset):
             open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.movie2id = json.load(open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))
         self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r', encoding='utf-8'))
-        self.read_data(tokenizer, args.max_review_len)
+        self.read_data(args.max_review_len)
         self.key_list = list(self.data_samples.keys())  # entity id list
 
-    def read_data(self, tokenizer, max_review_len):
+    def read_data(self, max_review_len):
         f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
 
         data = json.load(f)
@@ -54,11 +54,6 @@ class ContentInformation(Dataset):
                                                padding='max_length',
                                                truncation=True,
                                                add_special_tokens=True)
-
-            # if self.args.word_encoder == 2:
-            #     review_lens = [sum(mask) for mask in tokenized_reviews.attention_mask]
-            #     for tokenized_review, last_idx in zip(tokenized_reviews.input_ids, review_lens):
-            #         tokenized_review[last_idx - 1] = tokenizer.cls_token_id
 
             for idx, meta in enumerate(reviews_meta):
                 reviews_meta[idx] = [self.entity2id[entity] for entity in meta][:self.args.n_meta]
@@ -89,12 +84,6 @@ class ContentInformation(Dataset):
         review_mask = self.data_samples[idx]['review_mask']
         review_meta = self.data_samples[idx]['review_meta']
         mask_label = self.data_samples[idx]['mask_label']
-        # ### Sampling
-        # if len(meta) > 0:
-        #     sample_idx = [random.randint(0, len(meta) - 1) for _ in range(self.args.n_sample)]
-        #     entities = [meta[k] for k in sample_idx]
-        # else:
-        #     entities = [0] * self.args.n_sample
 
         review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
 

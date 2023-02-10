@@ -34,7 +34,6 @@ from pretrain import pretrain
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
     get_linear_schedule_with_warmup, AutoModelForCausalLM
 
-
 from utils import get_time_kst
 
 
@@ -107,7 +106,6 @@ def randomize_model(model):
 
 
 def main(args):
-    # 22.10.13: path of saved model
     if 'redial' in args.dataset_path:
         pretrained_path = f'./saved_model/{args.task}/redial/pretrained_model_{args.name}.pt'
         trained_path = f'./saved_model/{args.task}/redial/trained_model_{args.name}.pt'
@@ -119,15 +117,9 @@ def main(args):
         best_rec_path = f'.saved_model/rec/inspired/trained_model_best.pt'
         best_conv_pretrained_path = f'.saved_model/conv/inspired/pretrained_model_best.pt'
 
-    # # todo: multi-GPU
-    # if torch.cuda.device_count() > 1:
-    #     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #     print(device)
-
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
-    DATASET_PATH =  os.path.join(ROOT_PATH, args.dataset_path)
-
+    DATASET_PATH = os.path.join(ROOT_PATH, args.dataset_path)
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)
@@ -164,7 +156,6 @@ def main(args):
     tokenizer_gpt = AutoTokenizer.from_pretrained(args.gpt_name)
     tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
     gpt_config = AutoConfig.from_pretrained(args.gpt_name)
-    # gpt_config.add_cross_attention = True
 
     gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
@@ -213,14 +204,24 @@ def main(args):
         train_rec_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size,
                                                 word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
                                                 task='rec', type=type)
+        valid_rec_dataloader = ReDialDataLoader(valid_data, args.n_sample, args.batch_size,
+                                                word_truncate=args.max_dialog_len,
+                                                cls_token=tokenizer.cls_token_id, task='rec', type=type)
         test_rec_dataloader = ReDialDataLoader(test_data, args.n_sample, args.batch_size,
                                                word_truncate=args.max_dialog_len,
                                                cls_token=tokenizer.cls_token_id, task='rec', type=type)
 
-        content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
-                                                                  test_rec_dataloader,
-                                                                  trained_path, results_file_path,
-                                                                  pretrain_dataloader)
+        if args.mode == 'test':
+            content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
+                                                                      test_rec_dataloader,
+                                                                      trained_path, results_file_path,
+                                                                      pretrain_dataloader)
+        elif args.mode == 'valid':
+            content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
+                                                                      valid_rec_dataloader,
+                                                                      trained_path, results_file_path,
+                                                                      pretrain_dataloader)
+
         return content_hit, initial_hit, best_result
 
     if 'conv' in args.task:
