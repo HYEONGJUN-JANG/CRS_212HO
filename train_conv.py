@@ -13,32 +13,17 @@ import json
 import os
 
 
-# entity2id = json.load(
-#     open(os.path.join('data/redial', 'entity2id.json'), 'r', encoding='utf-8'))
-# id2entity = {idx: entity for entity, idx in entity2id.items()}
-# movie2name = json.load(open('data/redial/movie2name.json', 'r', encoding='utf-8'))
-# movieidx2name = {value[0]: "%s %s" % (value[1], value[2]) for key, value in movie2name.items()}
-
-
 def recommend_top1_item(batch, gen_seq_bert, model, dataset_path):
     movie2name = json.load(open(os.path.join(dataset_path, 'movie2name.json'), 'r', encoding='utf-8'))
     movieidx2name = {value[0]: "%s %s" % (value[1], value[2]) for key, value in movie2name.items()}
     movie_recommended_items = []
 
-    context_len = torch.sum(batch['context_bert'].attention_mask, dim=1, keepdim=True)
-    gen_seq_bert = torch.tensor(gen_seq_bert, device=model.device_id).long()
-
     input_text = batch['context_bert'].input_ids[0].clone()
-    # input_text[context_len:context_len + len(gen_seq_bert)] = gen_seq_bert
     model_scores = model(batch['context_entities'], input_text.view(1, -1))  # context_entities, context_tokens
 
     model_scores = model_scores[:, torch.LongTensor(model.movie2ids)]
-
-    # recommended_items = [id2entity[top1odx.item()] for top1odx in
-    #                      torch.topk(model_scores, 3, dim=1).indices.view(-1)]
     top3items = torch.topk(model_scores, k=3, dim=1).indices.view(-1, 3).tolist()
     recommended_items = [[model.movie2ids[item] for top3item in top3items for item in top3item]]
-    # recommended_items = [model.movie2ids[top3] for top3 in torch.topk(model_scores, 3, dim=1).indices.view(-1, 3).tolist()]
     for items in recommended_items:
         movie_recommended_items.append([movieidx2name[item] + '. <explain>' for item in items if item in movieidx2name])
 
@@ -46,28 +31,13 @@ def recommend_top1_item(batch, gen_seq_bert, model, dataset_path):
 
 
 def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test, model, args, epoch, evaluator):
-    test_cnt = 0
     evaluator.log_file.write(f'\n*** Pre-train test-{epoch} ***\n\n')
     # test
     logger.info('[Conv - Pre-training] Test')
     gpt_model.eval()
-    # projector.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        if test_cnt == 200:
-            break
-        else:
-            test_cnt += 1
-        # with torch.no_grad():
-        #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
-        #         batch['context_entities'], batch['context_bert'].input_ids)
-        #
-        # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-        #                                         entity_padding_mask, user_representation)
 
         gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
-        # else:
-        #     gen_seqs = gpt_model.generate(**batch['context'], prompt_embeds=encoder_state,
-        #                                   max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
         gen_resp_ids = []
         for gen_seq, length in zip(gen_seqs, batch['context_len']):
             gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer.pad_token_id]
@@ -82,12 +52,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
     projector.eval()
     model.eval()
     evaluator.log_file.write(f'\n*** Fine-tuning test-{epoch} ***\n\n')
-    test_cnt = 0
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        # if test_cnt == 300:
-        #     break
-        # else:
-        #     test_cnt += 1
         batch = batches[0]
         with torch.no_grad():
             movie_recommended_items = []
@@ -147,17 +112,11 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, proj
                 if unfinished_sequences.max() == 0:
                     break
 
-            # gen_resp_ids = []
-            # for gen_seq, length in zip(gen_seqs, batch['context_len']):
-            #     gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
-            #     gen_resp_ids.append(gen_seq[length:])
-            # evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], movie_recommended_items, log=True)
-
-            gen_resp_ids2 = []
+            gen_resp_ids = []
             for gen_seq, length in zip(input_ids, batch['context_len']):
                 gen_seq = [token_id for token_id in gen_seq if token_id != tokenizer_gpt.pad_token_id]
-                gen_resp_ids2.append(gen_seq[length:])
-            evaluator.evaluate(gen_resp_ids2, batch['response'], batch['context'], movie_recommended_items, log=True)
+                gen_resp_ids.append(gen_seq[length:])
+            evaluator.evaluate(gen_resp_ids, batch['response'], batch['context'], movie_recommended_items, log=True)
 
     # metric
     report = evaluator.report()
@@ -225,25 +184,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
 
             loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
             loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True).conv_loss
-            # else:
-            #     # with torch.no_grad():
-            #     #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
-            #     #         batch['context_entities'], batch['context_bert'].input_ids)
-            #     #     pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask, user_representation = model.get_representationsWithUser(
-            #     #         pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
-            #     #
-            #     # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-            #     #                                         entity_padding_mask, user_representation)
-            #     #
-            #     # pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
-            #     #                                                 pre_entity_representations,
-            #     #                                                 pre_entity_padding_mask, user_representation)
-            #
-            #     loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=None,
-            #                         conv=True).conv_loss
-            #
-            #     loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
-            #                         prompt_embeds=None).conv_loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()

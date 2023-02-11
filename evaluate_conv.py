@@ -10,7 +10,6 @@ slot_pattern = re.compile(r'<movie>')
 class ConvEvaluator:
     def __init__(self, tokenizer, log_file_path=None):
         self.tokenizer = tokenizer
-
         self.reset_metric()
         if log_file_path:
             self.log_file = open(log_file_path, 'a', buffering=1, encoding='UTF-8')

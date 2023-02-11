@@ -72,7 +72,7 @@ class Projector(nn.Module):
 
 
 class MovieExpertCRS(nn.Module):
-    def __init__(self, args, bert_model, bert_config, movie2ids, entity_kg, n_entity, name, n_prefix_rec=10):
+    def __init__(self, args, bert_model, bert_config, movie2ids, entity_kg, n_entity, name):
         super(MovieExpertCRS, self).__init__()
 
         # Setting

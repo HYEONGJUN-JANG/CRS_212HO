@@ -11,7 +11,7 @@ def parse_args():
     parser.add_argument('--kg_emb_dim', type=int, default=128)
     parser.add_argument('--num_bases', type=int, default=8)
     parser.add_argument('--head_num', type=int, default=8)
-    parser.add_argument('--task', type=str, default='rec')
+    parser.add_argument('--task', type=str, default='conv')
     parser.add_argument('--num_trial', type=int, default=3)
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--mode', type=str, default='test', choices=['valid','test'])

@@ -11,8 +11,6 @@ from model import Projector
 
 
 def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
-    # log_file = open(log_file_path, 'a', buffering=1, encoding='utf-8')
-
     decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
     decoded_preds = [decoded_pred.replace('<pad>', '').replace('<|endoftext|>', '') for decoded_pred in
                      decoded_preds]
@@ -48,13 +46,6 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
             break
         else:
             test_cnt += 1
-        # with torch.no_grad():
-        #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
-        #         batch['context_entities'], batch['context_bert'].input_ids)
-        #
-        # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-        #                                         entity_padding_mask, user_representation)
-
 
         gen_seqs = gpt_model.generate(**batch['context'], max_new_tokens=args.max_gen_len, no_repeat_ngram_size=3)
 
@@ -105,16 +96,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
         gpt_model.train()
         projector.train()
         for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            # with torch.no_grad():
-            #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
-            #         batch['context_entities'], batch['context_bert'].input_ids)
-            #
-            # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-            #                                         entity_padding_mask, user_representation)
+
             loss = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
-            # else:
-            #     loss = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=encoder_state,
-            #                      conv=True).conv_loss
 
             optimizer.zero_grad()
             loss.backward()
