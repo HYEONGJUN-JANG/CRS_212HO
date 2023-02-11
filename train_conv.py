@@ -223,28 +223,27 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
             batch = batches[0]
             pre_batch = batches[1]
 
-            if args.conv_pretrained_type == 'none':
-                loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
-                loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True).conv_loss
-            else:
-                # with torch.no_grad():
-                #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
-                #         batch['context_entities'], batch['context_bert'].input_ids)
-                #     pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask, user_representation = model.get_representationsWithUser(
-                #         pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
-                #
-                # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
-                #                                         entity_padding_mask, user_representation)
-                #
-                # pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
-                #                                                 pre_entity_representations,
-                #                                                 pre_entity_padding_mask, user_representation)
-
-                loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=None,
-                                    conv=True).conv_loss
-
-                loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
-                                    prompt_embeds=None).conv_loss
+            loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
+            loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True).conv_loss
+            # else:
+            #     # with torch.no_grad():
+            #     #     entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask, user_representation = model.get_representationsWithUser(
+            #     #         batch['context_entities'], batch['context_bert'].input_ids)
+            #     #     pre_entity_representations, pre_entity_padding_mask, pre_kg_embedding, pre_token_embedding, pre_token_padding_mask, user_representation = model.get_representationsWithUser(
+            #     #         pre_batch['context_entities'], pre_batch['context_bert'].input_ids)
+            #     #
+            #     # encoder_state, encoder_mask = projector(token_embedding, token_padding_mask, entity_representations,
+            #     #                                         entity_padding_mask, user_representation)
+            #     #
+            #     # pre_encoder_state, pre_encoder_mask = projector(pre_token_embedding, pre_token_padding_mask,
+            #     #                                                 pre_entity_representations,
+            #     #                                                 pre_entity_padding_mask, user_representation)
+            #
+            #     loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], prompt_embeds=None,
+            #                         conv=True).conv_loss
+            #
+            #     loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True,
+            #                         prompt_embeds=None).conv_loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()
