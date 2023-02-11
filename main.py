@@ -243,16 +243,16 @@ def main(args):
                                               shuffle=True, collate_fn=content_conv_train_collator)
         pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
                                                    shuffle=False, collate_fn=content_conv_test_collator)
-        # if not args.conv_pretrained:
-        #     # Pre-train
-        #     pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
-        #                   pretrain_dataloader_test=pretrain_conv_dataloader_test,
-        #                   path=pre_conv_result_file_path, save_path=pretrained_path)
-        # else:
-        #     # Load saved model for pre-training
-        #     gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
-        #                                          map_location='cuda:%d' % args.device_id))
-        #     logger.info(f'Load pretrained conv file\t{best_conv_pretrained_path}')
+        if not args.conv_pretrained:
+            # Pre-train
+            pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
+                          pretrain_dataloader_test=pretrain_conv_dataloader_test,
+                          path=pre_conv_result_file_path, save_path=pretrained_path)
+        else:
+            # Load saved model for pre-training
+            gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
+                                                 map_location='cuda:%d' % args.device_id))
+            logger.info(f'Load pretrained conv file\t{best_conv_pretrained_path}')
 
 
         # Dialog history
