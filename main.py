@@ -176,7 +176,7 @@ def main(args):
 
     # Load expert model
     model = MovieExpertCRS(args, bert_model, bert_config, kg_information.movie2id, kg_information.entity_kg,
-                           kg_information.n_entity, args.name, n_prefix_rec=10).to(args.device_id)
+                           kg_information.n_entity, args.name).to(args.device_id)
 
     if 'rec' in args.task:
         # create result file
@@ -225,36 +225,37 @@ def main(args):
         return content_hit, initial_hit, best_result
 
     if 'conv' in args.task:
+        # Create Result files
         conv_results_file_path, pre_conv_result_file_path = createResultFile(args)
-        # load rec fine-tuned model
+        # Load fine-tuned recommender model
         if os.path.isfile(best_rec_path):
             logger.info(f'Load pretrained file\t{best_rec_path}')
             model.load_state_dict(torch.load(best_rec_path, map_location='cuda:%d' % args.device_id))
         for param in model.parameters():
             param.requires_grad = False
 
-        # [pretrain]
-        # dataset
+        # Synthetic dataset
         content_conv_dataset = ContentInformationConv(args, DATASET_PATH, tokenizer_gpt, tokenizer,
                                                       args.device_id)
         content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
         content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
-        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size, shuffle=True,
-                                              collate_fn=content_conv_train_collator)
+        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size,
+                                              shuffle=True, collate_fn=content_conv_train_collator)
         pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
-                                                   shuffle=False,
-                                                   collate_fn=content_conv_test_collator)
-        if not args.conv_pretrained:
-            pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
-                          pretrain_dataloader_test=pretrain_conv_dataloader_test,
-                          path=pre_conv_result_file_path, save_path=pretrained_path)
-        else:
-            gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
-                                                 map_location='cuda:%d' % args.device_id))  # state_dict를 불러 온 후, 모델에 저장`
-            logger.info(f'Load pretrained conv file\t{best_conv_pretrained_path}')
+                                                   shuffle=False, collate_fn=content_conv_test_collator)
+        # if not args.conv_pretrained:
+        #     # Pre-train
+        #     pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
+        #                   pretrain_dataloader_test=pretrain_conv_dataloader_test,
+        #                   path=pre_conv_result_file_path, save_path=pretrained_path)
+        # else:
+        #     # Load saved model for pre-training
+        #     gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
+        #                                          map_location='cuda:%d' % args.device_id))
+        #     logger.info(f'Load pretrained conv file\t{best_conv_pretrained_path}')
 
-        # [fine-tuning]
-        # dataset
+
+        # Dialog history
         conv_train_dataset = CRSConvDataset(
             DATASET_PATH, 'train', tokenizer_gpt, tokenizer, content_conv_dataset,
         )

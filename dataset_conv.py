@@ -62,13 +62,10 @@ class ContentInformationConv(Dataset):
         super(Dataset, self).__init__()
         self.args = args
         self.data_path = data_path
-
         self.tokenizer_bert = tokenizer_bert
         self.tokenizer_gpt = tokenizer_gpt
-
         self.data_samples = []
         self.meta_samples = []
-
         self.device = device
         self.entity2id = json.load(
             open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
@@ -77,26 +74,24 @@ class ContentInformationConv(Dataset):
         self.read_data()
 
     def read_data(self):
-        f = open(os.path.join(self.data_path, 'content_data_new_meta.json'), encoding='utf-8')
-
-        data = json.load(f)
         logger.info(f'[Conv] content information load')
-
-        for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-            crs_id = str(sample['crs_id'])
+        for crs_id in tqdm(self.movie2name, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             if self.movie2name[crs_id][0] == -1:
                 continue
 
-            meta = sample['meta']
+            meta = eval(self.movie2name[crs_id][2])
+
             title = "<movie> %s %s" % (self.movie2name[crs_id][1], self.movie2name[crs_id][2])
             meta_input, meta_output = [], []
 
+            # Sampling templates
             idx_user = rand.sample(range(0, len(user_template)), self.args.n_template_sample)
             idx_rec = rand.sample(range(0, len(recommend_template)), self.args.n_template_sample)
             idx_genre = rand.sample(range(0, len(genre_template)), self.args.n_template_sample)
             idx_star = rand.sample(range(0, len(star_template)), self.args.n_template_sample)
             idx_director = rand.sample(range(0, len(director_template)), self.args.n_template_sample)
 
+            # Make synthetic dialog
             user_prompt = [user_template[i] for i in idx_user]
             rec_prompt = [template % title for template in recommend_template]
             rec_prompt = [rec_prompt[i] for i in idx_rec]
@@ -128,7 +123,6 @@ class ContentInformationConv(Dataset):
                 self.meta_samples.append((t_input, t_output))
 
     def __getitem__(self, idx):
-
         meta_input = self.meta_samples[idx][0]
         meta_output = self.meta_samples[idx][1]
 
@@ -277,16 +271,13 @@ class CRSConvDataset(Dataset):
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
 
-            text_token_ids_bert = self.tokenizer_bert(
-                text_tokens + self.tokenizer_bert.sep_token,
-                add_special_tokens=False).input_ids
+            text_token_ids_bert = self.tokenizer_bert(text_tokens + self.tokenizer_bert.sep_token,add_special_tokens=False).input_ids
             text_tokens = text_tokens + self.tokenizer.eos_token
             processed_text_tokens = self.process_utt(text_tokens, self.movie2name,
-                                                     replace_movieId=True,
-                                                     remove_movie=True)
+                                                     replace_movieId=True, remove_movie=True)
             if len(context_tokens) > 0:
-                context_tokens[-1] = self.process_utt(context_tokens[-1], self.movie2name, replace_movieId=True,
-                                                      remove_movie=True)
+                context_tokens[-1] = self.process_utt(context_tokens[-1], self.movie2name,
+                                                      replace_movieId=True, remove_movie=True)
 
                 conv_dict = {
                     "role": conv['role'],
