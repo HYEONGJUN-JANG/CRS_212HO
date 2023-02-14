@@ -134,20 +134,10 @@ def main(args):
         bert_model = AutoModel.from_pretrained(args.bert_name)
     bert_model.resize_token_embeddings(len(tokenizer))
 
-    # BERT model freeze layers#
+    # BERT model freeze layers
     if args.n_layer != -1:
-        if 'bart' in args.bert_name:
-            modules = [bert_model.encoder, bert_model.decoder.embed_tokens,
-                       bert_model.decoder.layers[:bert_config.num_hidden_layers - args.n_layer]]  # 2개 남기기
-        elif 't5' in args.bert_name:
-            modules = [bert_model.encoder.block[:bert_config.num_hidden_layers - args.n_layer],
-                       bert_model.encoder.embed_tokens]
-        elif 'gpt' in args.bert_name.lower():
-            modules = [bert_model.h[:bert_config.num_hidden_layers - args.n_layer],
-                       bert_model.wte, bert_model.wpe]  # 2개 남기기
-        else:
-            modules = [bert_model.encoder.layer[:bert_config.num_hidden_layers - args.n_layer],
-                       bert_model.embeddings]  # 2개 남기기
+        modules = [bert_model.encoder.layer[:bert_config.num_hidden_layers - args.n_layer],
+                       bert_model.embeddings]
     for module in modules:
         for param in module.parameters():
             param.requires_grad = False
