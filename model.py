@@ -77,6 +77,7 @@ class MovieExpertCRS(nn.Module):
 
         # Setting
         self.args = args
+        self.num_bases = args.num_bases
         self.movie2ids = movie2ids
         self.name = name  # argument 를 통한 abaltion을 위해 필요
         self.device_id = args.device_id
