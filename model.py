@@ -77,7 +77,6 @@ class MovieExpertCRS(nn.Module):
 
         # Setting
         self.args = args
-        self.num_bases = args.num_bases
         self.movie2ids = movie2ids
         self.name = name  # argument 를 통한 abaltion을 위해 필요
         self.device_id = args.device_id
@@ -86,6 +85,7 @@ class MovieExpertCRS(nn.Module):
         # R-GCN
         # todo: pre-trainig (R-GCN 자체 or content 내 meta data 를 활용하여?) (후자가 날 듯)
         self.n_entity = n_entity
+        self.num_bases = args.num_bases
         self.kg_emb_dim = args.kg_emb_dim
         self.n_relation = entity_kg['n_relation']
         self.kg_encoder = RGCNConv(self.n_entity, self.kg_emb_dim, self.n_relation, num_bases=self.num_bases)
