@@ -109,13 +109,13 @@ def main(args):
     if 'redial' in args.dataset_path:
         pretrained_path = f'./saved_model/{args.task}/redial/pretrained_model_{args.name}.pt'
         trained_path = f'./saved_model/{args.task}/redial/trained_model_{args.name}.pt'
-        best_rec_path = f'.saved_model/rec/redial/trained_model_best.pt'
-        best_conv_pretrained_path = f'.saved_model/conv/redial/pretrained_model_best.pt'
+        best_rec_path = f'./saved_model/rec/redial/trained_model_best.pt'
+        best_conv_pretrained_path = f'./saved_model/conv/redial/pretrained_model_best.pt'
     elif 'inspired' in args.dataset_path:
         pretrained_path = f'./saved_model/{args.task}/inspired/pretrained_model_{args.name}.pt'
         trained_path = f'./saved_model/{args.task}/inspired/trained_model_{args.name}.pt'
-        best_rec_path = f'.saved_model/rec/inspired/trained_model_best.pt'
-        best_conv_pretrained_path = f'.saved_model/conv/inspired/pretrained_model_best.pt'
+        best_rec_path = f'./saved_model/rec/inspired/trained_model_best.pt'
+        best_conv_pretrained_path = f'./saved_model/conv/inspired/pretrained_model_best.pt'
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
