@@ -7,7 +7,6 @@ from torch import nn, optim
 from tqdm import tqdm
 from transformers import AutoTokenizer, AdamW, get_linear_schedule_with_warmup
 import json
-from model import Projector
 
 
 def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
@@ -34,13 +33,12 @@ def evaluate(titles, response, preds, tokenizer, log=False, log_file_path=None):
             }, ensure_ascii=False) + '\n')
 
 
-def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test, model, args, epoch, log_file):
+def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, epoch, log_file):
     test_cnt = 0
     log_file.write(f'\n*** test-{epoch} ***\n\n')
     # test
     logger.info('[Conv - Pre-training] Test')
     gpt_model.eval()
-    # projector.eval()
     for batch in tqdm(pretrain_dataloader_test, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         if test_cnt == 200:
             break
@@ -63,7 +61,6 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
-    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim, args.device_id).to(args.device_id)
 
     optimizer_grouped_parameters = [
         {
@@ -75,9 +72,6 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             "params": [p for model in modules for n, p in model.named_parameters()
                        if any(nd in n for nd in no_decay) and p.requires_grad],
             "weight_decay": 0.0,
-        },
-        {
-            "params": projector.parameters()
         }
     ]
     #
@@ -87,14 +81,13 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_pt)
     lr_scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
-    # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0, log_file)
+    # pretrain_evaluate(gpt_model, tokenizer_gpt, pretrain_dataloader_test, model, args, 0, log_file)
 
     # train
     for epoch in range(args.conv_epoch_pt):
         logger.info(f'[Conv - Pre-training] Train-{epoch}')
         total_loss = 0
         gpt_model.train()
-        projector.train()
         for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
 
             loss = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
@@ -105,7 +98,7 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
             lr_scheduler.step()
             total_loss += loss.data.float()
         print('[Epoch%d]\tLoss:\t%.4f' % (epoch, total_loss))
-    # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
+    # pretrain_evaluate(gpt_model, tokenizer_gpt, pretrain_dataloader_test, model, args, epoch + 1,
     #                   log_file)
 
     if save_path is not None:

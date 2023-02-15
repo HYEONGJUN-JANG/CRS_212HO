@@ -3,8 +3,6 @@ import math
 import torch
 from loguru import logger
 from tqdm import tqdm
-
-from model import Projector
 from evaluate_conv import ConvEvaluator
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
@@ -30,7 +28,7 @@ def recommend_top1_item(batch, gen_seq_bert, model, dataset_path):
     return movie_recommended_items, items
 
 
-def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test, model, args, epoch, evaluator):
+def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, args, epoch, evaluator):
     evaluator.log_file.write(f'\n*** Pre-train test-{epoch} ***\n\n')
     # test
     logger.info('[Conv - Pre-training] Test')
@@ -45,11 +43,10 @@ def pretrain_evaluate(gpt_model, projector, tokenizer, pretrain_dataloader_test,
         evaluator.evaluate_pretrain(batch['context'].input_ids, batch['response'], gen_resp_ids, log=True)
 
 
-def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, gpt_model, tokenizer_gpt,
                         tokenizer_bert,
                         total_report):
     gpt_model.eval()
-    projector.eval()
     model.eval()
     evaluator.log_file.write(f'\n*** Fine-tuning test-{epoch} ***\n\n')
     for batches in tqdm(test_gen_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
@@ -138,8 +135,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
 
     num_update_steps_per_epoch = math.ceil(len(train_dataloader))
     max_train_steps = args.conv_epoch_ft * num_update_steps_per_epoch
-    projector = Projector(gpt_config, model.bert_config.hidden_size, args.kg_emb_dim,
-                          args.device_id).to(args.device_id)
 
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
@@ -153,11 +148,7 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
             "params": [p for model in modules for n, p in model.named_parameters()
                        if any(nd in n for nd in no_decay) and p.requires_grad],
             "weight_decay": 0.0,
-        },
-        {
-            "params": projector.parameters()
         }
-
     ]
 
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.conv_lr_ft)
@@ -166,9 +157,9 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
     evaluator = ConvEvaluator(tokenizer=tokenizer_gpt, log_file_path=conv_results_file_path)
 
     # train loop
-    # pretrain_evaluate(gpt_model, projector, tokenizer_gpt, pretrain_dataloader_test, model, args, 0,
+    # pretrain_evaluate(gpt_model, tokenizer_gpt, pretrain_dataloader_test, model, args, 0,
     #                   evaluator)
-    # finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+    # finetuning_evaluate(args, evaluator, 0, test_gen_dataloader, model, gpt_model, tokenizer_gpt,
     #                     tokenizer_bert,
     #                     total_report)
     for epoch in range(args.conv_epoch_ft):
@@ -176,7 +167,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
         logger.info('[Train]')
         total_loss = 0
         gpt_model.train()
-        projector.train()
         model.eval()
         for step, batches in enumerate(tqdm(train_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}')):
             batch = batches[0]
@@ -196,6 +186,6 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
 
         logger.info('[Test]')
 
-    finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, projector, gpt_model, tokenizer_gpt,
+    finetuning_evaluate(args, evaluator, epoch + 1, test_gen_dataloader, model, gpt_model, tokenizer_gpt,
                         tokenizer_bert,
                         total_report)
