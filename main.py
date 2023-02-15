@@ -22,14 +22,14 @@ from train_conv import train_conversation
 from config import gpt2_special_tokens_dict, bert_special_tokens_dict
 from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv, ContentConvCollator
 from dataloader import ReDialDataLoader
-from dataset import ContentInformation, ReDialDataset
+from dataset_rec import ContentInformation, ReDialDataset
 from evaluate_conv import ConvEvaluator
-from model import MovieExpertCRS, Projector
+from model import MovieExpertCRS
 from model_gpt2 import PromptGPT2forCRS
 from parameters import parse_args
 from pretrain_conv import pretrain_conv
 from train_rec import train_recommender
-from pretrain import pretrain
+from pretrain_rec import pretrain
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
     get_linear_schedule_with_warmup, AutoModelForCausalLM
