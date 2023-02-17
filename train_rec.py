@@ -52,7 +52,7 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
     hit_ft = [[], [], [], [], []]
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(shuffle=False):
-        context_entities, context_tokens, _, _, _, target_items, _ = batch
+        context_entities, context_tokens, _, _, _, target_items = batch
         scores = model.forward(context_entities, context_tokens)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
