@@ -30,7 +30,7 @@ class MovieExpertCRS(nn.Module):
         self.device_id = args.device_id
         self.dropout_pt = nn.Dropout(args.dropout_pt)
         self.dropout_ft = nn.Dropout(args.dropout_ft)
-        self.movie2id = json.load(
+        self.movie2ids = json.load(
             open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         # Entity encoder
         self.n_entity = n_entity
