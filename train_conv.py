@@ -172,8 +172,10 @@ def train_conversation(args, model, train_dataloader, test_gen_dataloader, pretr
             batch = batches[0]
             pre_batch = batches[1]
 
-            loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
-            loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True).conv_loss
+            loss_ft = gpt_model(**batch['context'], labels=batch['response']).loss
+            loss_pt = gpt_model(**pre_batch['context'], labels=pre_batch['response']).loss
+            # loss_ft = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
+            # loss_pt = gpt_model(**pre_batch['context'], conv_labels=pre_batch['response'], conv=True).conv_loss
 
             loss = loss_ft + ((loss_pt) * args.conv_loss_lambda)
             optimizer.zero_grad()

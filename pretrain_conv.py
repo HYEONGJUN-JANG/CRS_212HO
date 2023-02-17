@@ -57,7 +57,7 @@ def pretrain_evaluate(gpt_model, tokenizer, pretrain_dataloader_test, model, arg
 
 def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_dataloader, pretrain_dataloader_test,
                   path=None, save_path=None):
-
+    log_file = open(path, 'a', buffering=1, encoding='utf-8')
     modules = [gpt_model]
     no_decay = ["bias", "LayerNorm.weight"]
 
@@ -88,8 +88,8 @@ def pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_da
         total_loss = 0
         gpt_model.train()
         for batch in tqdm(pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-
-            loss = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
+            loss = gpt_model(**batch['context'], labels=batch['response']).loss
+            # loss = gpt_model(**batch['context'], conv_labels=batch['response'], conv=True).conv_loss
 
             optimizer.zero_grad()
             loss.backward()
