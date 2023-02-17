@@ -32,7 +32,7 @@ from train_rec import train_recommender
 from pretrain_rec import pretrain
 
 from transformers import AutoConfig, AutoModel, AutoTokenizer, BertConfig, BertModel, BartModel, BartTokenizer, AdamW, \
-    get_linear_schedule_with_warmup, AutoModelForCausalLM
+    get_linear_schedule_with_warmup, AutoModelForCausalLM, GPT2Model, GPT2LMHeadModel
 
 from utils import get_time_kst
 
@@ -146,7 +146,7 @@ def main(args):
     tokenizer_gpt.add_special_tokens(gpt2_special_tokens_dict)
     gpt_config = AutoConfig.from_pretrained(args.gpt_name)
 
-    gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
+    gpt_model = GPT2LMHeadModel.from_pretrained(args.gpt_name, config=gpt_config)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
     gpt_model = gpt_model.to(args.device_id)
