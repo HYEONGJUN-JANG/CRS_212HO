@@ -222,17 +222,16 @@ def main(args):
             param.requires_grad = False
 
         # Synthetic dataset
-        content_conv_dataset = ContentInformationConv(args, DATASET_PATH, tokenizer_gpt, tokenizer,
-                                                      args.device_id)
+        content_conv_dataset = ContentInformationConv(args, DATASET_PATH, tokenizer_gpt, tokenizer)
         content_conv_train_collator = ContentConvCollator('train', args, tokenizer_gpt, tokenizer)
         content_conv_test_collator = ContentConvCollator('test', args, tokenizer_gpt, tokenizer)
-        pretrain_conv_dataloader = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size,
-                                              shuffle=True, collate_fn=content_conv_train_collator)
+        pretrain_conv_dataloader_train = DataLoader(content_conv_dataset, batch_size=args.conv_batch_size,
+                                                    shuffle=True, collate_fn=content_conv_train_collator)
         pretrain_conv_dataloader_test = DataLoader(content_conv_dataset, batch_size=args.conv_pre_eval_batch_size,
                                                    shuffle=False, collate_fn=content_conv_test_collator)
         if not args.conv_pretrained:
             # Pre-train
-            pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader,
+            pretrain_conv(args, model, gpt_model, gpt_config, tokenizer_gpt, pretrain_conv_dataloader_train,
                           pretrain_dataloader_test=pretrain_conv_dataloader_test,
                           path=pre_conv_result_file_path, save_path=pretrained_path)
         else:
@@ -263,38 +262,29 @@ def main(args):
             shuffle=True,
             collate_fn=data_collator_teacher,
         )
-        # valid_dataloader = DataLoader(
-        #     conv_valid_dataset,
-        #     batch_size=args.per_device_eval_batch_size,
-        #     num_workers=args.num_workers,
-        #     collate_fn=data_collator_teacher,
-        # )
-        # test_dataloader = DataLoader(
-        #     conv_test_dataset,
-        #     batch_size=args.per_device_eval_batch_size,
-        #     num_workers=args.num_workers,
-        #     collate_fn=data_collator_teacher,
-        # )
+
         data_collator_generator = CRSConvDataCollator(
             args, tokenizer=tokenizer_gpt, tokenizer_bert=tokenizer, device=args.device_id, gen=True,
             context_max_length=args.context_max_length, resp_max_length=args.max_gen_len,
             entity_max_length=args.entity_max_length, pad_entity_id=tokenizer_gpt.pad_token_id
         )
-        # valid_gen_dataloader = DataLoader(
-        #     conv_valid_dataset,
-        #     batch_size=args.conv_batch_size,
-        #     collate_fn=data_collator_generator,
-        # )
+        valid_gen_dataloader = DataLoader(
+            conv_valid_dataset,
+            batch_size=args.conv_batch_size,
+            collate_fn=data_collator_generator,
+        )
         test_gen_dataloader = DataLoader(
             conv_test_dataset,
             batch_size=args.gen_batch_size,
             collate_fn=data_collator_generator,
         )
         # train & test
-        train_conversation(args, model, train_dataloader, test_gen_dataloader, pretrain_conv_dataloader_test, gpt_model,
-                           gpt_config, tokenizer_gpt,
-                           tokenizer,
-                           conv_results_file_path)
+        if args.mode == 'test':
+            train_conversation(args, model, train_dataloader, test_gen_dataloader, pretrain_conv_dataloader_test,
+                               gpt_model, gpt_config, tokenizer_gpt, tokenizer, conv_results_file_path)
+        elif args.mode == 'valid':
+            train_conversation(args, model, train_dataloader, valid_gen_dataloader, pretrain_conv_dataloader_test,
+                               gpt_model, gpt_config, tokenizer_gpt, tokenizer, conv_results_file_path)
 
 
 if __name__ == '__main__':

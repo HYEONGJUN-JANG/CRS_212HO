@@ -58,7 +58,7 @@ class ContentInformationConv(Dataset):
     # 2. Encoder hidden state ( context entities, bert tokenized plots (reviews)
     #
 
-    def __init__(self, args, data_path, tokenizer_gpt, tokenizer_bert, device):
+    def __init__(self, args, data_path, tokenizer_gpt, tokenizer_bert):
         super(Dataset, self).__init__()
         self.args = args
         self.data_path = data_path
@@ -66,7 +66,7 @@ class ContentInformationConv(Dataset):
         self.tokenizer_gpt = tokenizer_gpt
         self.data_samples = []
         self.meta_samples = []
-        self.device = device
+        self.device = args.device_id
         self.entity2id = json.load(
             open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.movie2id = json.load(open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))
@@ -208,8 +208,8 @@ class CRSConvDataset(Dataset):
             open(os.path.join(path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         self.id2entity = {idx: entity for entity, idx in self.entity2id.items()}
         self.n_entity = max(self.entity2id.values()) + 1
-        self.entity_kg = json.load(open(os.path.join(path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
-        self.entity_kg = self._entity_kg_process()
+        # self.entity_kg = json.load(open(os.path.join(path, 'dbpedia_subkg.json'), 'r', encoding='utf-8'))
+        # self.entity_kg = self._entity_kg_process()
 
         data_file = os.path.join(path, f'{split}_data.json')
         with open(data_file, 'r', encoding='utf-8') as f:
@@ -236,7 +236,6 @@ class CRSConvDataset(Dataset):
 
         for utt in dialog:
             text = ' '.join(utt['text'])
-            # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
             movie_ids = [self.entity2id[movie] for movie in utt['movies'] if
                          movie in self.entity2id]  # utterance movie(entity2id) 마다 entity2id 저장
             entity_ids = [self.entity2id[entity] for entity in utt['entity'] if
@@ -271,7 +270,8 @@ class CRSConvDataset(Dataset):
         for i, conv in enumerate(raw_conv_dict):
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
 
-            text_token_ids_bert = self.tokenizer_bert(text_tokens + self.tokenizer_bert.sep_token,add_special_tokens=False).input_ids
+            text_token_ids_bert = self.tokenizer_bert(text_tokens + self.tokenizer_bert.sep_token,
+                                                      add_special_tokens=False).input_ids
             text_tokens = text_tokens + self.tokenizer.eos_token
             processed_text_tokens = self.process_utt(text_tokens, self.movie2name,
                                                      replace_movieId=True, remove_movie=True)
@@ -299,32 +299,32 @@ class CRSConvDataset(Dataset):
 
         return augmented_conv_dicts
 
-    def _entity_kg_process(self, SELF_LOOP_ID=185):
-        edge_list = []  # [(entity, entity, relation)]
-        for entity in range(self.n_entity):
-            if str(entity) not in self.entity_kg:
-                continue
-            edge_list.append((entity, entity, SELF_LOOP_ID))  # add self loop
-            for tail_and_relation in self.entity_kg[str(entity)]:
-                if entity != tail_and_relation[1] and tail_and_relation[0] != SELF_LOOP_ID:
-                    edge_list.append((entity, tail_and_relation[1], tail_and_relation[0]))
-                    edge_list.append((tail_and_relation[1], entity, tail_and_relation[0]))
-
-        relation_cnt, relation2id, edges, entities = defaultdict(int), dict(), set(), set()
-        for h, t, r in edge_list:
-            relation_cnt[r] += 1
-        for h, t, r in edge_list:
-            if relation_cnt[r] > 1000:
-                if r not in relation2id:
-                    relation2id[r] = len(relation2id)
-                edges.add((h, t, relation2id[r]))
-                entities.add(self.id2entity[h])
-                entities.add(self.id2entity[t])
-        return {
-            'edge': list(edges),
-            'n_relation': len(relation2id),
-            'entity': list(entities)
-        }
+    # def _entity_kg_process(self, SELF_LOOP_ID=185):
+    #     edge_list = []  # [(entity, entity, relation)]
+    #     for entity in range(self.n_entity):
+    #         if str(entity) not in self.entity_kg:
+    #             continue
+    #         edge_list.append((entity, entity, SELF_LOOP_ID))  # add self loop
+    #         for tail_and_relation in self.entity_kg[str(entity)]:
+    #             if entity != tail_and_relation[1] and tail_and_relation[0] != SELF_LOOP_ID:
+    #                 edge_list.append((entity, tail_and_relation[1], tail_and_relation[0]))
+    #                 edge_list.append((tail_and_relation[1], entity, tail_and_relation[0]))
+    #
+    #     relation_cnt, relation2id, edges, entities = defaultdict(int), dict(), set(), set()
+    #     for h, t, r in edge_list:
+    #         relation_cnt[r] += 1
+    #     for h, t, r in edge_list:
+    #         if relation_cnt[r] > 1000:
+    #             if r not in relation2id:
+    #                 relation2id[r] = len(relation2id)
+    #             edges.add((h, t, relation2id[r]))
+    #             entities.add(self.id2entity[h])
+    #             entities.add(self.id2entity[t])
+    #     return {
+    #         'edge': list(edges),
+    #         'n_relation': len(relation2id),
+    #         'entity': list(entities)
+    #     }
 
     def process_utt(self, utt, movie2name, replace_movieId, remove_movie=False):
         movie_pattern = re.compile(r'@\d+')  # regex
@@ -360,9 +360,7 @@ class CRSConvDataset(Dataset):
 class CRSConvDataCollator:
     def __init__(
             self, args, device, tokenizer, pad_entity_id, gen=False, use_amp=False, debug=False,
-            ignore_pad_token_for_loss=True,
-            context_max_length=None, resp_max_length=None, entity_max_length=None,
-            tokenizer_bert=None, prompt_max_length=None
+            ignore_pad_token_for_loss=True, context_max_length=None, entity_max_length=None, tokenizer_bert=None,
     ):
         self.tokenizer = tokenizer
         self.tokenizer_bert = tokenizer_bert

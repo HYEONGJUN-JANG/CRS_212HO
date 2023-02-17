@@ -14,10 +14,12 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 import os
 
+
 @dataclass
 class MultiOutput(ModelOutput):
     conv_loss: Optional[torch.FloatTensor] = None
     logits: Optional[torch.FloatTensor] = None
+
 
 class MovieExpertCRS(nn.Module):
     def __init__(self, args, bert_model, bert_config, entity_kg, n_entity):
@@ -28,7 +30,8 @@ class MovieExpertCRS(nn.Module):
         self.device_id = args.device_id
         self.dropout_pt = nn.Dropout(args.dropout_pt)
         self.dropout_ft = nn.Dropout(args.dropout_ft)
-
+        self.movie2id = json.load(
+            open(os.path.join(self.data_path, 'movie_ids.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         # Entity encoder
         self.n_entity = n_entity
         self.num_bases = args.num_bases
@@ -72,13 +75,13 @@ class MovieExpertCRS(nn.Module):
     # review_meta    :   [batch_size, n_review, n_meta]
     # target_item   :   [batch_size]
     def pre_forward(self, review_meta, review_token, review_mask, target_item, compute_score=False):
-        n_review = review_token.shape[1] # number of sampled reviews [N]
-        max_review_len = review_token.shape[2] # length of review text [L]
-        n_meta = review_meta.shape[2] # length of review meta [L']
+        n_review = review_token.shape[1]  # number of sampled reviews [N]
+        max_review_len = review_token.shape[2]  # length of review text [L]
+        n_meta = review_meta.shape[2]  # length of review meta [L']
 
-        text = review_token # [B, N, L]
-        mask = review_mask # [B, N, L]
-        meta = review_meta # [B, N, L']
+        text = review_token  # [B, N, L]
+        mask = review_mask  # [B, N, L]
+        meta = review_meta  # [B, N, L']
 
         text = text.to(self.device_id)
         mask = mask.to(self.device_id)
@@ -95,19 +98,19 @@ class MovieExpertCRS(nn.Module):
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
 
-        text = text.view(-1, max_review_len) # [B * N, L]
-        mask = mask.view(-1, max_review_len) # [B * N, L]
+        text = text.view(-1, max_review_len)  # [B * N, L]
+        mask = mask.view(-1, max_review_len)  # [B * N, L]
 
         text_emb = self.word_encoder(input_ids=text,
                                      attention_mask=mask).last_hidden_state  # [B * N, L] -> [B * N, L, d]
         proj_text_emb = self.linear_transformation(text_emb)  # [B * N, L, d]
-        content_emb = proj_text_emb[:, 0, :] #[B * N, d]
+        content_emb = proj_text_emb[:, 0, :]  # [B * N, d]
         content_emb = self.dropout_pt(content_emb)
 
-        gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1))) # [B * N, d * 2]
-        user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep # [B * N, d]
+        gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
+        user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
 
-        scores = F.linear(user_embedding, kg_embedding) # [B * N, all_entity]
+        scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
 
         loss = self.criterion(scores, target_item)
         if compute_score:
