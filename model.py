@@ -22,7 +22,7 @@ class MultiOutput(ModelOutput):
 
 
 class MovieExpertCRS(nn.Module):
-    def __init__(self, args, bert_model, bert_config, entity_kg, n_entity):
+    def __init__(self, args, bert_model, bert_config, entity_kg, n_entity, data_path):
         super(MovieExpertCRS, self).__init__()
 
         # Setting
@@ -31,7 +31,7 @@ class MovieExpertCRS(nn.Module):
         self.dropout_pt = nn.Dropout(args.dropout_pt)
         self.dropout_ft = nn.Dropout(args.dropout_ft)
         self.movie2id = json.load(
-            open(os.path.join(self.data_path, 'movie_ids.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
+            open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         # Entity encoder
         self.n_entity = n_entity
         self.num_bases = args.num_bases
