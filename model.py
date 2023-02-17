@@ -20,55 +20,55 @@ class MultiOutput(ModelOutput):
     logits: Optional[torch.FloatTensor] = None
 
 
-class Projector(nn.Module):
-    def __init__(self, gpt2_config, bert_hidden_size, entity_dim_size, device):
-        super(Projector, self).__init__()
-        self.gpt_hidden_size = gpt2_config.hidden_size
-        self.bert_hidden_size = bert_hidden_size
-        self.entity_dim_size = entity_dim_size
-        # self.projection_order = projection_order
-        self.device = device
-
-        self.token_proj = nn.Sequential(
-            nn.Linear(self.bert_hidden_size, self.gpt_hidden_size // 2),
-            nn.ReLU(),
-            nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
-        )
-
-        self.entity_proj = nn.Sequential(
-            nn.Linear(self.entity_dim_size, self.gpt_hidden_size // 2),
-            nn.ReLU(),
-            nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
-        )
-
-        self.user_proj = nn.Sequential(
-            nn.Linear(self.entity_dim_size, self.gpt_hidden_size // 2),
-            nn.ReLU(),
-            nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
-        )
-
-        self.n_layer = gpt2_config.n_layer
-        self.n_block = 2
-        self.n_head = gpt2_config.n_head  # head 수는 12
-        self.head_dim = self.gpt_hidden_size // self.n_head
-        self.prompt_proj2 = nn.Linear(self.gpt_hidden_size, self.n_layer * self.n_block * self.gpt_hidden_size)
-
-    def forward(self, token_emb, token_mask, entity_emb, entity_mask, user_representation):
-        token_emb = self.token_proj(token_emb)
-        entity_emb = self.entity_proj(entity_emb)
-        user_emb = self.user_proj(user_representation)
-
-        encoder_state = torch.cat([token_emb, entity_emb, user_emb.unsqueeze(1)], dim=1)
-        encoder_mask = torch.cat([token_mask, entity_mask, torch.ones(token_mask.shape[0], 1, device=self.device)],
-                                 dim=1)
-        batch_size = encoder_state.shape[0]
-        prompt_len = encoder_state.shape[1]
-        prompt_embeds = self.prompt_proj2(encoder_state)
-        prompt_embeds = prompt_embeds.reshape(
-            batch_size, prompt_len, self.n_layer, self.n_block, self.n_head, self.head_dim
-        ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
-
-        return prompt_embeds, encoder_mask
+# class Projector(nn.Module):
+#     def __init__(self, gpt2_config, bert_hidden_size, entity_dim_size, device):
+#         super(Projector, self).__init__()
+#         self.gpt_hidden_size = gpt2_config.hidden_size
+#         self.bert_hidden_size = bert_hidden_size
+#         self.entity_dim_size = entity_dim_size
+#         # self.projection_order = projection_order
+#         self.device = device
+#
+#         self.token_proj = nn.Sequential(
+#             nn.Linear(self.bert_hidden_size, self.gpt_hidden_size // 2),
+#             nn.ReLU(),
+#             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
+#         )
+#
+#         self.entity_proj = nn.Sequential(
+#             nn.Linear(self.entity_dim_size, self.gpt_hidden_size // 2),
+#             nn.ReLU(),
+#             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
+#         )
+#
+#         self.user_proj = nn.Sequential(
+#             nn.Linear(self.entity_dim_size, self.gpt_hidden_size // 2),
+#             nn.ReLU(),
+#             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
+#         )
+#
+#         self.n_layer = gpt2_config.n_layer
+#         self.n_block = 2
+#         self.n_head = gpt2_config.n_head  # head 수는 12
+#         self.head_dim = self.gpt_hidden_size // self.n_head
+#         self.prompt_proj2 = nn.Linear(self.gpt_hidden_size, self.n_layer * self.n_block * self.gpt_hidden_size)
+#
+#     def forward(self, token_emb, token_mask, entity_emb, entity_mask, user_representation):
+#         token_emb = self.token_proj(token_emb)
+#         entity_emb = self.entity_proj(entity_emb)
+#         user_emb = self.user_proj(user_representation)
+#
+#         encoder_state = torch.cat([token_emb, entity_emb, user_emb.unsqueeze(1)], dim=1)
+#         encoder_mask = torch.cat([token_mask, entity_mask, torch.ones(token_mask.shape[0], 1, device=self.device)],
+#                                  dim=1)
+#         batch_size = encoder_state.shape[0]
+#         prompt_len = encoder_state.shape[1]
+#         prompt_embeds = self.prompt_proj2(encoder_state)
+#         prompt_embeds = prompt_embeds.reshape(
+#             batch_size, prompt_len, self.n_layer, self.n_block, self.n_head, self.head_dim
+#         ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
+#
+#         return prompt_embeds, encoder_mask
 
 
 class MovieExpertCRS(nn.Module):

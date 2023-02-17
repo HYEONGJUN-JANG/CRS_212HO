@@ -19,25 +19,24 @@ class ContentInformation(Dataset):
         self.args = args
         self.data_path = data_path
         self.tokenizer = tokenizer
-        # self.data_samples = []
         self.data_samples = dict()
         self.device = device
         self.entity2id = json.load(
-            open(os.path.join(data_path, 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
-        self.movie2id = json.load(open(os.path.join(data_path, 'movie_ids.json'), 'r', encoding='utf-8'))
-        self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r', encoding='utf-8'))
-        self.read_data(args.max_review_len)
-        self.key_list = list(self.data_samples.keys())  # entity id list
+            open(os.path.join(data_path, 'entity2id.json'), 'r',
+                 encoding='utf-8'))  # to convert review meta to entity id
+        self.movie2name = json.load(open(os.path.join(data_path, 'movie2name.json'), 'r',
+                                         encoding='utf-8'))  # to convert movie crs id toentity id
+        self.read_data(args.max_review_len) # read review text and meta
+        self.key_list = list(self.data_samples.keys()) # movie id list
 
     def read_data(self, max_review_len):
         f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
-
         data = json.load(f)
 
         for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             review_list, review_mask_list, reviews_meta_list = [], [], []
 
-            crs_id = str(sample['crs_id'])  # TODO: Redial dataset 체크
+            crs_id = str(sample['crs_id'])
             reviews = sample['reviews']
             reviews_meta = sample['reviews_meta']
 
