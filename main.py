@@ -21,8 +21,8 @@ from dataset_kg import KGInformation
 from train_conv import train_conversation
 from config import gpt2_special_tokens_dict, bert_special_tokens_dict
 from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv, ContentConvCollator
-from dataloader import ReDialDataLoader
-from dataset_rec import ContentInformation, ReDialDataset
+from dataloader import CRSDataLoader
+from dataset_rec import ContentInformation, CRSDatasetRec
 from evaluate_conv import ConvEvaluator
 from model import MovieExpertCRS
 from model_gpt2 import PromptGPT2forCRS
@@ -38,10 +38,7 @@ from utils import get_time_kst
 
 
 def createResultFile(args):
-    mdhm = str(
-        datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M%S'))  # MonthDailyHourMinute .....e.g., 05091040
-    # results_file_path = f"train_device_{args.device_id}_name_{args.name}_{args.n_plot}_samples_RLength_{args.max_review_len}_PLength_{args.max_plot_len}_{args.name}.txt"
-    # if not os.path.exists('./results'): os.mkdir('./results')
+    mdhm = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d%H%M%S'))
     rawSubfolder_name = str(datetime.now(timezone('Asia/Seoul')).strftime('%m%d') + '_raw')
     rawFolder_path = os.path.join('./results', rawSubfolder_name)
     if not os.path.exists(rawFolder_path): os.mkdir(rawFolder_path)
@@ -110,11 +107,13 @@ def main(args):
         pretrained_path = f'./saved_model/{args.task}/redial/pretrained_model_{args.name}.pt'
         trained_path = f'./saved_model/{args.task}/redial/trained_model_{args.name}.pt'
         best_rec_path = f'./saved_model/rec/redial/trained_model_best.pt'
+        best_rec_pretrained_path = f'./saved_model/rec/redial/pretrained_model_best.pt'
         best_conv_pretrained_path = f'./saved_model/conv/redial/pretrained_model_best.pt'
     elif 'inspired' in args.dataset_path:
         pretrained_path = f'./saved_model/{args.task}/inspired/pretrained_model_{args.name}.pt'
         trained_path = f'./saved_model/{args.task}/inspired/trained_model_{args.name}.pt'
         best_rec_path = f'./saved_model/rec/inspired/trained_model_best.pt'
+        best_rec_pretrained_path = f'./saved_model/rec/redial/pretrained_model_best.pt'
         best_conv_pretrained_path = f'./saved_model/conv/inspired/pretrained_model_best.pt'
 
     # Dataset path
@@ -137,7 +136,7 @@ def main(args):
     # BERT model freeze layers
     if args.n_layer != -1:
         modules = [bert_model.encoder.layer[:bert_config.num_hidden_layers - args.n_layer],
-                       bert_model.embeddings]
+                   bert_model.embeddings]
     for module in modules:
         for param in module.parameters():
             param.requires_grad = False
@@ -150,7 +149,6 @@ def main(args):
     gpt_model = PromptGPT2forCRS.from_pretrained(args.gpt_name, config=gpt_config)
     gpt_model.resize_token_embeddings(len(tokenizer_gpt))
     gpt_model.config.pad_token_id = tokenizer_gpt.pad_token_id
-    # gpt_model.config.add_cross_attention = True
     gpt_model = gpt_model.to(args.device_id)
 
     # GPT model freeze layers
@@ -165,14 +163,14 @@ def main(args):
     kg_information = KGInformation(args, DATASET_PATH)
 
     # Load expert model
-    model = MovieExpertCRS(args, bert_model, bert_config, kg_information.movie2id, kg_information.entity_kg,
-                           kg_information.n_entity, args.name).to(args.device_id)
+    model = MovieExpertCRS(args, bert_model, bert_config, kg_information.entity_kg, kg_information.n_entity).to(
+        args.device_id)
 
     if 'rec' in args.task:
         # create result file
         results_file_path = createResultFile(args)
         content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
-        crs_dataset = ReDialDataset(args, DATASET_PATH, content_dataset, tokenizer, kg_information)
+        crs_dataset = CRSDatasetRec(args, DATASET_PATH, content_dataset, tokenizer, kg_information)
         train_data = crs_dataset.train_data
         valid_data = crs_dataset.valid_data
         test_data = crs_dataset.test_data
@@ -183,23 +181,22 @@ def main(args):
         if not args.pretrained:
             pretrain(args, model, pretrain_dataloader, pretrained_path)
         else:
-            model.load_state_dict(torch.load(pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+            model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
         type = 'bert'
-
         if args.dataset_path == 'data/inspired':
             for param in model.word_encoder.parameters():
                 param.requires_grad = False
 
-        train_rec_dataloader = ReDialDataLoader(train_data, args.n_sample, args.batch_size,
-                                                word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
-                                                task='rec', type=type)
-        valid_rec_dataloader = ReDialDataLoader(valid_data, args.n_sample, args.batch_size,
-                                                word_truncate=args.max_dialog_len,
-                                                cls_token=tokenizer.cls_token_id, task='rec', type=type)
-        test_rec_dataloader = ReDialDataLoader(test_data, args.n_sample, args.batch_size,
-                                               word_truncate=args.max_dialog_len,
-                                               cls_token=tokenizer.cls_token_id, task='rec', type=type)
+        train_rec_dataloader = CRSDataLoader(train_data, args.n_sample, args.batch_size,
+                                             word_truncate=args.max_dialog_len, cls_token=tokenizer.cls_token_id,
+                                             task='rec', type=type)
+        valid_rec_dataloader = CRSDataLoader(valid_data, args.n_sample, args.batch_size,
+                                             word_truncate=args.max_dialog_len,
+                                             cls_token=tokenizer.cls_token_id, task='rec', type=type)
+        test_rec_dataloader = CRSDataLoader(test_data, args.n_sample, args.batch_size,
+                                            word_truncate=args.max_dialog_len,
+                                            cls_token=tokenizer.cls_token_id, task='rec', type=type)
 
         if args.mode == 'test':
             content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
@@ -243,7 +240,6 @@ def main(args):
             gpt_model.load_state_dict(torch.load(best_conv_pretrained_path,
                                                  map_location='cuda:%d' % args.device_id))
             logger.info(f'Load pretrained conv file\t{best_conv_pretrained_path}')
-
 
         # Dialog history
         conv_train_dataset = CRSConvDataset(

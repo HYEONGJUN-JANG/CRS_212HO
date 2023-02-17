@@ -15,10 +15,10 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
     hit_pt = [[], [], [], [], []]
 
     # Pre-training Test
-    for movie_id, review_meta, review_token, review_mask, mask_label in tqdm(
+    for movie_id, review_meta, review_token, review_mask in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
         scores, target_id = model.pre_forward(review_meta, review_token,
-                                              review_mask, movie_id, mask_label, compute_score=True)
+                                              review_mask, movie_id, compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         target_id = target_id.cpu().numpy()
@@ -110,15 +110,12 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         logger.info('[Train]')
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, review_meta, review, review_mask, target_items, mask_label = batch
+            context_entities, context_tokens, review_meta, review, review_mask, target_items = batch
             scores_ft = model.forward(context_entities, context_tokens)
             loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
 
-            loss_pt = model.pre_forward(review_meta, review, review_mask,
-                                        target_items,
-                                        mask_label)
+            loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
             loss = loss_ft + ((loss_pt) * args.loss_lambda)
-
 
             total_loss += loss.data.float()
             optimizer.zero_grad()

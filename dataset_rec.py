@@ -47,8 +47,6 @@ class ContentInformation(Dataset):
                 reviews = ['']
                 reviews_meta = [[]]
 
-            mask_label = [-100] * max_review_len
-
             tokenized_reviews = self.tokenizer(reviews, max_length=max_review_len,
                                                padding='max_length',
                                                truncation=True,
@@ -71,22 +69,20 @@ class ContentInformation(Dataset):
             self.data_samples[self.movie2name[crs_id][0]] = {
                 "review": review_list,
                 "review_mask": review_mask_list,
-                "review_meta": reviews_meta_list,
-                "mask_label": mask_label
+                "review_meta": reviews_meta_list
             }
 
         logger.debug('Total number of content samples:\t%d' % len(self.data_samples))
 
     def __getitem__(self, item):
-        idx = self.key_list[item]  # dbpedia id
+        idx = self.key_list[item]  # entity id
         review_token = self.data_samples[idx]['review']
         review_mask = self.data_samples[idx]['review_mask']
         review_meta = self.data_samples[idx]['review_meta']
-        mask_label = self.data_samples[idx]['mask_label']
 
         review_exist_num = np.count_nonzero(np.sum(np.array(review_mask), axis=1))
 
-        # 221013. 기존코드는 plot 혹은 review가 0이라면, 둘 다 1로 설정; plot 은 0인데 , review 는 10개라면?
+        # randomly sample review
         if review_exist_num == 0:
             review_exist_num = 1
         review_sample_idx = [random.randint(0, review_exist_num - 1) for _ in range(self.args.n_sample)]
@@ -99,19 +95,16 @@ class ContentInformation(Dataset):
         review_token = torch.LongTensor(review_token)
         review_mask = torch.LongTensor(review_mask)
         review_meta = torch.LongTensor(review_meta)
-        mask_label = torch.LongTensor(mask_label)
 
-        return idx, review_meta, review_token, review_mask, mask_label
+        return idx, review_meta, review_token, review_mask
 
     def __len__(self):
         return len(self.data_samples)
 
 
-# recommendation mode 와 generation model에 따라 training sample 이 다르므로, torch.Dataset class 상속 X
-class ReDialDataset:
-
+class CRSDatasetRec:
     def __init__(self, args, data_path, content_dataset, tokenizer, kg_information):
-        super(ReDialDataset, self).__init__()
+        super(CRSDatasetRec, self).__init__()
         self.args = args
         self.data_path = data_path
         self.content_dataset = content_dataset
@@ -165,7 +158,6 @@ class ReDialDataset:
                     utt['text'][idx] = '%s' % (self.movie2name[word[1:]][1])
 
             text = ' '.join(utt['text'])
-            # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
             movie_ids = [self.entity2id[movie] for movie in utt['movies'] if
                          movie in self.entity2id]  # utterance movie(entity2id) 마다 entity2id 저장
             entity_ids = [self.entity2id[entity] for entity in utt['entity'] if
@@ -200,15 +192,12 @@ class ReDialDataset:
             text_tokens, entities, movies = conv["text"], conv["entity"], conv["movie"]
             text_tokens = text_tokens + self.sep_token
             text_token_ids = self.tokenizer(text_tokens, add_special_tokens=False).input_ids
-            plot_meta, plot, plot_mask, review_meta, review, review_mask, mask_label = [], [], [], [], [], [], []
+            plot_meta, plot, plot_mask, review_meta, review, review_mask = [], [], [], [], [], []
             if len(context_tokens) > 0:
-                # if len(movies) > 1:
-                #     print()
                 for movie in movies:
                     review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
                     review.append(self.content_dataset.data_samples[movie]['review'])
                     review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
-                    mask_label.append(self.content_dataset.data_samples[movie]['mask_label'])
 
                 conv_dict = {
                     "role": conv['role'],
@@ -219,8 +208,7 @@ class ReDialDataset:
                     "items": movies,
                     "review_meta": review_meta,
                     "review": review,
-                    "review_mask": review_mask,
-                    "mask_label": mask_label
+                    "review_mask": review_mask
 
                 }
                 augmented_conv_dicts.append(conv_dict)
