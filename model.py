@@ -5,85 +5,31 @@ from torch.nn import CrossEntropyLoss
 from transformers import AutoTokenizer
 from transformers.file_utils import ModelOutput
 from transformers.models.bert.modeling_bert import BertOnlyMLMHead
-
+import json
 from layers import AdditiveAttention, SelfDotAttention, LastQueryAttention
 from torch_geometric.nn import RGCNConv
 from transformer import TransformerEncoder
 from utils import edge_to_pyg_format
 from dataclasses import dataclass
 from typing import Tuple, Optional
-
+import os
 
 @dataclass
 class MultiOutput(ModelOutput):
     conv_loss: Optional[torch.FloatTensor] = None
     logits: Optional[torch.FloatTensor] = None
 
-
-# class Projector(nn.Module):
-#     def __init__(self, gpt2_config, bert_hidden_size, entity_dim_size, device):
-#         super(Projector, self).__init__()
-#         self.gpt_hidden_size = gpt2_config.hidden_size
-#         self.bert_hidden_size = bert_hidden_size
-#         self.entity_dim_size = entity_dim_size
-#         # self.projection_order = projection_order
-#         self.device = device
-#
-#         self.token_proj = nn.Sequential(
-#             nn.Linear(self.bert_hidden_size, self.gpt_hidden_size // 2),
-#             nn.ReLU(),
-#             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
-#         )
-#
-#         self.entity_proj = nn.Sequential(
-#             nn.Linear(self.entity_dim_size, self.gpt_hidden_size // 2),
-#             nn.ReLU(),
-#             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
-#         )
-#
-#         self.user_proj = nn.Sequential(
-#             nn.Linear(self.entity_dim_size, self.gpt_hidden_size // 2),
-#             nn.ReLU(),
-#             nn.Linear(self.gpt_hidden_size // 2, self.gpt_hidden_size)
-#         )
-#
-#         self.n_layer = gpt2_config.n_layer
-#         self.n_block = 2
-#         self.n_head = gpt2_config.n_head  # head 수는 12
-#         self.head_dim = self.gpt_hidden_size // self.n_head
-#         self.prompt_proj2 = nn.Linear(self.gpt_hidden_size, self.n_layer * self.n_block * self.gpt_hidden_size)
-#
-#     def forward(self, token_emb, token_mask, entity_emb, entity_mask, user_representation):
-#         token_emb = self.token_proj(token_emb)
-#         entity_emb = self.entity_proj(entity_emb)
-#         user_emb = self.user_proj(user_representation)
-#
-#         encoder_state = torch.cat([token_emb, entity_emb, user_emb.unsqueeze(1)], dim=1)
-#         encoder_mask = torch.cat([token_mask, entity_mask, torch.ones(token_mask.shape[0], 1, device=self.device)],
-#                                  dim=1)
-#         batch_size = encoder_state.shape[0]
-#         prompt_len = encoder_state.shape[1]
-#         prompt_embeds = self.prompt_proj2(encoder_state)
-#         prompt_embeds = prompt_embeds.reshape(
-#             batch_size, prompt_len, self.n_layer, self.n_block, self.n_head, self.head_dim
-#         ).permute(2, 3, 0, 4, 1, 5)  # (n_layer, n_block, batch_size, n_head, prompt_len, head_dim)
-#
-#         return prompt_embeds, encoder_mask
-
-
 class MovieExpertCRS(nn.Module):
-    def __init__(self, args, bert_model, bert_config, movie2ids, entity_kg, n_entity, name):
+    def __init__(self, args, bert_model, bert_config, entity_kg, n_entity):
         super(MovieExpertCRS, self).__init__()
 
         # Setting
         self.args = args
-        self.movie2ids = movie2ids
-        self.name = name  # argument 를 통한 abaltion을 위해 필요
         self.device_id = args.device_id
         self.dropout_pt = nn.Dropout(args.dropout_pt)
         self.dropout_ft = nn.Dropout(args.dropout_ft)
-        # R-GCN
-        # todo: pre-trainig (R-GCN 자체 or content 내 meta data 를 활용하여?) (후자가 날 듯)
+
+        # Entity encoder
         self.n_entity = n_entity
         self.num_bases = args.num_bases
         self.kg_emb_dim = args.kg_emb_dim
@@ -94,10 +40,10 @@ class MovieExpertCRS(nn.Module):
         self.edge_type = self.edge_type.to(self.device_id)
         self.pad_entity_idx = 0
 
-        # Dialog
+        # Text encoder
         self.token_emb_dim = bert_config.hidden_size
         self.bert_config = bert_config
-        self.word_encoder = bert_model  # bert or transformer or bart
+        self.word_encoder = bert_model
         self.cls = BertOnlyMLMHead(bert_config)
         self.token_attention = AdditiveAttention(self.kg_emb_dim, self.kg_emb_dim)
         self.linear_transformation = nn.Linear(self.token_emb_dim, self.kg_emb_dim)
@@ -115,7 +61,6 @@ class MovieExpertCRS(nn.Module):
 
     # todo: initialize 해줘야 할 parameter check
     def initialize(self):
-        # nn.init.xavier_uniform_(self.linear_output.weight)
         nn.init.xavier_uniform_(self.linear_transformation.weight)
         nn.init.xavier_uniform_(self.gating.weight)
         nn.init.xavier_uniform_(self.entity_proj.weight)
@@ -126,52 +71,43 @@ class MovieExpertCRS(nn.Module):
     # review_token    :   [batch_size, n_review, max_review_len]
     # review_meta    :   [batch_size, n_review, n_meta]
     # target_item   :   [batch_size]
-    def pre_forward(self, review_meta, review_token, review_mask, target_item,
-                    mask_label,
-                    compute_score=False):
-        batch_size = review_token.shape[0]
-        n_review = review_token.shape[1]
-        max_review_len = review_token.shape[2]
-        n_meta = review_meta.shape[2]
+    def pre_forward(self, review_meta, review_token, review_mask, target_item, compute_score=False):
+        n_review = review_token.shape[1] # number of sampled reviews [N]
+        max_review_len = review_token.shape[2] # length of review text [L]
+        n_meta = review_meta.shape[2] # length of review meta [L']
 
-        text = review_token
-        mask = review_mask
-        meta = review_meta
-        max_len = max_review_len
-        max_meta_len = n_meta
-        n_text = n_review
+        text = review_token # [B, N, L]
+        mask = review_mask # [B, N, L]
+        meta = review_meta # [B, N, L']
+
         text = text.to(self.device_id)
         mask = mask.to(self.device_id)
+        meta = meta.to(self.device_id)
 
         # [B, 1] -> [N, B] -> [N X B]
-        target_item = target_item.unsqueeze(1).repeat(1, n_text).view(-1).to(self.device_id)
-        # [B, L]
-        mask_label = mask_label.repeat(1, n_text).view(-1, max_review_len).to(self.device_id)
+        target_item = target_item.unsqueeze(1).repeat(1, n_review).view(-1).to(self.device_id)
 
-        # todo: entitiy 활용해서 pre-train
-        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)  # (n_entity, entity_dim)
+        kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
 
-        meta = meta.to(self.device_id)  # [B, N, L']
-        meta = meta.view(-1, max_meta_len)  # [B * N, L']
+        meta = meta.view(-1, n_meta)  # [B * N, L']
         entity_representations = kg_embedding[meta]  # [B * N, L', d]
-        entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
+        entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
 
-        # text: [B * N, L]
-        text = text.view(-1, max_len)
-        mask = mask.view(-1, max_len)
+        text = text.view(-1, max_review_len) # [B * N, L]
+        mask = mask.view(-1, max_review_len) # [B * N, L]
 
         text_emb = self.word_encoder(input_ids=text,
-                                     attention_mask=mask).last_hidden_state  # [B, L, d] -> [B * N, L, d]
-        proj_text_emb = self.linear_transformation(text_emb)  # [B * N, d']
-        content_emb = proj_text_emb[:, 0, :]
+                                     attention_mask=mask).last_hidden_state  # [B * N, L] -> [B * N, L, d]
+        proj_text_emb = self.linear_transformation(text_emb)  # [B * N, L, d]
+        content_emb = proj_text_emb[:, 0, :] #[B * N, d]
         content_emb = self.dropout_pt(content_emb)
 
-        gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))
-        user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep
+        gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1))) # [B * N, d * 2]
+        user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep # [B * N, d]
 
-        scores = F.linear(user_embedding, kg_embedding)
+        scores = F.linear(user_embedding, kg_embedding) # [B * N, all_entity]
 
         loss = self.criterion(scores, target_item)
         if compute_score:

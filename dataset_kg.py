@@ -6,7 +6,6 @@ from loguru import logger
 
 
 class KGInformation:
-
     def __init__(self, args, data_path):
         super(KGInformation, self).__init__()
         self.args = args
@@ -26,9 +25,6 @@ class KGInformation:
 
         self.movie2name = json.load(
             open(os.path.join(self.data_path, 'movie2name.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
-
-        self.movie2id = json.load(
-            open(os.path.join(self.data_path, 'movie_ids.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
 
         logger.debug(
             f"[Load entity dictionary and KG from {os.path.join(self.data_path, 'entity2id.json')} and {os.path.join(self.data_path, 'dbpedia_subkg.json')}]")
@@ -57,7 +53,7 @@ class KGInformation:
                 entities.add(self.id2entity[h])
                 entities.add(self.id2entity[t])
         return {
-            'edge': list(edges),
+            'edge': list(edges), #[(h, t, r)]
             'n_relation': len(relation2id),
             'entity': list(entities)
         }

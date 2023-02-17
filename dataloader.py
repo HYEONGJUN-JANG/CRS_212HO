@@ -10,7 +10,7 @@ from utils import add_start_end_token_idx, padded_tensor, get_onehot, truncate, 
 import numpy as np
 
 
-class ReDialDataLoader:
+class CRSDataLoader:
     def __init__(self, dataset, n_sample, batch_size, entity_truncate=None, word_truncate=None, padding_idx=0,
                  mode='Test', cls_token=101, type='bert', task='rec'):
         self.cls_token = cls_token
@@ -93,7 +93,6 @@ class ReDialDataLoader:
                     augment_conv_dict['review_meta'] = conv_dict['review_meta'][idx]
                     augment_conv_dict['review'] = conv_dict['review'][idx]
                     augment_conv_dict['review_mask'] = conv_dict['review_mask'][idx]
-                    augment_conv_dict['mask_label'] = conv_dict['mask_label'][idx]
                     augment_dataset.append(augment_conv_dict)
 
         logger.info('[Finish dataset process before rec batchify]')
@@ -106,7 +105,6 @@ class ReDialDataLoader:
         batch_context_tokens = []
         batch_review, batch_review_meta, batch_review_mask = [], [], []
         batch_item = []
-        batch_mask_label = []
 
         for conv_dict in batch:
             batch_context_entities.append(
@@ -121,7 +119,6 @@ class ReDialDataLoader:
 
             batch_context_tokens.append(context_tokens)
             batch_item.append(conv_dict['item'])
-            batch_mask_label.append(conv_dict['mask_label'])
             ### Sampling
             review_exist_num = torch.count_nonzero(torch.sum(torch.tensor(conv_dict['review_mask']), dim=1))
 
@@ -139,8 +136,7 @@ class ReDialDataLoader:
                 torch.tensor(batch_review_meta, dtype=torch.long),
                 torch.tensor(batch_review, dtype=torch.long),
                 torch.tensor(batch_review_mask, dtype=torch.long),
-                torch.tensor(batch_item, dtype=torch.long),
-                torch.tensor(batch_mask_label, dtype=torch.long)
+                torch.tensor(batch_item, dtype=torch.long)
                 )
 
     def conv_process_fn(self, dataset):
