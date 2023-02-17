@@ -163,8 +163,8 @@ def main(args):
     kg_information = KGInformation(args, DATASET_PATH)
 
     # Load expert model
-    model = MovieExpertCRS(args, bert_model, bert_config, kg_information.entity_kg, kg_information.n_entity).to(
-        args.device_id, DATASET_PATH)
+    model = MovieExpertCRS(args, bert_model, bert_config, kg_information.entity_kg, kg_information.n_entity,
+                           DATASET_PATH).to(args.device_id)
 
     if 'rec' in args.task:
         # create result file
