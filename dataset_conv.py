@@ -360,7 +360,8 @@ class CRSConvDataset(Dataset):
 class CRSConvDataCollator:
     def __init__(
             self, args, device, tokenizer, pad_entity_id, gen=False, use_amp=False, debug=False,
-            ignore_pad_token_for_loss=True, context_max_length=None, entity_max_length=None, tokenizer_bert=None,
+            ignore_pad_token_for_loss=True, context_max_length=None, resp_max_length=None, entity_max_length=None,
+            tokenizer_bert=None,
     ):
         self.tokenizer = tokenizer
         self.tokenizer_bert = tokenizer_bert
