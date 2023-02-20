@@ -68,7 +68,7 @@ def finetuning_evaluate(args, evaluator, epoch, test_gen_dataloader, model, gpt_
                 if gen_len > args.max_gen_len:
                     break
                 output = gpt_model(input_ids=input_ids.long(), attention_mask=attention_mask,
-                                   position_ids=position_ids, conv=True)
+                                   position_ids=position_ids)
                 next_token_logits = output.logits[:, -1, :]
                 # past_key_values = output.past_key_values
                 next_tokens_scores = LogitsProcessorList()(input_ids, next_token_logits)
