@@ -131,8 +131,7 @@ def main(args):
 
     # Dataset path
     ROOT_PATH = dirname(realpath(__file__))
-    DATASET_PATH =  os.path.join(ROOT_PATH, args.dataset_path)
-
+    DATASET_PATH = os.path.join(ROOT_PATH, args.dataset_path)
 
     # Load BERT (by using huggingface)
     tokenizer = AutoTokenizer.from_pretrained(args.bert_name)

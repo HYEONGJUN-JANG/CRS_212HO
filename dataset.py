@@ -33,7 +33,7 @@ class ContentInformation(Dataset):
         self.key_list = list(self.data_samples.keys())  # entity id list
 
     def read_data(self, tokenizer, max_plot_len, max_review_len):
-        f = open(os.path.join(self.data_path, 'content_data_new.json'), encoding='utf-8')
+        f = open(os.path.join(self.data_path, 'content_data_new_meta.json'), encoding='utf-8')
 
         data = json.load(f)
 
@@ -41,7 +41,7 @@ class ContentInformation(Dataset):
         #     open(os.path.join('data/redial/', 'entity2id.json'), 'r', encoding='utf-8'))  # {entity: entity_id}
         # id2entity = {idx: entity for entity, idx in entity2id.items()}
         # all_entities_name = entity2id.keys()
-        for sample in tqdm(data, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        for sample in tqdm(data[:1], bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
             review_list, plot_list = [], []
             review_mask_list, plot_mask_list, reviews_meta_list, plots_meta_list = [], [], [], []
 
@@ -218,6 +218,7 @@ class ReDialDataset:
         self.sep_token = tokenizer.sep_token
         self.movie2name = kg_information.movie2name
         self.entity2id = kg_information.entity2id
+        self.rec_utt = []
         self._load_data()
 
     def _load_raw_data(self):
@@ -259,9 +260,9 @@ class ReDialDataset:
 
         for utt in dialog:
             # BERT_tokenzier 에 입력하기 위해 @IDX 를 해당 movie의 name으로 replace
-            for idx, word in enumerate(utt['text']):
-                if word[0] == '@' and word[1:].isnumeric():
-                    utt['text'][idx] = '%s' % (self.movie2name[word[1:]][1])
+            # for idx, word in enumerate(utt['text']):
+            #     if word[0] == '@' and word[1:].isnumeric():
+            #         utt['text'][idx] = '%s' % (self.movie2name[word[1:]][1])
 
             text = ' '.join(utt['text'])
             # text_token_ids = self.tokenizer(text, add_special_tokens=False).input_ids
@@ -289,6 +290,14 @@ class ReDialDataset:
                 })
             last_role = utt["role"]
 
+        for utt in augmented_convs:
+            if '@' in utt['text']:
+                self.rec_utt.append(utt['text'])
+
+            # for idx, word in enumerate(utt['text']):
+            #     if word[0] == '@' and word[1:].isnumeric():
+            #         # utt['text'][idx] = '%s' % (self.movie2name[word[1:]][1])
+            #         self.rec_utt.append(utt['text'])
         return augmented_convs
 
     def _augment_and_add(self, raw_conv_dict):
@@ -303,14 +312,14 @@ class ReDialDataset:
             if len(context_tokens) > 0:
                 # if len(movies) > 1:
                 #     print()
-                for movie in movies:
-                    plot_meta.append(self.content_dataset.data_samples[movie]['plot_meta'])
-                    plot.append(self.content_dataset.data_samples[movie]['plot'])
-                    plot_mask.append(self.content_dataset.data_samples[movie]['plot_mask'])
-                    review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
-                    review.append(self.content_dataset.data_samples[movie]['review'])
-                    review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
-                    mask_label.append(self.content_dataset.data_samples[movie]['mask_label'])
+                # for movie in movies:
+                #     plot_meta.append(self.content_dataset.data_samples[movie]['plot_meta'])
+                #     plot.append(self.content_dataset.data_samples[movie]['plot'])
+                #     plot_mask.append(self.content_dataset.data_samples[movie]['plot_mask'])
+                #     review_meta.append(self.content_dataset.data_samples[movie]['review_meta'])
+                #     review.append(self.content_dataset.data_samples[movie]['review'])
+                #     review_mask.append(self.content_dataset.data_samples[movie]['review_mask'])
+                #     mask_label.append(self.content_dataset.data_samples[movie]['mask_label'])
 
                 conv_dict = {
                     "role": conv['role'],
