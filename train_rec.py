@@ -15,13 +15,12 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
     hit_pt = [[], [], [], [], []]
 
     # Pre-training Test
-    for movie_id, plot_meta, plot_token, plot_mask, review_meta, review_token, review_mask, mask_label in tqdm(
+    for movie_id, review_meta, review_token, review_mask in tqdm(
             pretrain_dataloader, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
-        scores, target_id = model.pre_forward(plot_meta, plot_token, plot_mask, review_meta, review_token,
-                                              review_mask, movie_id, mask_label, compute_score=True)
+        scores, target_id = model.pre_forward(review_meta, review_token,
+                                              review_mask, movie_id, compute_score=True)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
-        # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
         target_id = target_id.cpu().numpy()
 
         for k in range(len(topk)):
@@ -53,10 +52,8 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
     hit_ft = [[], [], [], [], []]
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(shuffle=False):
-        context_entities, context_tokens, _, _, _, _, _, _, target_items, _ = batch
+        context_entities, context_tokens, _, _, _, target_items = batch
         scores = model.forward(context_entities, context_tokens)
-
-        # Item에 해당하는 것만 score 추출 (실험: 학습할 때도 똑같이 해줘야 할 지?)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         target_items = target_items.cpu().numpy()
@@ -99,30 +96,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     eval_metric = [-1]
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
-    # optim & amp
-    # modules = [model]
-    # no_decay = ["bias", "LayerNorm.weight"]
-    # optimizer_grouped_parameters = [
-    #     {
-    #         "params": [p for model in modules for n, p in model.named_parameters()
-    #                    if not any(nd in n for nd in no_decay) and p.requires_grad],
-    #         "weight_decay": args.weight_decay,
-    #     },
-    #     {
-    #         "params": [p for model in modules for n, p in model.named_parameters()
-    #                    if any(nd in n for nd in no_decay) and p.requires_grad],
-    #         "weight_decay": 0.0,
-    #     },
-    # ]
-    # optimizer = AdamW(model.parameters(), lr=args.lr_ft)
-
-    # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1], gamma=args.warmup_gamma)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
-    # scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, args.max_train_steps)
-
-    # max_train_steps = args.epoch_ft * (ceil(len(train_dataloader.dataset) / args.batch_size))
-    # lr_scheduler
-    # scheduler = get_linear_schedule_with_warmup(optimizer, args.num_warmup_steps, max_train_steps)
 
     for epoch in range(args.epoch_ft):
         pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
@@ -136,17 +110,12 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         logger.info('[Train]')
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, plot_meta, plot, plot_mask, review_meta, review, review_mask, target_items, mask_label = batch
+            context_entities, context_tokens, review_meta, review, review_mask, target_items = batch
             scores_ft = model.forward(context_entities, context_tokens)
             loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
 
-            if 'none' not in args.name:
-                loss_pt = model.pre_forward(plot_meta, plot, plot_mask, review_meta, review, review_mask,
-                                            target_items,
-                                            mask_label)
-                loss = loss_ft + ((loss_pt) * args.loss_lambda)
-            else:
-                loss = loss_ft
+            loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
+            loss = loss_ft + ((loss_pt) * args.loss_lambda)
 
             total_loss += loss.data.float()
             optimizer.zero_grad()
@@ -163,5 +132,3 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
     return content_hit, initial_hit, best_result
-
-# todo: train_generator

@@ -76,7 +76,7 @@ class MultiHeadAttention(nn.Module):
         self.q_lin = nn.Linear(dim, dim)
         self.k_lin = nn.Linear(dim, dim)
         self.v_lin = nn.Linear(dim, dim)
-        # TODO: merge for the initialization step
+
         nn.init.xavier_normal_(self.q_lin.weight)
         nn.init.xavier_normal_(self.k_lin.weight)
         nn.init.xavier_normal_(self.v_lin.weight)
@@ -158,7 +158,6 @@ class TransformerFFN(nn.Module):
         self.lin2 = nn.Linear(dim_hidden, dim)
         nn.init.xavier_uniform_(self.lin1.weight)
         nn.init.xavier_uniform_(self.lin2.weight)
-        # TODO: initialize biases to 0
 
     def forward(self, x):
         x = F.relu(self.lin1(x))
