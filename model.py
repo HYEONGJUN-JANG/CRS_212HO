@@ -55,7 +55,7 @@ class MovieExpertCRS(nn.Module):
 
         # Gating
         self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
-
+        self.linear_output = nn.Linear(self.kg_emb_dim, self.n_entity)
         # Loss
         self.criterion = nn.CrossEntropyLoss()
 
@@ -110,7 +110,8 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
         user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
 
-        scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        # scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        scores = self.linear_output(user_embedding)
 
         loss = self.criterion(scores, target_item)
         if compute_score:
@@ -165,5 +166,6 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
 
-        scores = F.linear(user_embedding, kg_embedding)
+        # scores = F.linear(user_embedding, kg_embedding)
+        scores = self.linear_output(user_embedding)
         return scores
