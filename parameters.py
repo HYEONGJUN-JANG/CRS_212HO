@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--mode', type=str, default='test', choices=['valid','test'])
     parser.add_argument('--dataset_path', type=str, default='data/redial', choices=['data/redial', 'data/inspired'])
+    parser.add_argument('--itemrep', type=int, default=0, help='0: LATTE, 1: w/o RGCN')
 
     # rec
     parser.add_argument('--n_review', type=int, default=9)
