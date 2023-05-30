@@ -93,7 +93,10 @@ class MovieExpertCRS(nn.Module):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
 
         meta = meta.view(-1, n_meta)  # [B * N, L']
-        entity_representations = kg_embedding[meta]  # [B * N, L', d]
+        if self.args.itemrep == 0:
+            entity_representations = kg_embedding[meta]  # [B * N, L', d]
+        else:
+            entity_representations = self.kg_encoder.root[meta]
         entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
@@ -110,7 +113,11 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
         user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
 
-        scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+
+        if self.args.itemrep == 0:
+            scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        else:
+            scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
         # scores = self.linear_output(user_embedding)
 
         loss = self.criterion(scores, target_item)
@@ -123,7 +130,11 @@ class MovieExpertCRS(nn.Module):
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
-        entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+        if self.args.itemrep == 0:
+            entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+        else:
+            entity_representations = self.kg_encoder.root[context_entities]  # [bs, context_len, entity_dim]
+
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                             attention_mask=token_padding_mask.to(
                                                 self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
@@ -166,6 +177,9 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
 
-        scores = F.linear(user_embedding, kg_embedding)
+        if self.args.itemrep == 0:
+            scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        else:
+            scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
         # scores = self.linear_output(user_embedding)
         return scores
