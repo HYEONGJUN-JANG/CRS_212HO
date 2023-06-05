@@ -114,10 +114,10 @@ class MovieExpertCRS(nn.Module):
         user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
 
 
-        if self.args.itemrep == 0:
-            scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
-        else:
-            scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
+        # if self.args.itemrep == 0:
+        scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        # else:
+            # scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
         # scores = self.linear_output(user_embedding)
 
         loss = self.criterion(scores, target_item)
@@ -177,9 +177,9 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
 
-        if self.args.itemrep == 0:
-            scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
-        else:
-            scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
+        # if self.args.itemrep == 0:
+        scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        # else:
+        #     scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
         # scores = self.linear_output(user_embedding)
         return scores
