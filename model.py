@@ -93,10 +93,7 @@ class MovieExpertCRS(nn.Module):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
 
         meta = meta.view(-1, n_meta)  # [B * N, L']
-        if self.args.itemrep == 0:
-            entity_representations = kg_embedding[meta]  # [B * N, L', d]
-        else:
-            entity_representations = self.kg_encoder.root[meta]
+        entity_representations = kg_embedding[meta]  # [B * N, L', d]
         entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
@@ -130,10 +127,7 @@ class MovieExpertCRS(nn.Module):
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
-        if self.args.itemrep == 0:
-            entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
-        else:
-            entity_representations = self.kg_encoder.root[context_entities]  # [bs, context_len, entity_dim]
+        entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
 
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                             attention_mask=token_padding_mask.to(
