@@ -166,7 +166,7 @@ class MovieExpertCRS(nn.Module):
 
         # dropout
         token_attn_rep = self.dropout_ft(token_attn_rep)
-        entity_attn_rep = self.dropout_ft(entity_attn_rep)
+        # entity_attn_rep = self.dropout_ft(entity_attn_rep)
 
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
