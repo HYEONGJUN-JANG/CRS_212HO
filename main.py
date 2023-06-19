@@ -180,10 +180,10 @@ def main(args):
         review_dataloader = DataLoader(review_dataset, batch_size=args.batch_size, shuffle=False)
 
         # For pre-training
-        # if not args.pretrained:
-        #     pretrain(args, model, pretrain_dataloader, pretrained_path)
-        # else:
-        #     model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+        if not args.pretrained:
+            pretrain(args, model, pretrain_dataloader, pretrained_path)
+        else:
+            model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
         type = 'bert'
         if args.dataset_path == 'data/inspired':
