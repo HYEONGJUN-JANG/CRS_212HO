@@ -110,9 +110,9 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
         item_rep = torch.tensor(item_rep).to(args.device_id)
         movie_id_list = torch.tensor(movie_id_list).to(args.device_id)
-        # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        # finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric,
-        #                     item_rep, movie_id_list)
+        pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric,
+                            item_rep, movie_id_list)
 
         # TRAIN
         model.train()
