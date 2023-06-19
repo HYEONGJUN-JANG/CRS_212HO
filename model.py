@@ -194,7 +194,7 @@ class MovieExpertCRS(nn.Module):
         # torch.sum(kg_embedding[:, torch.LongTensor(self.movie2ids)], item_review)
         add_item = torch.zeros(kg_embedding.size(0), kg_embedding.size(1)).to(self.args.device_id)
         movie_ids = movie_ids.tolist()
-        for ids in tqdm(movie_ids, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        for ids in movie_ids:
             add_item[ids] = item_review[movie_ids.index(ids)]
         kg_embedding = torch.add(kg_embedding, add_item)
         scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
