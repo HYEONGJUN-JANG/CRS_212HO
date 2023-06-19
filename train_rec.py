@@ -48,12 +48,13 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
         content_hit[2] = 100 * np.mean(hit_pt[4])
 
 
-def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric):
+def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric, item_rep,
+                        movie_id_list):
     hit_ft = [[], [], [], [], []]
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(shuffle=False):
-        context_entities, context_tokens, _, _, _, target_items = batch
-        scores = model.forward(context_entities, context_tokens)
+        context_entities, context_tokens, _, review, review_mask, target_items = batch
+        scores = model.forward(context_entities, context_tokens, item_rep, movie_id_list)
         scores = scores[:, torch.LongTensor(model.movie2ids)]
 
         target_items = target_items.cpu().numpy()
@@ -89,7 +90,8 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
             best_hit[k] = np.mean(hit_ft[k])
 
 
-def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path, pretrain_dataloader):
+def train_recommender(args, model, train_dataloader, test_dataloader, path, results_file_path, pretrain_dataloader,
+                      item_review_dataloader):
     best_hit = [[], [], [], [], []]
     initial_hit = [[], [], []]
     content_hit = [[], [], []]
@@ -99,8 +101,18 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
 
     for epoch in range(args.epoch_ft):
-        pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+        item_rep, movie_id_list = [], []
+        for movie_id, title, title_mask, review, review_mask in tqdm(item_review_dataloader,
+                                                                     bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            item_rep.extend(
+                model.make_item_rep(movie_id, title, title_mask, review, review_mask))
+            movie_id_list.extend(movie_id)
+
+        item_rep = torch.tensor(item_rep).to(args.device_id)
+        movie_id_list = torch.tensor(movie_id_list).to(args.device_id)
+        # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+        # finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric,
+        #                     item_rep, movie_id_list)
 
         # TRAIN
         model.train()
@@ -111,7 +123,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
         for batch in train_dataloader.get_rec_data(args.batch_size):
             context_entities, context_tokens, review_meta, review, review_mask, target_items = batch
-            scores_ft = model.forward(context_entities, context_tokens)
+            scores_ft = model.forward(context_entities, context_tokens, item_rep, movie_id_list)
             loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
 
             loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
@@ -127,7 +139,14 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
     pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-    finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+    item_rep, movie_id_list = [], []
+    for movie_id, title, title_mask, review, review_mask in tqdm(item_review_dataloader,
+                                                                 bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+        item_rep.extend(
+            model.make_item_rep(movie_id, title, title_mask, review, review_mask))
+        movie_id_list.extend(movie_id)
+    finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric, item_rep,
+                        movie_id_list)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 

@@ -13,6 +13,7 @@ from utils import edge_to_pyg_format
 from dataclasses import dataclass
 from typing import Tuple, Optional
 import os
+from tqdm import tqdm
 
 
 @dataclass
@@ -93,10 +94,7 @@ class MovieExpertCRS(nn.Module):
         kg_embedding = self.kg_encoder(None, self.edge_idx, self.edge_type)
 
         meta = meta.view(-1, n_meta)  # [B * N, L']
-        if self.args.itemrep == 0:
-            entity_representations = kg_embedding[meta]  # [B * N, L', d]
-        else:
-            entity_representations = self.kg_encoder.root[meta]
+        entity_representations = kg_embedding[meta]  # [B * N, L', d]
         entity_padding_mask = ~meta.eq(self.pad_entity_idx).to(self.device_id)  # (B * N, L')
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask)  # (B *  N, d)
         entity_attn_rep = self.dropout_pt(entity_attn_rep)
@@ -113,11 +111,10 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
         user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
 
-
         # if self.args.itemrep == 0:
         scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
         # else:
-            # scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
+        # scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
         # scores = self.linear_output(user_embedding)
 
         loss = self.criterion(scores, target_item)
@@ -130,10 +127,7 @@ class MovieExpertCRS(nn.Module):
         entity_padding_mask = ~context_entities.eq(self.pad_entity_idx).to(self.device_id)  # (bs, entity_len)
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
-        if self.args.itemrep == 0:
-            entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
-        else:
-            entity_representations = self.kg_encoder.root[context_entities]  # [bs, context_len, entity_dim]
+        entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
 
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                             attention_mask=token_padding_mask.to(
@@ -160,12 +154,31 @@ class MovieExpertCRS(nn.Module):
 
         return entity_representations, entity_padding_mask, kg_embedding, token_embedding_prev, token_padding_mask, user_embedding
 
-    def forward(self, context_entities, context_tokens):
+    def make_item_rep(self, movie_id, title, title_mask, review, review_mask):
+        if self.args.n_review != 0:
+            review = review.view(-1, self.args.max_review_len)  # [B X R, L]
+            review_mask = review_mask.view(-1, self.args.max_review_len)  # [B X R, L]
+            review_emb = self.word_encoder(input_ids=review, attention_mask=review_mask).last_hidden_state[:, 0,
+                         :].view(-1, self.args.n_review, self.token_emb_dim)  # [M X R, L, d]  --> [M, R, d]
+            title_emb = self.word_encoder(input_ids=title,
+                                  attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            # query_embedding = title_emb
+            # item_representations = self.item_attention(review_emb, query_embedding, num_review_mask)
+            item_representations = (torch.mean(review_emb, dim=1) + title_emb)
+        elif self.args.n_review == 0:
+            title_emb = self.word_encoder(input_ids=title,
+                                  attention_mask=title_mask).last_hidden_state[:, 0, :]  # [M, d]
+            item_representations = title_emb
+
+        return item_representations.tolist()
+
+    def forward(self, context_entities, context_tokens, item_review, movie_ids):
         entity_representations, entity_padding_mask, kg_embedding, token_embedding, token_padding_mask = self.get_representations(
             context_entities,
             context_tokens)
 
         token_embedding = self.linear_transformation(token_embedding)
+        item_review = self.linear_transformation(item_review)
         token_attn_rep = token_embedding[:, 0, :]
         entity_attn_rep = self.entity_attention(entity_representations, entity_padding_mask,
                                                 position=self.args.position)  # (bs, entity_dim)
@@ -178,6 +191,12 @@ class MovieExpertCRS(nn.Module):
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
 
         # if self.args.itemrep == 0:
+        # torch.sum(kg_embedding[:, torch.LongTensor(self.movie2ids)], item_review)
+        add_item = torch.zeros(kg_embedding.size(0), kg_embedding.size(1)).to(self.args.device_id)
+        movie_ids = movie_ids.tolist()
+        for ids in tqdm(movie_ids, bar_format=' {percentage:3.0f} % | {bar:23} {r_bar}'):
+            add_item[ids] = item_review[movie_ids.index(ids)]
+        kg_embedding = torch.add(kg_embedding, add_item)
         scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
         # else:
         #     scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
