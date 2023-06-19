@@ -192,11 +192,12 @@ class MovieExpertCRS(nn.Module):
 
         # if self.args.itemrep == 0:
         # torch.sum(kg_embedding[:, torch.LongTensor(self.movie2ids)], item_review)
-        add_item = torch.zeros(kg_embedding.size(0), kg_embedding.size(1)).to(self.args.device_id)
-        movie_ids = movie_ids.tolist()
-        for ids in movie_ids:
-            add_item[ids] = item_review[movie_ids.index(ids)]
-        kg_embedding = torch.add(kg_embedding, add_item)
+        if self.args.prediction == 1:
+            add_item = torch.zeros(kg_embedding.size(0), kg_embedding.size(1)).to(self.args.device_id)
+            movie_ids = movie_ids.tolist()
+            for ids in movie_ids:
+                add_item[ids] = item_review[movie_ids.index(ids)]
+            kg_embedding = torch.add(kg_embedding, add_item)
         scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
         # else:
         #     scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
