@@ -145,6 +145,8 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         item_rep.extend(
             model.make_item_rep(movie_id, title, title_mask, review, review_mask))
         movie_id_list.extend(movie_id)
+    item_rep = torch.tensor(item_rep).to(args.device_id)
+    movie_id_list = torch.tensor(movie_id_list).to(args.device_id)
     finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric, item_rep,
                         movie_id_list)
 
