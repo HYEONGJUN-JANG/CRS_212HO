@@ -22,7 +22,7 @@ from train_conv import train_conversation
 from config import gpt2_special_tokens_dict, bert_special_tokens_dict
 from dataset_conv import CRSConvDataCollator, CRSConvDataset, ContentInformationConv, ContentConvCollator
 from dataloader import CRSDataLoader
-from dataset_rec import ContentInformation, CRSDatasetRec, reviewInformation
+from dataset_rec import ContentInformation, CRSDatasetRec
 from evaluate_conv import ConvEvaluator
 from model import MovieExpertCRS
 from model_gpt2 import PromptGPT2forCRS
@@ -170,14 +170,12 @@ def main(args):
         # create result file
         results_file_path = createResultFile(args)
         content_dataset = ContentInformation(args, DATASET_PATH, tokenizer, args.device_id)
-        review_dataset = reviewInformation(args, DATASET_PATH, tokenizer, args.device_id)
         crs_dataset = CRSDatasetRec(args, DATASET_PATH, content_dataset, tokenizer, kg_information)
         train_data = crs_dataset.train_data
         valid_data = crs_dataset.valid_data
         test_data = crs_dataset.test_data
 
         pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
-        review_dataloader = DataLoader(review_dataset, batch_size=args.batch_size, shuffle=False)
 
         # For pre-training
         if not args.pretrained:
@@ -204,12 +202,12 @@ def main(args):
             content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
                                                                       test_rec_dataloader,
                                                                       trained_path, results_file_path,
-                                                                      pretrain_dataloader, review_dataloader)
+                                                                      pretrain_dataloader)
         elif args.mode == 'valid':
             content_hit, initial_hit, best_result = train_recommender(args, model, train_rec_dataloader,
                                                                       valid_rec_dataloader,
                                                                       trained_path, results_file_path,
-                                                                      pretrain_dataloader, review_dataloader)
+                                                                      pretrain_dataloader)
 
         return content_hit, initial_hit, best_result
 
