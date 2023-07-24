@@ -55,7 +55,7 @@ class MovieExpertCRS(nn.Module):
 
         # Gating
         self.gating = nn.Linear(2 * self.kg_emb_dim, self.kg_emb_dim)
-
+        self.linear_output = nn.Linear(self.kg_emb_dim, self.n_entity)
         # Loss
         self.criterion = nn.CrossEntropyLoss()
 
@@ -110,7 +110,12 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([content_emb, entity_attn_rep], dim=1)))  # [B * N, d * 2]
         user_embedding = gate * content_emb + (1 - gate) * entity_attn_rep  # [B * N, d]
 
+
+        # if self.args.itemrep == 0:
         scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        # else:
+            # scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
+        # scores = self.linear_output(user_embedding)
 
         loss = self.criterion(scores, target_item)
         if compute_score:
@@ -123,6 +128,7 @@ class MovieExpertCRS(nn.Module):
         token_padding_mask = ~context_tokens.eq(self.pad_entity_idx).to(self.device_id)  # (bs, token_len)
 
         entity_representations = kg_embedding[context_entities]  # [bs, context_len, entity_dim]
+
         token_embedding = self.word_encoder(input_ids=context_tokens.to(self.device_id),
                                             attention_mask=token_padding_mask.to(
                                                 self.device_id)).last_hidden_state  # [bs, token_len, word_dim]
@@ -165,5 +171,9 @@ class MovieExpertCRS(nn.Module):
         gate = torch.sigmoid(self.gating(torch.cat([token_attn_rep, entity_attn_rep], dim=1)))
         user_embedding = gate * token_attn_rep + (1 - gate) * entity_attn_rep
 
-        scores = F.linear(user_embedding, kg_embedding)
+        # if self.args.itemrep == 0:
+        scores = F.linear(user_embedding, kg_embedding)  # [B * N, all_entity]
+        # else:
+        #     scores = F.linear(user_embedding, self.kg_encoder.root)  # [B * N, all_entity]
+        # scores = self.linear_output(user_embedding)
         return scores
