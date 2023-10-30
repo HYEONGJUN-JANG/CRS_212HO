@@ -67,7 +67,7 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
             for (label, score) in zip(target_items, sub_scores):
                 target_idx = model.movie2ids.index(label)
                 if k == 0:  # 23.10.30
-                    writeArray.append({'ANSWER': target_idx, 'GEN': score[0], 'HIT': int(np.isin(target_idx, score))})
+                    writeArray.append({'ANSWER': str(target_idx), 'GEN': str(score[0]), 'HIT': int(np.isin(target_idx, score))})
                 hit_ft[k].append(np.isin(target_idx, score))
 
     print('Epoch %d : test done' % (epoch))
