@@ -1,3 +1,4 @@
+import json
 from math import ceil
 
 import torch
@@ -50,6 +51,7 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
 
 def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric):
     hit_ft = [[], [], [], [], []]
+    writeArray = []
     # Fine-tuning Test
     for batch in test_dataloader.get_rec_data(shuffle=False):
         context_entities, context_tokens, _, _, _, target_items = batch
@@ -64,6 +66,8 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
 
             for (label, score) in zip(target_items, sub_scores):
                 target_idx = model.movie2ids.index(label)
+                if k == 0:  # 23.10.30
+                    writeArray.append({'ANSWER': str(target_idx), 'GEN': str(score[0]), 'HIT': int(np.isin(target_idx, score))})
                 hit_ft[k].append(np.isin(target_idx, score))
 
     print('Epoch %d : test done' % (epoch))
@@ -77,6 +81,9 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
             '[FINE TUNING] Epoch:\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\n' % (
                 epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
                 100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
+
+    with open(f"{results_file_path}_check.json", 'w', encoding='utf-8') as result_f:  # 23.10.30
+        result_f.write(json.dumps(writeArray, indent=4))
 
     if epoch == 0:
         initial_hit[0] = 100 * np.mean(hit_ft[0])
@@ -98,36 +105,36 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     optimizer = optim.Adam(model.parameters(), lr=args.lr_ft)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
 
-    for epoch in range(args.epoch_ft):
-        pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+    # for epoch in range(args.epoch_ft):
+    #     # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+    #     # finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+    #
+    #     # TRAIN
+    #     model.train()
+    #     total_loss = 0
+    #
+    #     logger.info(f'[Recommendation epoch {str(epoch)}]')
+    #     logger.info('[Train]')
+    #
+    #     for batch in train_dataloader.get_rec_data(args.batch_size):
+    #         context_entities, context_tokens, review_meta, review, review_mask, target_items = batch
+    #         scores_ft = model.forward(context_entities, context_tokens)
+    #         loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
+    #
+    #         loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
+    #         loss = loss_ft + ((loss_pt) * args.loss_lambda)
+    #
+    #         total_loss += loss.data.float()
+    #         optimizer.zero_grad()
+    #         loss.backward()
+    #         optimizer.step()
+    #     scheduler.step()
+    #
+    #     print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
+    # torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
-        # TRAIN
-        model.train()
-        total_loss = 0
-
-        logger.info(f'[Recommendation epoch {str(epoch)}]')
-        logger.info('[Train]')
-
-        for batch in train_dataloader.get_rec_data(args.batch_size):
-            context_entities, context_tokens, review_meta, review, review_mask, target_items = batch
-            scores_ft = model.forward(context_entities, context_tokens)
-            loss_ft = model.criterion(scores_ft, target_items.to(args.device_id))
-
-            loss_pt = model.pre_forward(review_meta, review, review_mask, target_items)
-            loss = loss_ft + ((loss_pt) * args.loss_lambda)
-
-            total_loss += loss.data.float()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        scheduler.step()
-
-        print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
-    torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
-
-    pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-    finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+    # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+    finetuning_evaluate(model, test_dataloader, 10, results_file_path, initial_hit, best_hit, eval_metric)  # 23.10.30
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
