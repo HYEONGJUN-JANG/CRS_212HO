@@ -1,3 +1,4 @@
+import json
 from math import ceil
 
 import torch
@@ -81,8 +82,8 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
                 epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
                 100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
 
-    with open(f"{results_file_path}_check", 'w', encoding='utf-8') as result_f:  # 23.10.30
-        result_f.write(writeArray)
+    with open(f"{results_file_path}_check.json", 'w', encoding='utf-8') as result_f:  # 23.10.30
+        result_f.write(json.dumps(writeArray, indent=4))
 
     if epoch == 0:
         initial_hit[0] = 100 * np.mean(hit_ft[0])
