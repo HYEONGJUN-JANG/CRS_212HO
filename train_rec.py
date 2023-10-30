@@ -49,7 +49,8 @@ def pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, cont
         content_hit[2] = 100 * np.mean(hit_pt[4])
 
 
-def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric):
+def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric,
+                        torch_save_path):
     model.eval()
 
     hit_ft = [[], [], [], [], []]
@@ -69,7 +70,8 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
             for (label, score) in zip(target_items, sub_scores):
                 target_idx = model.movie2ids.index(label)
                 if k == 0:  # 23.10.30
-                    writeArray.append({'ANSWER': str(target_idx), 'GEN': str(score[0]), 'HIT': int(np.isin(target_idx, score))})
+                    writeArray.append(
+                        {'ANSWER': str(target_idx), 'GEN': str(score[0]), 'HIT': int(np.isin(target_idx, score))})
                 hit_ft[k].append(np.isin(target_idx, score))
 
     print('Epoch %d : test done' % (epoch))
@@ -84,9 +86,6 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
                 epoch, 100 * np.mean(hit_ft[0]), 100 * np.mean(hit_ft[1]), 100 * np.mean(hit_ft[2]),
                 100 * np.mean(hit_ft[3]), 100 * np.mean(hit_ft[4])))
 
-    with open(f"{results_file_path}_check.json", 'w', encoding='utf-8') as result_f:  # 23.10.30
-        result_f.write(json.dumps(writeArray, indent=4))
-
     if epoch == 0:
         initial_hit[0] = 100 * np.mean(hit_ft[0])
         initial_hit[1] = 100 * np.mean(hit_ft[2])
@@ -94,6 +93,9 @@ def finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initia
 
     if np.mean(hit_ft[0]) > eval_metric[0]:
         eval_metric[0] = np.mean(hit_ft[0])
+        torch.save(model.state_dict(), torch_save_path)  # TIME_MODELNAME 형식
+        with open(f"{results_file_path}_check.json", 'w', encoding='utf-8') as result_f:  # 23.10.30
+            result_f.write(json.dumps(writeArray, indent=4))
         for k in range(len(topk)):
             best_hit[k] = np.mean(hit_ft[k])
 
@@ -109,7 +111,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
 
     for epoch in range(args.epoch_ft):
         pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric)
+        finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric, path)
 
         # TRAIN
         model.train()
@@ -133,10 +135,10 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         scheduler.step()
 
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
-    torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
+    # torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
     pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
-    finetuning_evaluate(model, test_dataloader, 10, results_file_path, initial_hit, best_hit, eval_metric)
+    finetuning_evaluate(model, test_dataloader, 10, results_file_path, initial_hit, best_hit, eval_metric, path)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
 
