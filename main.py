@@ -178,11 +178,11 @@ def main(args):
         pretrain_dataloader = DataLoader(content_dataset, batch_size=args.batch_size, shuffle=True)
 
         # For pre-training
-        model.load_state_dict(torch.load(best_rec_path, map_location='cuda:%d' % args.device_id), strict=False)
-        # if not args.pretrained:
-        #     pretrain(args, model, pretrain_dataloader, pretrained_path)
-        # else:
-        #     model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
+        # model.load_state_dict(torch.load(best_rec_path, map_location='cuda:%d' % args.device_id), strict=False)
+        if not args.pretrained:
+            pretrain(args, model, pretrain_dataloader, pretrained_path)
+        else:
+            model.load_state_dict(torch.load(best_rec_pretrained_path))  # state_dict를 불러 온 후, 모델에 저장`
 
         type = 'bert'
         if args.dataset_path == 'data/inspired':

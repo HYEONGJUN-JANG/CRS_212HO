@@ -110,7 +110,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_dc_step, gamma=args.lr_dc)
 
     for epoch in range(args.epoch_ft):
-        # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+        pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
         finetuning_evaluate(model, test_dataloader, epoch, results_file_path, initial_hit, best_hit, eval_metric, path)
 
         # TRAIN
@@ -137,7 +137,7 @@ def train_recommender(args, model, train_dataloader, test_dataloader, path, resu
         print('Loss:\t%.4f\t%f' % (total_loss, scheduler.get_last_lr()[0]))
     # torch.save(model.state_dict(), path)  # TIME_MODELNAME 형식
 
-    # pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
+    pretrain_evaluate(model, pretrain_dataloader, epoch, results_file_path, content_hit)
     finetuning_evaluate(model, test_dataloader, 10, results_file_path, initial_hit, best_hit, eval_metric, path)
 
     best_result = [100 * best_hit[0], 100 * best_hit[2], 100 * best_hit[4]]
